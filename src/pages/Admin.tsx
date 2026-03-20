@@ -68,12 +68,14 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
   };
 
   useEffect(() => { loadUsers(); }, []);
-  const handleSave = async () => {
-    const isLivreur = form?.role === 'LIVREUR';
-    const email = isLivreur ? `${form.telephone}@livreur.com` : form.email;
-    const password = isLivreur ? form.telephone : (form.password || 'Admin123!');
 
-    if (!form?.nom_complet || !email || !form?.role || (isLivreur && !form.telephone)) {
+  const handleSave = async () => {
+    const sanitizedTel = (form.telephone || '').replace(/\s+/g, '');
+    const isLivreur = form?.role === 'LIVREUR';
+    const email = isLivreur ? `${sanitizedTel.toLowerCase()}@livreur.com` : (form.email || '').trim();
+    const password = isLivreur ? sanitizedTel : (form.password || 'Admin123!');
+
+    if (!form?.nom_complet || !email || !form?.role || (isLivreur && !sanitizedTel)) {
       showToast("Champs obligatoires manquants (Nom et Téléphone pour un livreur).", "error"); return;
     }
 
@@ -84,18 +86,23 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
           email: email as string, 
           password: password as string
         });
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes('already registered')) {
+            throw new Error("Ce numéro de téléphone est déjà utilisé par un autre livreur.");
+          }
+          throw error;
+        }
         if (!authData?.user?.id) throw new Error("Erreur lors de la création du compte Auth.");
         
         await createAdminUser({
           nom_complet: form.nom_complet || '',
           email: email as string,
           role: form.role as any,
-          telephone: form.telephone || '',
+          telephone: sanitizedTel,
           actif: true
         }, authData.user.id);
       } else if (editingId) {
-        await updateAdminUser(editingId, form);
+        await updateAdminUser(editingId, { ...form, telephone: sanitizedTel });
       }
       showToast("Enregistré.", "success");
       setEditingId(null); setForm({}); loadUsers();
