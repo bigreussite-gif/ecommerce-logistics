@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { updateAdminUser } from '../services/adminService';
 import { insforge } from '../lib/insforge';
 import { User, Save, Lock } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
