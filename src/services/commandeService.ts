@@ -44,22 +44,34 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
     .insert([commande])
     .select();
 
-  if (cmdError) throw cmdError;
+  if (cmdError) {
+    console.error("Erreur création commande:", cmdError);
+    throw new Error(`Erreur insertion commande: ${cmdError.message}`);
+  }
+  
   const id = cmdData?.[0]?.id;
+  if (!id) throw new Error("ID de commande non généré par la base de données.");
 
   for (const l of lignes) {
     const { error: lineError } = await insforge.database
       .from('lignes_commandes')
       .insert([{ ...l, commande_id: id }]);
     
-    if (lineError) throw lineError;
+    if (lineError) {
+      console.error("Erreur ligne commande:", lineError);
+      throw new Error(`Erreur ligne commande (${l.nom_produit}): ${lineError.message}`);
+    }
 
-    await addMouvementStock({
-      produit_id: l.produit_id,
-      type_mouvement: 'sortie',
-      quantite: l.quantite,
-      reference: `Sortie Cmd #${id.slice(0,5)}`
-    } as any);
+    try {
+      await addMouvementStock({
+        produit_id: l.produit_id,
+        type_mouvement: 'sortie',
+        quantite: l.quantite,
+        reference: `Sortie Cmd #${id.substring(0, 8)}`
+      } as any);
+    } catch (stkErr) {
+      console.warn("Erreur mise à jour stock (non bloquant):", stkErr);
+    }
   }
   return id;
 };

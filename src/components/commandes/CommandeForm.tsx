@@ -80,6 +80,7 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!clientRecherche.nom_complet) return showToast("Le nom du client est obligatoire.", "error");
     if (lignes.length === 0) return showToast("Ajoutez au moins un produit.", "error");
     if (!lignes.every(l => l.produit_id && l.quantite)) return showToast("Veuillez remplir correctement les produits.", "error");
 
@@ -210,13 +211,20 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
                   </select>
                 </div>
                 <div style={{ width: '80px' }}>
-                  <input type="number" className="form-input" min="1" value={l.quantite} onChange={e => updateLigne(idx, 'quantite', Number(e.target.value))} required />
+                  <label className="form-label" style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Qté</label>
+                  <input type="number" className="form-input" min="1" value={l.quantite} onChange={e => updateLigne(idx, 'quantite', Math.max(1, Number(e.target.value)))} required />
                 </div>
-                <div style={{ width: '150px', fontWeight: 600, textAlign: 'right', fontSize: '0.875rem' }}>
-                  <div style={{ color: 'var(--text-secondary)' }}>{l.prix_unitaire?.toLocaleString()} × {l.quantite}</div>
-                  <div style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{(l.montant_ligne || 0).toLocaleString()} CFA</div>
+                <div style={{ width: '160px', padding: '0 0.5rem' }}>
+                   <label className="form-label" style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Prix Unit.</label>
+                   <div style={{ fontWeight: 500, padding: '0.5rem 0' }}>{l.prix_unitaire?.toLocaleString()} CFA</div>
                 </div>
-                <button type="button" className="btn btn-outline" style={{ border: 'none', color: 'var(--danger-color)' }} onClick={() => setLignes(lignes.filter((_, i) => i !== idx))}>
+                <div style={{ flex: 1, textAlign: 'right', padding: '0 1rem' }}>
+                   <label className="form-label" style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Sous-total</label>
+                   <div style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--primary-color)' }}>
+                     {(l.montant_ligne || 0).toLocaleString()} CFA
+                   </div>
+                </div>
+                <button type="button" className="btn btn-outline" style={{ border: 'none', color: 'var(--danger-color)', marginTop: '1.25rem' }} onClick={() => setLignes(lignes.filter((_, i) => i !== idx))}>
                   <Trash2 size={18} />
                 </button>
               </div>

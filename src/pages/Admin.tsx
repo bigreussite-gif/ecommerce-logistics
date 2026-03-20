@@ -1,38 +1,47 @@
 import { useState, useEffect } from 'react';
 import { User, Commune } from '../types';
 import { getAdminUsers, createAdminUser, updateAdminUser, getCommunes, createCommune, updateCommune, deleteCommune } from '../services/adminService';
-import { Plus, Trash2, Edit, Save, X } from 'lucide-react';
+import { Plus, Trash2, Users, Map } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import { insforge } from '../lib/insforge';
 
 export const Admin = () => {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'utilisateurs' | 'communes'>('utilisateurs');
 
   return (
-    <div>
-      <div style={{ marginBottom: '2rem' }}>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0 }}>Administration</h2>
-        <p style={{ color: 'var(--text-secondary)', margin: '0.25rem 0 0' }}>Gestion globale des Utilisateurs et Tarifs de livraison.</p>
+    <div className="container">
+      <div style={{ marginBottom: '2.5rem' }}>
+        <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>Administration</h2>
+        <p style={{ color: 'var(--text-secondary)', margin: '0.5rem 0 0' }}>Gestion globale du système.</p>
       </div>
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', borderBottom: '1px solid var(--border-color)' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', padding: '0.25rem', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: '12px', width: 'fit-content' }}>
         <button 
-          className={`btn ${activeTab === 'utilisateurs' ? 'btn-primary' : 'btn-outline'}`}
+          className={`btn ${activeTab === 'utilisateurs' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('utilisateurs')}
-          style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginBottom: '-1px', borderBottom: activeTab === 'utilisateurs' ? 'none' : '' }}
+          style={{ 
+            backgroundColor: activeTab === 'utilisateurs' ? 'var(--primary-color)' : 'transparent',
+            color: activeTab === 'utilisateurs' ? '#fff' : 'var(--text-secondary)',
+            border: 'none', padding: '0.6rem 1.25rem', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem'
+          }}
         >
-          🧑‍💼 Utilisateurs
+          <Users size={18} /> Utilisateurs
         </button>
         <button 
-          className={`btn ${activeTab === 'communes' ? 'btn-primary' : 'btn-outline'}`}
+          className={`btn ${activeTab === 'communes' ? 'btn-primary' : ''}`}
           onClick={() => setActiveTab('communes')}
-          style={{ borderBottomLeftRadius: 0, borderBottomRightRadius: 0, marginBottom: '-1px', borderBottom: activeTab === 'communes' ? 'none' : '' }}
+          style={{ 
+            backgroundColor: activeTab === 'communes' ? 'var(--primary-color)' : 'transparent',
+            color: activeTab === 'communes' ? '#fff' : 'var(--text-secondary)',
+            border: 'none', padding: '0.6rem 1.25rem', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem'
+          }}
         >
-          📍 Communes & Tarifs
+          <Map size={18} /> Communes
         </button>
       </div>
 
-      <div className="card">
+      <div className="card" style={{ padding: '0' }}>
         {activeTab === 'utilisateurs' ? <UsersManager showToast={showToast} /> : <CommunesManager showToast={showToast} />}
       </div>
     </div>
@@ -42,121 +51,156 @@ export const Admin = () => {
 // --- USERS MANAGER COMPONENT ---
 const UsersManager = ({ showToast }: { showToast: any }) => {
   const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<User>>({});
+  const [form, setForm] = useState<Partial<User>>({});
 
-  const loadUsers = async () => setUsers(await getAdminUsers());
+  const loadUsers = async () => {
+    setLoading(true);
+    try {
+      const data = await getAdminUsers();
+      setUsers(data || []);
+    } catch (e) {
+      showToast("Erreur chargement.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => { loadUsers(); }, []);
+  const handleSave = async () => {
+    const isLivreur = form?.role === 'LIVREUR';
+    const email = isLivreur ? `${form.telephone}@livreur.com` : form.email;
+    const password = isLivreur ? form.telephone : (form.password || 'Admin123!');
 
-  const handleCreate = async () => {
+    if (!form?.nom_complet || !email || !form?.role || (isLivreur && !form.telephone)) {
+      showToast("Champs obligatoires manquants (Nom et Téléphone pour un livreur).", "error"); return;
+    }
+
+    setLoading(true);
     try {
-      if (!editForm.nom_complet || !editForm.email || !editForm.password || !editForm.role) {
-        showToast("Veuillez remplir tous les champs requis.", "error"); return;
+      if (editingId === 'new') {
+        const { data: authData, error } = await insforge.auth.signUp({ 
+          email: email as string, 
+          password: password as string
+        });
+        if (error) throw error;
+        if (!authData?.user?.id) throw new Error("Erreur lors de la création du compte Auth.");
+        
+        await createAdminUser({
+          nom_complet: form.nom_complet || '',
+          email: email as string,
+          role: form.role as any,
+          telephone: form.telephone || '',
+          actif: true
+        }, authData.user.id);
+      } else if (editingId) {
+        await updateAdminUser(editingId, form);
       }
-      await createAdminUser({
-        nom_complet: editForm.nom_complet,
-        email: editForm.email,
-        password: editForm.password,
-        role: editForm.role as any,
-        actif: true
-      });
-      showToast("Utilisateur créé.", "success");
-      setEditingId(null); setEditForm({}); loadUsers();
-    } catch (e) { showToast("Erreur création.", "error"); }
-  };
-
-  const handleUpdate = async (id: string) => {
-    try {
-      await updateAdminUser(id, editForm);
-      showToast("Utilisateur mis à jour.", "success");
-      setEditingId(null); setEditForm({}); loadUsers();
-    } catch (e) { showToast("Erreur modification.", "error"); }
-  };
-
-  const handleDeactivate = async (id: string, actif: boolean) => {
-    if(window.confirm(actif ? "Désactiver cet utilisateur ?" : "Réactiver cet utilisateur ?")) {
-       await updateAdminUser(id, { actif: !actif });
-       showToast("Statut modifié.", "success");
-       loadUsers();
+      showToast("Enregistré.", "success");
+      setEditingId(null); setForm({}); loadUsers();
+    } catch (e: any) { 
+      showToast(e.message || "Erreur.", "error"); 
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-        <h3 style={{ margin: 0 }}>Comptes Utilisateurs</h3>
-        <button className="btn btn-primary btn-sm" onClick={() => { setEditingId('new'); setEditForm({ role: 'LIVREUR' }); }}>
-          <Plus size={16} /> Nouvel Utilisateur
+    <div style={{ padding: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+        <h3 style={{ margin: 0 }}>Utilisateurs</h3>
+        <button className="btn btn-primary btn-sm" onClick={() => { setEditingId('new'); setForm({ role: 'LIVREUR', actif: true }); }}>
+          <Plus size={16} /> Ajouter
         </button>
       </div>
-      <div className="table-container" style={{ overflowX: 'auto' }}>
+      <div className="table-container">
         <table>
           <thead>
             <tr>
-              <th>Nom Complet</th>
-              <th>Email</th>
-              <th>Mot de passe</th>
+              <th>Nom</th>
+              <th>Email / Tel</th>
               <th>Rôle</th>
               <th>Statut</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {editingId === 'new' && (
-              <tr>
-                <td><input className="form-input" placeholder="Nom" value={editForm.nom_complet || ''} onChange={e => setEditForm({...editForm, nom_complet: e.target.value})} /></td>
-                <td><input className="form-input" type="email" placeholder="Email" value={editForm.email || ''} onChange={e => setEditForm({...editForm, email: e.target.value})} /></td>
-                <td><input className="form-input" type="text" placeholder="MD Passe" value={editForm.password || ''} onChange={e => setEditForm({...editForm, password: e.target.value})} /></td>
+            {(editingId === 'new') && (
+              <tr style={{ backgroundColor: 'rgba(79, 70, 229, 0.05)' }}>
+                <td><input className="form-input" placeholder="Nom Complet *" value={form?.nom_complet || ''} onChange={e => setForm({...form, nom_complet: e.target.value})} /></td>
                 <td>
-                  <select className="form-select" value={editForm.role || 'LIVREUR'} onChange={e => setEditForm({...editForm, role: e.target.value as any})}>
-                    <option value="ADMIN">Administrateur</option>
-                    <option value="VENDEUR">Vendeur / Call Center</option>
-                    <option value="CAISSIER">Caissier / Entrepôt</option>
-                    <option value="LIVREUR">Livreur</option>
+                  {form.role === 'LIVREUR' ? (
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>Identifiants auto-générés via Tel</div>
+                  ) : (
+                    <input className="form-input" placeholder="Email *" value={form?.email || ''} onChange={e => setForm({...form, email: e.target.value})} />
+                  )}
+                  <input className="form-input" placeholder="Numéro Téléphone *" style={{ marginTop: '0.25rem' }} value={form?.telephone || ''} onChange={e => setForm({...form, telephone: e.target.value})} />
+                </td>
+                <td>
+                  <select className="form-select" value={form?.role || 'LIVREUR'} onChange={e => setForm({...form, role: e.target.value as any})}>
+                    <option value="ADMIN">ADMIN</option>
+                    <option value="GESTIONNAIRE">GESTIONNAIRE</option>
+                    <option value="AGENT_APPEL">AGENT APPEL</option>
+                    <option value="LOGISTIQUE">LOGISTIQUE</option>
+                    <option value="LIVREUR">LIVREUR</option>
+                    <option value="CAISSIERE">CAISSIÈRE</option>
                   </select>
                 </td>
-                <td>Actif</td>
+                <td>-</td>
                 <td style={{ textAlign: 'right' }}>
-                  <button className="btn btn-primary btn-sm" onClick={handleCreate}><Save size={16}/></button>
-                  <button className="btn btn-outline btn-sm" onClick={() => setEditingId(null)}><X size={16}/></button>
+                  <button className="btn btn-primary btn-sm" disabled={loading} onClick={handleSave}>Enregistrer</button>
+                  <button className="btn btn-outline btn-sm" style={{ marginLeft: '0.25rem' }} onClick={() => setEditingId(null)}>Annuler</button>
                 </td>
               </tr>
             )}
             {users.map(u => editingId === u.id ? (
-              <tr key={u.id}>
-                <td><input className="form-input" value={editForm.nom_complet || ''} onChange={e => setEditForm({...editForm, nom_complet: e.target.value})} /></td>
-                <td><input className="form-input" type="email" value={editForm.email || ''} onChange={e => setEditForm({...editForm, email: e.target.value})} /></td>
-                <td><input className="form-input" type="text" value={editForm.password || ''} onChange={e => setEditForm({...editForm, password: e.target.value})} /></td>
+              <tr key={u.id} style={{ backgroundColor: 'rgba(79, 70, 229, 0.05)' }}>
+                <td><input className="form-input" value={form?.nom_complet || ''} onChange={e => setForm({...form, nom_complet: e.target.value})} /></td>
                 <td>
-                  <select className="form-select" value={editForm.role || 'LIVREUR'} onChange={e => setEditForm({...editForm, role: e.target.value as any})}>
-                    <option value="ADMIN">Administrateur</option>
-                    <option value="VENDEUR">Vendeur / Call Center</option>
-                    <option value="CAISSIER">Caissier / Entrepôt</option>
-                    <option value="LIVREUR">Livreur</option>
+                  <div style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>{u.email}</div>
+                  <input className="form-input" placeholder="Tel" value={form?.telephone || ''} onChange={e => setForm({...form, telephone: e.target.value})} />
+                </td>
+                <td>
+                  <select className="form-select" value={form?.role || 'LIVREUR'} onChange={e => setForm({...form, role: e.target.value as any})}>
+                    <option value="ADMIN">ADMIN</option>
+                    <option value="GESTIONNAIRE">GESTIONNAIRE</option>
+                    <option value="AGENT_APPEL">AGENT APPEL</option>
+                    <option value="LOGISTIQUE">LOGISTIQUE</option>
+                    <option value="LIVREUR">LIVREUR</option>
+                    <option value="CAISSIERE">CAISSIÈRE</option>
                   </select>
                 </td>
-                <td>{u.actif === false ? 'Bloqué' : 'Actif'}</td>
+                <td>
+                  <select className="form-select" value={form?.actif ? 'true' : 'false'} onChange={e => setForm({...form, actif: e.target.value === 'true'})}>
+                    <option value="true">Actif</option>
+                    <option value="false">Bloqué</option>
+                  </select>
+                </td>
                 <td style={{ textAlign: 'right' }}>
-                  <button className="btn btn-primary btn-sm" onClick={() => handleUpdate(u.id)}><Save size={16}/></button>
-                  <button className="btn btn-outline btn-sm" onClick={() => setEditingId(null)}><X size={16}/></button>
+                  <button className="btn btn-primary btn-sm" disabled={loading} onClick={handleSave}>Sauver</button>
+                  <button className="btn btn-outline btn-sm" style={{ marginLeft: '0.25rem' }} onClick={() => setEditingId(null)}>X</button>
                 </td>
               </tr>
             ) : (
               <tr key={u.id}>
-                <td>{u.nom_complet}</td>
-                <td>{u.email}</td>
-                <td style={{ color: 'var(--text-secondary)' }}>••••••••</td>
-                <td><span className="badge badge-info">{u.role}</span></td>
+                <td style={{ fontWeight: 600 }}>{u.nom_complet}</td>
                 <td>
-                  <span className={`badge ${u.actif !== false ? 'badge-success' : 'badge-danger'}`}>
-                    {u.actif !== false ? '✅ Actif' : '⛔ Bloqué'}
+                  {u.email?.endsWith('@livreur.com') ? (
+                    <div style={{ color: 'var(--primary-color)', fontSize: '0.85rem', fontWeight: 500 }}>Compte Tel</div>
+                  ) : (
+                    <div>{u.email}</div>
+                  )}
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{u.telephone || '-'}</div>
+                </td>
+                <td><span className="badge badge-info" style={{ fontSize: '0.7rem' }}>{u.role}</span></td>
+                <td>
+                  <span className={`badge ${u.actif !== false ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.7rem' }}>
+                    {u.actif !== false ? 'Actif' : 'Bloqué'}
                   </span>
                 </td>
                 <td style={{ textAlign: 'right' }}>
-                  <button className="btn btn-outline btn-sm" onClick={() => {setEditingId(u.id); setEditForm(u);}}><Edit size={16}/></button>
-                  <button className="btn btn-outline btn-sm" style={{ color: u.actif !== false ? 'var(--danger-color)' : 'var(--success-color)' }} onClick={() => handleDeactivate(u.id, u.actif !== false)}>
-                    {u.actif !== false ? 'Bloquer' : 'Activer'}
-                  </button>
+                  <button className="btn btn-outline btn-sm" onClick={() => {setEditingId(u.id); setForm(u);}}>Modifier</button>
                 </td>
               </tr>
             ))}
@@ -167,92 +211,92 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
   );
 };
 
-
 // --- COMMUNES MANAGER COMPONENT ---
 const CommunesManager = ({ showToast }: { showToast: any }) => {
   const [communes, setCommunes] = useState<Commune[]>([]);
+  const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Commune>>({});
+  const [form, setForm] = useState<Partial<Commune>>({});
 
-  const loadCommunes = async () => setCommunes(await getCommunes());
-  useEffect(() => { loadCommunes(); }, []);
-
-  const handleCreate = async () => {
-    if (!editForm.nom || typeof editForm.tarif_livraison !== 'number') {
-       showToast("Champ 'Nom' et 'Tarif' obligatoires.", "error"); return;
-    }
-    await createCommune(editForm as Omit<Commune, 'id'>);
-    showToast("Commune créée.", "success");
-    setEditingId(null); setEditForm({}); loadCommunes();
+  const loadCommunes = async () => {
+    setLoading(true);
+    try {
+      const data = await getCommunes();
+      setCommunes(data || []);
+    } catch (e) { showToast("Erreur.", "error"); } finally { setLoading(false); }
   };
 
-  const handleUpdate = async (id: string) => {
-    if (!editForm.nom || typeof editForm.tarif_livraison !== 'number') {
-       showToast("Veuillez renseigner un Nom valide et un Tarif.", "error"); return;
+  useEffect(() => { loadCommunes(); }, []);
+
+  const handleSave = async () => {
+    if (!form?.nom || typeof form?.tarif_livraison !== 'number') {
+       showToast("Nom et Tarif requis.", "error"); return;
     }
-    await updateCommune(id, editForm);
-    showToast("Commune mise à jour.", "success");
-    setEditingId(null); setEditForm({}); loadCommunes();
+    setLoading(true);
+    try {
+      if (editingId === 'new') await createCommune(form as Omit<Commune, 'id'>);
+      else if (editingId) await updateCommune(editingId, form);
+      showToast("Zone sauvée.", "success");
+      setEditingId(null); setForm({}); loadCommunes();
+    } catch (e: any) { showToast(e.message || "Erreur.", "error"); } finally { setLoading(false); }
   };
 
   const handleDelete = async (id: string) => {
-    if(window.confirm("Êtes-vous sûr de supprimer cette commune définitivement ?")) {
-       await deleteCommune(id);
-       showToast("Commune supprimée.", "success");
-       loadCommunes();
+    if(window.confirm("Supprimer ?")) {
+       try { await deleteCommune(id); showToast("Supprimé."); loadCommunes(); } catch (e) { showToast("Erreur."); }
     }
   };
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-        <h3 style={{ margin: 0 }}>Zones & Tarifs par défaut</h3>
-        <button className="btn btn-primary btn-sm" onClick={() => { setEditingId('new'); setEditForm({ tarif_livraison: 1500 }); }}>
-          <Plus size={16} /> Nouvelle Zone
+    <div style={{ padding: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+        <h3 style={{ margin: 0 }}>Zones & Tarifs</h3>
+        <button className="btn btn-primary btn-sm" onClick={() => { setEditingId('new'); setForm({ tarif_livraison: 1500 }); }}>
+          <Plus size={16} /> Ajouter
         </button>
       </div>
-      <div className="table-container" style={{ overflowX: 'auto' }}>
-        <table style={{ maxWidth: '600px' }}>
+      <div className="table-container">
+        <table>
           <thead>
             <tr>
-              <th>Nom de la Commune / Quartier</th>
-              <th>Tarif Livraison standard (CFA)</th>
+              <th>Zone / Commune</th>
+              <th>Tarif (CFA)</th>
               <th style={{ textAlign: 'right' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
              {editingId === 'new' && (
-              <tr>
-                <td><input className="form-input" placeholder="ex: Cocody, Yopougon..." value={editForm.nom || ''} onChange={e => setEditForm({...editForm, nom: e.target.value})} /></td>
-                <td><input className="form-input" type="number" value={editForm.tarif_livraison ?? ''} onChange={e => setEditForm({...editForm, tarif_livraison: e.target.value === '' ? '' : Number(e.target.value)} as any)} /></td>
+              <tr style={{ backgroundColor: 'rgba(79, 70, 229, 0.05)' }}>
+                <td><input className="form-input" placeholder="Nom" value={form?.nom || ''} onChange={e => setForm({...form, nom: e.target.value})} /></td>
+                <td><input className="form-input" type="number" value={form?.tarif_livraison ?? ''} onChange={e => setForm({...form, tarif_livraison: e.target.value === '' ? '' : Number(e.target.value)} as any)} /></td>
                 <td style={{ textAlign: 'right' }}>
-                  <button className="btn btn-primary btn-sm" onClick={handleCreate}><Save size={16}/></button>
-                  <button className="btn btn-outline btn-sm" onClick={() => setEditingId(null)}><X size={16}/></button>
+                  <button className="btn btn-primary btn-sm" disabled={loading} onClick={handleSave}>OK</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => setEditingId(null)}>Annuler</button>
                 </td>
               </tr>
             )}
             {communes.map(c => editingId === c.id ? (
-              <tr key={c.id}>
-                <td><input className="form-input" value={editForm?.nom || ''} onChange={e => setEditForm({...editForm, nom: e.target.value})} /></td>
-                <td><input className="form-input" type="number" value={editForm?.tarif_livraison ?? ''} onChange={e => setEditForm({...editForm, tarif_livraison: e.target.value === '' ? '' : Number(e.target.value)} as any)} /></td>
+              <tr key={c.id} style={{ backgroundColor: 'rgba(79, 70, 229, 0.05)' }}>
+                <td><input className="form-input" value={form?.nom || ''} onChange={e => setForm({...form, nom: e.target.value})} /></td>
+                <td><input className="form-input" type="number" value={form?.tarif_livraison ?? ''} onChange={e => setForm({...form, tarif_livraison: e.target.value === '' ? '' : Number(e.target.value)} as any)} /></td>
                 <td style={{ textAlign: 'right' }}>
-                  <button className="btn btn-primary btn-sm" onClick={() => handleUpdate(c.id)}><Save size={16}/></button>
-                  <button className="btn btn-outline btn-sm" onClick={() => setEditingId(null)}><X size={16}/></button>
+                  <button className="btn btn-primary btn-sm" disabled={loading} onClick={handleSave}>Sauver</button>
+                  <button className="btn btn-outline btn-sm" onClick={() => setEditingId(null)}>X</button>
                 </td>
               </tr>
             ) : (
               <tr key={c.id}>
                 <td style={{ fontWeight: 600 }}>{c.nom}</td>
-                <td>{c.tarif_livraison.toLocaleString()} CFA</td>
+                <td style={{ color: 'var(--primary-color)', fontWeight: 700 }}>{c.tarif_livraison?.toLocaleString()} CFA</td>
                 <td style={{ textAlign: 'right' }}>
-                  <button className="btn btn-outline btn-sm" onClick={() => {setEditingId(c.id); setEditForm(c);}}><Edit size={16}/></button>
-                  <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger-color)' }} onClick={() => handleDelete(c.id)}><Trash2 size={16}/></button>
+                  <button className="btn btn-outline btn-sm" onClick={() => {setEditingId(c.id); setForm(c);}}>Modifier</button>
+                  <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger-color)', marginLeft: '0.5rem' }} onClick={() => handleDelete(c.id)}><Trash2 size={16}/></button>
                 </td>
               </tr>
             ))}
             {communes.length === 0 && editingId !== 'new' && (
               <tr>
-                <td colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>Aucune commune configurée.</td>
+                <td colSpan={3} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Aucune zone configurée.</td>
               </tr>
             )}
           </tbody>
