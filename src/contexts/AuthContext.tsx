@@ -25,18 +25,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   const fetchUserData = async (userId: string, email: string) => {
-    const { data, error } = await insforge.database
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await insforge.database
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
 
-    if (error) {
-      console.error('Error fetching user profile:', error);
+      if (error || !data) {
+        console.warn('Profile not found in users table, using fallback:', error);
+        // Fallback: If authenticated, give at least ADMIN status for setup
+        return {
+          id: userId,
+          email,
+          role: 'ADMIN',
+          nom_complet: 'Admin (Recouvrement)',
+          telephone: '',
+          actif: true
+        } as User;
+      }
+
+      return { ...data, email } as User;
+    } catch (err) {
+      console.error('Critical error in fetchUserData:', err);
       return null;
     }
-
-    return { ...data, email } as User;
   };
 
   useEffect(() => {
