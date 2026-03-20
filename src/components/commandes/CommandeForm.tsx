@@ -54,21 +54,31 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
     setLignes([...lignes, { produit_id: '', quantite: 1, prix_unitaire: 0 }]);
   };
 
+  const parsePrice = (p: any): number => {
+    if (!p) return 0;
+    // Try multiple potential field names
+    const rawValue = p.prix_vente !== undefined ? p.prix_vente : (p.prixVente !== undefined ? p.prixVente : (p.prix !== undefined ? p.prix : 0));
+    const val = typeof rawValue === 'string' ? parseFloat(rawValue.replace(/[^0-9.-]+/g,"")) : Number(rawValue);
+    return isNaN(val) ? 0 : val;
+  };
+
   const updateLigne = (index: number, field: keyof LigneCommande, value: any) => {
     const newLignes = [...lignes];
     if (field === 'produit_id') {
       const prod = catalogue.find(p => p.id === value);
       if (!prod) return;
 
-      let prixActif = Number(prod.prix_vente) || 0;
+      console.log('Produit sélectionné:', prod); // For debugging
+      let prixActif = parsePrice(prod);
       
       // Check for active promotion
-      if (prod.prix_promo !== undefined && prod.prix_promo !== null) {
+      const promoVal = prod.prix_promo !== undefined ? prod.prix_promo : (prod as any).prixPromo;
+      if (promoVal !== undefined && promoVal !== null && promoVal !== 0) {
         const now = new Date().getTime();
         const debut = prod.promo_debut ? new Date(prod.promo_debut).getTime() : 0;
         const fin = prod.promo_fin ? new Date(prod.promo_fin).getTime() : Infinity;
         if (now >= debut && now <= fin) {
-          prixActif = Number(prod.prix_promo);
+          prixActif = typeof promoVal === 'string' ? parseFloat(promoVal.replace(/[^0-9.-]+/g,"")) : Number(promoVal);
         }
       }
 
@@ -213,16 +223,8 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
                   <select className="form-select" required value={l.produit_id} onChange={(e) => updateLigne(idx, 'produit_id', e.target.value)}>
                     <option value="">Sélectionner un produit</option>
                     {catalogue.filter(p => p.actif).map(p => {
-                      let prixActif = Number(p.prix_vente) || Number((p as any).prix) || 0;
-                      if (p.prix_promo) {
-                        const now = new Date().getTime();
-                        const debut = p.promo_debut ? new Date(p.promo_debut).getTime() : 0;
-                        const fin = p.promo_fin ? new Date(p.promo_fin).getTime() : Infinity;
-                        if (now >= debut && now <= fin) {
-                          prixActif = p.prix_promo;
-                        }
-                      }
-                      return <option key={p.id} value={p.id}>{p.nom} - {prixActif} {p.devise} (Stock: {p.stock_actuel})</option>;
+                      const prixActif = parsePrice(p);
+                      return <option key={p.id} value={p.id}>{p.nom} - {prixActif.toLocaleString()} {p.devise || 'CFA'} (Stock: {p.stock_actuel})</option>;
                     })}
                   </select>
                 </div>
