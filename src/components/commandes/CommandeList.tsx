@@ -1,12 +1,13 @@
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Commande, StatutCommande } from '../../types';
-import { Eye, PhoneCall, Truck } from 'lucide-react';
+import { Eye, PhoneCall, Truck, Trash2 } from 'lucide-react';
 
 interface CommandeListProps {
   commandes: Commande[];
   onRefresh: () => void;
   onActionClick?: (commande: Commande) => void;
+  onDelete?: (commande: Commande) => void;
   actionIcon?: 'Eye' | 'PhoneCall' | 'Truck';
   actionLabel?: string;
 }
@@ -33,7 +34,7 @@ const getIconComponent = (iconName: string) => {
   }
 };
 
-export const CommandeList = ({ commandes, onActionClick, actionIcon = 'Eye', actionLabel = 'Voir détails' }: CommandeListProps) => {
+export const CommandeList = ({ commandes, onRefresh, onActionClick, onDelete, actionIcon = 'Eye', actionLabel = 'Voir détails' }: CommandeListProps) => {
   if (commandes.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-secondary)' }}>
@@ -70,7 +71,7 @@ export const CommandeList = ({ commandes, onActionClick, actionIcon = 'Eye', act
                 <td style={{ fontWeight: 600 }}>{Number(c.montant_total).toLocaleString()} CFA</td>
                 <td style={{ textTransform: 'capitalize', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>{c.source_commande}</td>
                 <td>{getStatusBadge(c.statut_commande)}</td>
-                <td style={{ textAlign: 'right' }}>
+                <td style={{ textAlign: 'right', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                   <button 
                     className="btn btn-outline" 
                     style={{ padding: '0.25rem 0.5rem' }} 
@@ -79,6 +80,16 @@ export const CommandeList = ({ commandes, onActionClick, actionIcon = 'Eye', act
                   >
                     {getIconComponent(actionIcon)}
                   </button>
+                  {onDelete && (
+                    <button 
+                      className="btn btn-outline" 
+                      style={{ padding: '0.25rem 0.5rem', color: 'var(--danger-color)', borderColor: 'var(--danger-color)' }} 
+                      title="Supprimer"
+                      onClick={() => { if(window.confirm('Supprimer cette commande définituvement ?')) onDelete(c); }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                 </td>
               </tr>
             );

@@ -2,14 +2,26 @@ import { useState, useEffect } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { CommandeList } from '../components/commandes/CommandeList';
 import { CommandeForm } from '../components/commandes/CommandeForm';
-import { subscribeToCommandes } from '../services/commandeService';
+import { subscribeToCommandes, deleteCommande } from '../services/commandeService';
 import type { Commande } from '../types';
+import { useToast } from '../contexts/ToastContext';
 
 export const Commandes = () => {
+  const { showToast } = useToast();
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const handleDelete = async (commande: Commande) => {
+    try {
+      await deleteCommande(commande.id);
+      showToast("Commande supprimée.", "success");
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de la suppression.", "error");
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -58,6 +70,7 @@ export const Commandes = () => {
             )} 
             onRefresh={() => {}} 
             onActionClick={() => {}}
+            onDelete={handleDelete}
           />
         )}
       </div>

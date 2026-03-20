@@ -84,3 +84,12 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   
   if (error) throw error;
 };
+
+export const deleteCommande = async (id: string): Promise<void> => {
+  const { error } = await insforge.database
+    .from('commandes')
+    .delete()
+    .eq('id', id);
+  
+  if (error) throw error;
+};

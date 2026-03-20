@@ -56,11 +56,27 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
 
   const parsePrice = (p: any): number => {
     if (!p) return 0;
-    // Try multiple potential field names
-    const rawValue = p.prix_vente !== undefined ? p.prix_vente : (p.prixVente !== undefined ? p.prixVente : (p.prix !== undefined ? p.prix : 0));
+    // Try exhaustive list of potential field names
+    const fields = ['prix_vente', 'prixVente', 'prix_unitaire', 'prixUnitaire', 'prix', 'price', 'prix_achat'];
+    let rawValue = undefined;
+    for (const f of fields) {
+      if (p[f] !== undefined && p[f] !== null) {
+        rawValue = p[f];
+        break;
+      }
+    }
+    
+    if (rawValue === undefined) return 0;
     const val = typeof rawValue === 'string' ? parseFloat(rawValue.replace(/[^0-9.-]+/g,"")) : Number(rawValue);
     return isNaN(val) ? 0 : val;
   };
+
+  useEffect(() => {
+    if (catalogue.length > 0) {
+      console.log('Structure du premier produit du catalogue:');
+      console.table(Object.keys(catalogue[0]).map(key => ({ key, value: (catalogue[0] as any)[key], type: typeof (catalogue[0] as any)[key] })));
+    }
+  }, [catalogue]);
 
   const updateLigne = (index: number, field: keyof LigneCommande, value: any) => {
     const newLignes = [...lignes];
