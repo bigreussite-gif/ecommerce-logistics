@@ -5,7 +5,6 @@ import { Eye, PhoneCall, Truck, Trash2 } from 'lucide-react';
 
 interface CommandeListProps {
   commandes: Commande[];
-  onRefresh: () => void;
   onActionClick?: (commande: Commande) => void;
   onDelete?: (commande: Commande) => void;
   actionIcon?: 'Eye' | 'PhoneCall' | 'Truck';
@@ -34,7 +33,7 @@ const getIconComponent = (iconName: string) => {
   }
 };
 
-export const CommandeList = ({ commandes, onRefresh, onActionClick, onDelete, actionIcon = 'Eye', actionLabel = 'Voir détails' }: CommandeListProps) => {
+export const CommandeList = ({ commandes, onActionClick, onDelete, actionIcon = 'Eye', actionLabel = 'Voir détails' }: CommandeListProps) => {
   if (commandes.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '3rem 0', color: 'var(--text-secondary)' }}>

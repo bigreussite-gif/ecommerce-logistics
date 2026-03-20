@@ -68,7 +68,6 @@ export const Commandes = () => {
               c.nom_client?.toLowerCase().includes(searchTerm.toLowerCase()) ||
               c.commune_livraison?.toLowerCase().includes(searchTerm.toLowerCase())
             )} 
-            onRefresh={() => {}} 
             onActionClick={() => {}}
             onDelete={handleDelete}
           />
