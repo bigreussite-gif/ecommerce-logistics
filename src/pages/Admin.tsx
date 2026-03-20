@@ -82,16 +82,31 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
 
     setLoading(true);
     try {
+      // 1. Pre-check in DB
+      if (isLivreur && editingId === 'new') {
+        const { data: existingDb } = await insforge.database
+          .from('users')
+          .select('id, nom_complet')
+          .eq('telephone', sanitizedTel)
+          .maybeSingle();
+        
+        if (existingDb) {
+           throw new Error(`Le livreur "${existingDb.nom_complet}" est déjà dans la base de données avec ce numéro.`);
+        }
+      }
+
       if (editingId === 'new') {
         let authId = '';
+        console.log('Tentative de création Auth pour:', email);
         const { data: authData, error } = await insforge.auth.signUp({ 
           email: email as string, 
           password: password as string
         });
 
         if (error) {
-          if (error.message.includes('already registered')) {
-            // SYNC REPAIR: If user already exists in Auth, try to get their ID to repair the DB entry
+          console.error('Erreur SignUp:', error);
+          if (error.message.toLowerCase().includes('already') || error.message.toLowerCase().includes('existe')) {
+            console.log('Utilisateur déjà dans Auth. Tentative de récupération ID via SignIn...');
             try {
               const tempClient = createClient({
                 baseUrl: import.meta.env.VITE_INSFORGE_URL || '',
@@ -101,19 +116,24 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
                 email: email as string,
                 password: password as string
               });
-              if (signInError) throw new Error("Ce numéro est déjà utilisé et nous n'avons pas pu synchroniser le compte (mot de passe différent).");
+              if (signInError) {
+                console.error('Erreur SignIn Repair:', signInError);
+                throw new Error(`Le compte Auth existe déjà mais le mot de passe ne correspond pas. (Erreur: ${signInError.message})`);
+              }
               authId = signInData?.user?.id || '';
+              console.log('Récupération ID réussie:', authId);
             } catch (repairErr: any) {
-              throw new Error(repairErr.message || "Erreur lors de la tentative de récupération du compte existant.");
+              throw new Error(repairErr.message || "Erreur de synchronisation Auth.");
             }
           } else {
             throw error;
           }
         } else {
           authId = authData?.user?.id || '';
+          console.log('Création Auth réussie, ID:', authId);
         }
 
-        if (!authId) throw new Error("Erreur lors de la création ou récupération du compte Auth.");
+        if (!authId) throw new Error("Impossible de déterminer l'ID Auth.");
         
         await createAdminUser({
           nom_complet: form.nom_complet || '',
