@@ -1,44 +1,92 @@
 import { User, Commune } from '../types';
-import { getItems, addItem, updateItem, deleteItem } from './localDb';
+import { insforge } from '../lib/insforge';
 
 // --- USERS MANAGEMENT ---
 
 export const getAdminUsers = async (): Promise<User[]> => {
-  return getItems('users').sort((a: User, b: User) => a.nom_complet.localeCompare(b.nom_complet));
+  const { data, error } = await insforge.database
+    .from('users')
+    .select('*')
+    .order('nom_complet', { ascending: true });
+  
+  if (error) throw error;
+  return data || [];
 };
 
-export const createAdminUser = async (user: Omit<User, 'id'>): Promise<string> => {
-  return addItem('users', user);
+export const createAdminUser = async (user: Omit<User, 'id'>, id?: string): Promise<void> => {
+  const { error } = await insforge.database
+    .from('users')
+    .insert([{ ...user, id: id || crypto.randomUUID() }]);
+  
+  if (error) throw error;
 };
 
 export const updateAdminUser = async (id: string, data: Partial<User>): Promise<void> => {
-  updateItem('users', id, data);
+  const { error } = await insforge.database
+    .from('users')
+    .update(data)
+    .eq('id', id);
+  
+  if (error) throw error;
 };
 
 export const deleteAdminUser = async (id: string): Promise<void> => {
-  deleteItem('users', id);
+  const { error } = await insforge.database
+    .from('users')
+    .update({ actif: false }) // Soft delete
+    .eq('id', id);
+  
+  if (error) throw error;
 };
 
 
 // --- COMMUNES MANAGEMENT ---
 
 export const getCommunes = async (): Promise<Commune[]> => {
-  return getItems('communes').sort((a: Commune, b: Commune) => a.nom.localeCompare(b.nom));
+  const { data, error } = await insforge.database
+    .from('communes')
+    .select('*')
+    .order('nom', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
 };
 
 export const getCommuneByName = async (nom: string): Promise<Commune | undefined> => {
-  const communes = await getCommunes();
-  return communes.find(c => c.nom.toLowerCase() === nom.toLowerCase());
+  const { data, error } = await insforge.database
+    .from('communes')
+    .select('*')
+    .ilike('nom', nom)
+    .single();
+
+  if (error && error.code !== 'PGRST116') throw error;
+  return data || undefined;
 };
 
 export const createCommune = async (commune: Omit<Commune, 'id'>): Promise<string> => {
-  return addItem('communes', commune);
+  const { data, error } = await insforge.database
+    .from('communes')
+    .insert([commune])
+    .select();
+
+  if (error) throw error;
+  return data?.[0]?.id;
 };
 
 export const updateCommune = async (id: string, data: Partial<Commune>): Promise<void> => {
-  updateItem('communes', id, data);
+  const { error } = await insforge.database
+    .from('communes')
+    .update(data)
+    .eq('id', id);
+  
+  if (error) throw error;
 };
 
 export const deleteCommune = async (id: string): Promise<void> => {
-  deleteItem('communes', id);
+  const { error } = await insforge.database
+    .from('communes')
+    .delete()
+    .eq('id', id);
+  
+  if (error) throw error;
 };

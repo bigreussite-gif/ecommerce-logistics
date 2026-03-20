@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { updateCommandeStatus } from '../../services/commandeService';
-import { addItem } from '../../services/localDb';
+import { insforge } from '../../lib/insforge';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCommunes } from '../../services/adminService';
 import type { Commande, AppelCommande, Commune } from '../../types';
@@ -41,13 +41,15 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
     setLoading(true);
     try {
       // 1. Enregistrer l'appel dans l'historique
-      addItem('appels_commandes', {
-        commande_id: commande.id,
-        agent_appel_id: currentUser.id,
-        date_appel: new Date(),
-        resultat_appel: resultat,
-        commentaire_agent: commentaire
-      });
+      await insforge.database
+        .from('appels_commandes')
+        .insert([{
+          commande_id: commande.id,
+          agent_appel_id: currentUser.id,
+          date_appel: new Date(),
+          resultat_appel: resultat,
+          commentaire_agent: commentaire
+        }]);
 
       // 2. Mettre à jour le statut de la commande
       const nextStatusMap: Record<string, string> = {

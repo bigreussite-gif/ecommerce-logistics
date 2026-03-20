@@ -14,6 +14,7 @@ import { Caisse } from './pages/Caisse';
 import { Clients } from './pages/Clients';
 import { Admin } from './pages/Admin';
 import { Profil } from './pages/Profil';
+import { Login } from './pages/Login';
 
 const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles: string[] }) => {
   const { currentUser, hasRole } = useAuth();
@@ -78,16 +79,16 @@ const AppRoutes = () => {
 
         {/* CRM Web - Clients */}
         <Route path="clients" element={
-           <ProtectedRoute allowedRoles={['ADMIN', 'GESTIONNAIRE', 'AGENT_APPEL']}><Clients /></ProtectedRoute>
+          <ProtectedRoute allowedRoles={['ADMIN', 'GESTIONNAIRE', 'AGENT_APPEL']}><Clients /></ProtectedRoute>
         } />
 
         {/* Profil Route */}
         <Route path="profil" element={
-           <ProtectedRoute allowedRoles={['ADMIN', 'GESTIONNAIRE', 'AGENT_APPEL', 'LOGISTIQUE', 'LIVREUR', 'CAISSIERE']}><Profil /></ProtectedRoute>
+          <ProtectedRoute allowedRoles={['ADMIN', 'GESTIONNAIRE', 'AGENT_APPEL', 'LOGISTIQUE', 'LIVREUR', 'CAISSIERE']}><Profil /></ProtectedRoute>
         } />
       </Route>
 
-      <Route path="/login" element={<div>Login Page (Mocked inside AuthContext for now)</div>} />
+      <Route path="/login" element={<Login />} />
     </Routes>
   );
 };

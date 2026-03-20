@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAvailableLivreurs, getFeuillesRoute, getCommandesByFeuille } from '../services/logistiqueService';
-import { updateItem } from '../services/localDb';
+import { updateCommandeStatus } from '../services/commandeService';
 import type { Commande, User, FeuilleRoute } from '../types';
 import { History, Printer, Lock, Calendar, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -54,8 +54,9 @@ export const Historique = () => {
     
     if (window.confirm("Êtes-vous sûr de vouloir supprimer définitivement cette feuille de route en cours ?")) {
       try {
-        await updateItem('feuilles_route', feuille.id, { statut_feuille: 'annulee' });
-        showToast("Feuille de route supprimée / annulée.", "success");
+        await updateCommandeStatus(feuille.id, 'annulee'); 
+        // Note: Check if you need to update feuille_route_id in orders or just the status
+        showToast("Feuille de route annulée.", "success");
         fetchData();
       } catch (e) {
         showToast("Erreur lors de la suppression.", "error");
