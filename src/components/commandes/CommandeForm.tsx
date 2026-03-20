@@ -26,6 +26,7 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
   const [notes, setNotes] = useState('');
   
   const [communesDb, setCommunesDb] = useState<Commune[]>([]);
+  const [fraisLivraison, setFraisLivraison] = useState(0);
 
   useEffect(() => {
     getCommunes().then(setCommunesDb);
@@ -37,6 +38,17 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
     });
     return () => unsubscribe();
   }, []);
+
+  const updateFraisLivraison = (communeNom: string) => {
+    const commune = communesDb.find(c => c.nom === communeNom);
+    setFraisLivraison(commune?.tarif_livraison || 0);
+  };
+
+  useEffect(() => {
+    if (clientRecherche.commune) {
+      updateFraisLivraison(clientRecherche.commune);
+    }
+  }, [clientRecherche.commune, communesDb]);
 
   const handleSearchClient = async () => {
     if (!clientRecherche.telephone) return;
@@ -117,7 +129,7 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
     setLignes(newLignes);
   };
 
-  const totalMontant = lignes.reduce((acc, l) => acc + Number(l.montant_ligne || 0), 0);
+  const totalMontant = lignes.reduce((acc, l) => acc + Number(l.montant_ligne || 0), 0) + fraisLivraison;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,6 +170,7 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
         client_id: finalClientId,
         source_commande: source,
         montant_total: totalMontant,
+        frais_livraison: fraisLivraison,
         mode_paiement: modePaiement,
         commune_livraison: clientRecherche.commune || '',
         adresse_livraison: clientRecherche.adresse || '',
@@ -212,7 +225,7 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
                 <label className="form-label">Commune (Optionnel, affiné à l'appel)</label>
                  <select className="form-select" value={clientRecherche.commune || ''} onChange={e => setClientRecherche({...clientRecherche, commune: e.target.value})}>
                   <option value="">Sélectionner une commune...</option>
-                  {communesDb.map(c => <option key={c.id} value={c.nom}>{c.nom}</option>)}
+                  {communesDb.map(c => <option key={c.id} value={c.nom}>{c.nom} ({c.tarif_livraison} CFA)</option>)}
                   <option value="Autre">Autre</option>
                 </select>
               </div>
@@ -262,8 +275,13 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
               </div>
             ))}
             {lignes.length > 0 && (
-              <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '1rem', textAlign: 'right', fontWeight: 700, fontSize: '1.25rem' }}>
-                Total: {totalMontant.toLocaleString()} CFA
+              <div style={{ borderTop: '1px dashed var(--border-color)', paddingTop: '1rem', textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                  Frais de livraison: {fraisLivraison.toLocaleString()} CFA
+                </div>
+                <div style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--primary-color)' }}>
+                  Total à payer: {totalMontant.toLocaleString()} CFA
+                </div>
               </div>
             )}
           </div>
