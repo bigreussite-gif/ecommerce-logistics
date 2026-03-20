@@ -5,10 +5,46 @@ import { LogIn, Loader2 } from 'lucide-react';
 
 export const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [identifier, setIdentifier] = useState(''); // email or phone
   const [password, setPassword] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const { data, error } = await insforge.auth.verifyOtp({
+        email: identifier,
+        token: verificationCode,
+        type: 'signup'
+      });
+
+      if (error) throw error;
+
+      // After verification, create profile and promote to admin if it's the first user or matches specific email
+      const userId = data.user?.id;
+      if (userId) {
+        await insforge.database.from('users').insert([{
+          id: userId,
+          email: identifier,
+          role: 'ADMIN',
+          nom_complet: 'Admin Principal',
+          telephone: '0757228731',
+          actif: true
+        }]);
+      }
+
+      showToast('Compte vérifié avec succès !', 'success');
+      window.location.href = '/dashboard';
+    } catch (err: any) {
+      showToast(err.message || 'Code incorrect', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,8 +59,8 @@ export const Login = () => {
         });
 
         if (error) throw error;
-        showToast('Compte créé ! Veuillez vérifier vos e-mails si nécessaire.', 'success');
-        setIsSignUp(false);
+        showToast('Compte créé ! Veuillez entrer le code reçu par e-mail.', 'success');
+        setIsVerifying(true);
       } else {
         // Sign In
         let finalEmail = identifier;
@@ -73,41 +109,72 @@ export const Login = () => {
           <p className="login-subtitle">Système de Distribution & Logistique</p>
         </div>
 
-        <form onSubmit={handleAuth} className="login-form">
-          <div className="form-group">
-            <label className="form-label">
-              {isSignUp ? 'Adresse E-mail' : 'Email ou Numéro de téléphone'}
-            </label>
-            <input
-              type={isSignUp ? 'email' : 'text'}
-              required
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              className="form-input"
-              placeholder={isSignUp ? 'votre@email.com' : 'votre@email.com ou 0102030405'}
-            />
-          </div>
+        {isVerifying ? (
+          <form onSubmit={handleVerify} className="login-form">
+            <div className="form-group">
+              <label className="form-label">Code de vérification (E-mail)</label>
+              <input
+                type="text"
+                required
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value)}
+                className="form-input"
+                placeholder="123456"
+              />
+            </div>
 
-          <div className="form-group">
-            <label className="form-label">Mot de passe</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="form-input"
-              placeholder="••••••••"
-            />
-          </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="login-btn"
+            >
+              {loading ? <Loader2 className="animate-spin" /> : "Vérifier le code"}
+            </button>
+            <button 
+              type="button" 
+              onClick={() => setIsVerifying(false)}
+              style={{ width: '100%', marginTop: '1rem', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.875rem' }}
+            >
+              Retour à la connexion
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleAuth} className="login-form">
+            <div className="form-group">
+              <label className="form-label">
+                {isSignUp ? 'Adresse E-mail' : 'Email ou Numéro de téléphone'}
+              </label>
+              <input
+                type={isSignUp ? 'email' : 'text'}
+                required
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                className="form-input"
+                placeholder={isSignUp ? 'votre@email.com' : 'votre@email.com ou 0102030405'}
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="login-btn"
-          >
-            {loading ? <Loader2 className="animate-spin" /> : (isSignUp ? "S'inscrire" : "Se connecter")}
-          </button>
-        </form>
+            <div className="form-group">
+              <label className="form-label">Mot de passe</label>
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="form-input"
+                placeholder="••••••••"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="login-btn"
+            >
+              {loading ? <Loader2 className="animate-spin" /> : (isSignUp ? "S'inscrire" : "Se connecter")}
+            </button>
+          </form>
+        )}
 
         <div className="login-footer">
           <button 
