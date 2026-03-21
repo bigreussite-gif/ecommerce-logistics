@@ -12,7 +12,9 @@ export type Permission =
   | 'HISTORIQUE'
   | 'ADMIN'
   | 'PROFIL'
-  | 'FINANCE';
+  | 'FINANCE'
+  | 'COMMUNES'
+  | 'GESTION_LIVREURS';
 
 export interface User {
   id: string;

@@ -34,10 +34,14 @@ const AppRoutes = () => {
         <Route index element={<Home />} /> {/* Set Home as the element for the root route */}
         
         {/* Admin Page */}
-        <Route path="/admin" element={
-          <ProtectedRoute requiredPermission="ADMIN"><Admin /></ProtectedRoute>
-        } />
-
+        <Route 
+          path="/admin" 
+          element={
+            <ProtectedRoute requiredPermission="COMMUNES">
+              <Admin />
+            </ProtectedRoute>
+          } 
+        />
         {/* Admin Dashboard */}
         <Route path="/dashboard" element={
           <ProtectedRoute requiredPermission="DASHBOARD"><Dashboard /></ProtectedRoute>

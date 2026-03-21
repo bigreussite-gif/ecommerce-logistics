@@ -4,43 +4,62 @@ import { getAdminUsers, createAdminUser, updateAdminUser, getCommunes, createCom
 import { Plus, Trash2, Users as UsersIcon, Map as MapIcon } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { insforge } from '../lib/insforge';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Admin = () => {
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'utilisateurs' | 'communes'>('utilisateurs');
+  const { hasPermission } = useAuth();
+  
+  const canManageUsers = hasPermission('ADMIN') || hasPermission('GESTION_LIVREURS');
+  const canManageCommunes = hasPermission('ADMIN') || hasPermission('COMMUNES');
+
+  const [activeTab, setActiveTab] = useState<'utilisateurs' | 'communes'>(
+    canManageUsers ? 'utilisateurs' : 'communes'
+  );
 
   return (
     <div style={{ animation: 'pageEnter 0.6s ease' }}>
       <div style={{ marginBottom: '2.5rem' }}>
-        <h1 className="text-premium" style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>Administration</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginTop: '0.4rem', fontWeight: 500 }}>Gestion globale du système et des accès.</p>
+        <h1 className="text-premium" style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>
+          {hasPermission('ADMIN') ? 'Administration' : 'Gestion Équipe & Zones'}
+        </h1>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginTop: '0.4rem', fontWeight: 500 }}>
+          {hasPermission('ADMIN') 
+            ? 'Gestion globale du système et des accès.' 
+            : 'Gestion des zones de livraison et de l\'équipe.'}
+        </p>
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2.5rem', padding: '0.4rem', background: '#f1f5f9', borderRadius: '16px', width: 'fit-content' }}>
-        <button 
-          className="btn"
-          onClick={() => setActiveTab('utilisateurs')}
-          style={{ 
-            background: activeTab === 'utilisateurs' ? 'white' : 'transparent',
-            color: activeTab === 'utilisateurs' ? 'var(--primary)' : 'var(--text-muted)',
-            boxShadow: activeTab === 'utilisateurs' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
-            border: 'none', padding: '0.7rem 1.5rem', borderRadius: '12px', fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
-          }}
-        >
-          <UsersIcon size={18} strokeWidth={activeTab === 'utilisateurs' ? 2.5 : 2} /> Utilisateurs
-        </button>
-        <button 
-          className="btn"
-          onClick={() => setActiveTab('communes')}
-          style={{ 
-            background: activeTab === 'communes' ? 'white' : 'transparent',
-            color: activeTab === 'communes' ? 'var(--primary)' : 'var(--text-muted)',
-            boxShadow: activeTab === 'communes' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
-            border: 'none', padding: '0.7rem 1.5rem', borderRadius: '12px', fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
-          }}
-        >
-          <MapIcon size={18} strokeWidth={activeTab === 'communes' ? 2.5 : 2} /> Zones & Tarifs
-        </button>
+        {canManageUsers && (
+          <button 
+            className="btn"
+            onClick={() => setActiveTab('utilisateurs')}
+            style={{ 
+              background: activeTab === 'utilisateurs' ? 'white' : 'transparent',
+              color: activeTab === 'utilisateurs' ? 'var(--primary)' : 'var(--text-muted)',
+              boxShadow: activeTab === 'utilisateurs' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
+              border: 'none', padding: '0.7rem 1.5rem', borderRadius: '12px', fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
+            }}
+          >
+            <UsersIcon size={18} strokeWidth={activeTab === 'utilisateurs' ? 2.5 : 2} /> 
+            {hasPermission('ADMIN') ? 'Utilisateurs' : 'Équipe Livreurs'}
+          </button>
+        )}
+        {canManageCommunes && (
+          <button 
+            className="btn"
+            onClick={() => setActiveTab('communes')}
+            style={{ 
+              background: activeTab === 'communes' ? 'white' : 'transparent',
+              color: activeTab === 'communes' ? 'var(--primary)' : 'var(--text-muted)',
+              boxShadow: activeTab === 'communes' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
+              border: 'none', padding: '0.7rem 1.5rem', borderRadius: '12px', fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
+            }}
+          >
+            <MapIcon size={18} strokeWidth={activeTab === 'communes' ? 2.5 : 2} /> Zones & Tarifs
+          </button>
+        )}
       </div>
 
       <div>
@@ -63,6 +82,8 @@ const PERMISSIONS_LIST: { id: Permission, label: string }[] = [
   { id: 'HISTORIQUE', label: 'Historique' },
   { id: 'FINANCE', label: 'Rapport Journalier' },
   { id: 'PROFIL', label: 'Mon Profil' },
+  { id: 'COMMUNES', label: 'Gestion Zones & Tarifs' },
+  { id: 'GESTION_LIVREURS', label: 'Gestion Équipe Livreurs' },
 ];
 
 const UsersManager = ({ showToast }: { showToast: any }) => {
@@ -71,11 +92,19 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Partial<User>>({});
 
+  const { hasPermission } = useAuth();
+  const isAdmin = hasPermission('ADMIN');
+
   const loadUsers = async () => {
     setLoading(true);
     try {
       const data = await getAdminUsers();
-      setUsers(data || []);
+      // Filter for non-admins if they only have GESTION_LIVREURS
+      if (!isAdmin) {
+        setUsers(data?.filter(u => u.role === 'LIVREUR') || []);
+      } else {
+        setUsers(data || []);
+      }
     } catch (e) {
       showToast("Erreur chargement.", "error");
     } finally {
@@ -141,7 +170,13 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
         <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Liste des Utilisateurs</h3>
         <button 
           className="btn btn-primary" 
-          onClick={() => { setEditingId('new'); setForm({ role: 'AGENT_APPEL', permissions: ['DASHBOARD', 'PRODUITS', 'COMMANDES', 'CENTRE_APPEL'] }); }}
+          onClick={() => { 
+            setEditingId('new'); 
+            setForm({ 
+              role: isAdmin ? 'AGENT_APPEL' : 'LIVREUR', 
+              permissions: isAdmin ? ['DASHBOARD', 'PRODUITS', 'COMMANDES', 'CENTRE_APPEL'] : ['LIVREUR', 'PROFIL'] 
+            }); 
+          }}
           disabled={loading}
         >
           <Plus size={18} /> Nouvel Utilisateur
@@ -174,13 +209,21 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
                     <div className="form-group">
                       <label className="form-label">Rôle</label>
                       <select className="form-select" value={form.role || ''} onChange={e => setForm({...form, role: e.target.value as any})}>
-                        <option value="ADMIN">Administrateur</option>
-                        <option value="GESTIONNAIRE">Gestionnaire</option>
-                        <option value="AGENT_APPEL">Call Center (Appels)</option>
-                        <option value="LOGISTIQUE">Logistique</option>
+                        {isAdmin && (
+                          <>
+                            <option value="ADMIN">Administrateur</option>
+                            <option value="GESTIONNAIRE">Gestionnaire</option>
+                            <option value="AGENT_APPEL">Call Center (Appels)</option>
+                            <option value="LOGISTIQUE">Logistique</option>
+                          </>
+                        )}
                         <option value="LIVREUR">Livreur</option>
-                        <option value="CAISSIERE">Caissière</option>
-                        <option value="AGENT_MIXTE">Agent Mixte (Caisse + Call)</option>
+                        {isAdmin && (
+                          <>
+                            <option value="CAISSIERE">Caissière</option>
+                            <option value="AGENT_MIXTE">Agent Mixte (Caisse + Call)</option>
+                          </>
+                        )}
                       </select>
                     </div>
                     {form.role !== 'LIVREUR' && (
