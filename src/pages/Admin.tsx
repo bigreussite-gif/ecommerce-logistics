@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { User, Commune, Permission } from '../types';
 import { getAdminUsers, createAdminUser, updateAdminUser, getCommunes, createCommune, updateCommune, deleteCommune } from '../services/adminService';
-import { Plus, Trash2, Users, Map } from 'lucide-react';
+import { Plus, Trash2, Users as UsersIcon, Map as MapIcon } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { insforge } from '../lib/insforge';
 
@@ -26,7 +26,7 @@ export const Admin = () => {
             border: 'none', padding: '0.6rem 1.25rem', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem'
           }}
         >
-          <Users size={18} /> Utilisateurs
+          <UsersIcon size={18} /> Utilisateurs
         </button>
         <button 
           className={`btn ${activeTab === 'communes' ? 'btn-primary' : ''}`}
@@ -37,7 +37,7 @@ export const Admin = () => {
             border: 'none', padding: '0.6rem 1.25rem', borderRadius: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem'
           }}
         >
-          <Map size={18} /> Communes
+          <MapIcon size={18} /> Communes
         </button>
       </div>
 
@@ -340,7 +340,7 @@ const CommunesManager = ({ showToast }: { showToast: any }) => {
             ) : (
               <tr key={c.id}>
                 <td style={{ fontWeight: 600 }}>{c.nom}</td>
-                <td style={{ color: 'var(--primary-color)', fontWeight: 700 }}>{c.tarif_livraison?.toLocaleString()} CFA</td>
+                <td style={{ color: 'var(--primary-color)', fontWeight: 700 }}>{Number(c.tarif_livraison || 0).toLocaleString()} CFA</td>
                 <td style={{ textAlign: 'right' }}>
                   <button className="btn btn-outline btn-sm" onClick={() => {setEditingId(c.id); setForm(c);}}>Modifier</button>
                   <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger-color)', marginLeft: '0.5rem' }} onClick={() => handleDelete(c.id)}><Trash2 size={16}/></button>
