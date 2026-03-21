@@ -246,23 +246,31 @@ export const deleteCommande = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
-export const getFinancialData = async (): Promise<(Commande & { lignes: LigneCommande[] })[]> => {
-  const { data: orders, error: orderError } = await insforge.database
+export const getFinancialData = async (startDate?: string, endDate?: string): Promise<(Commande & { lignes: LigneCommande[] })[]> => {
+  let query = insforge.database
     .from('commandes')
     .select('*, clients(nom_complet, telephone)')
-    .eq('statut_commande', 'livree')
-    .order('date_creation', { ascending: false });
+    .in('statut_commande', ['livree', 'terminee']);
+
+  if (startDate) query = query.gte('date_creation', startDate);
+  if (endDate) query = query.lte('date_creation', endDate);
+
+  const { data: orders, error: orderError } = await query.order('date_creation', { ascending: false });
 
   if (orderError) throw orderError;
+  if (!orders || orders.length === 0) return [];
 
+  const orderIds = orders.map(o => o.id);
+  
+  // Optimized: only fetch lines for these orders
   const { data: lines, error: linesError } = await insforge.database
     .from('lignes_commandes')
-    .select('*');
+    .select('*')
+    .in('commande_id', orderIds);
 
   if (linesError) throw linesError;
 
-  // Manual join for efficiency
-  return (orders || []).map((o: any) => ({
+  return orders.map((o: any) => ({
     ...o,
     nom_client: o.clients?.nom_complet,
     telephone_client: o.clients?.telephone,

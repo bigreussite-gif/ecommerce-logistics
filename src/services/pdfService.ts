@@ -141,43 +141,75 @@ export const generateDeliverySlipPDF = (feuilleRoute: any, commandes: Commande[]
     return;
   }
 
-  const doc = new jsPDF() as jsPDFWithPlugin;
+  const doc = new jsPDF('l', 'mm', 'a4') as jsPDFWithPlugin;
   const pageWidth = doc.internal.pageSize.width;
+  
+  console.log(`Génération PDF Landscape pour ${commandes.length} commandes.`);
+  commandes.forEach(c => console.log(`Commande ${c.id}: ${c.lignes?.length || 0} articles`));
 
   // Header
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
+  doc.setFontSize(22);
   doc.setTextColor(99, 102, 255);
   doc.text("GomboSwift Logistique", 20, 25);
   
-  doc.setFontSize(14);
+  doc.setFontSize(16);
   doc.setTextColor(30, 41, 59);
   doc.text("FEUILLE DE ROUTE LIVREUR", pageWidth - 20, 25, { align: 'right' });
 
-  doc.setFontSize(10);
+  doc.setFontSize(11);
   doc.setTextColor(100, 116, 139);
   doc.setFont("helvetica", "normal");
   doc.text(`Réf: #${(feuilleRoute.id || "0000").substring(0, 8).toUpperCase()}`, pageWidth - 20, 32, { align: 'right' });
-  doc.text(`Date: ${format(new Date(), 'dd MMMM yyyy', { locale: fr })}`, pageWidth - 20, 37, { align: 'right' });
+  const displayDate = feuilleRoute.date ? new Date(feuilleRoute.date) : new Date();
+  doc.text(`Date: ${format(displayDate, 'dd MMMM yyyy', { locale: fr })}`, pageWidth - 20, 37, { align: 'right' });
 
   // Livreur Info
-  doc.setFontSize(12);
+  doc.setFontSize(13);
   doc.setTextColor(30, 41, 59);
   doc.setFont("helvetica", "bold");
   doc.text("LIVREUR ASSIGNÉ :", 20, 50);
-  doc.setFontSize(14);
+  doc.setFontSize(16);
   doc.text(feuilleRoute.nom_livreur || "Personnel GomboSwift", 20, 60);
+
+  // --- RÉCAPITULATIF DE CHARGEMENT ---
+  const allLignes = (commandes || []).flatMap(c => c.lignes || []);
+  const summary: Record<string, number> = {};
+  allLignes.forEach(l => {
+    summary[l.nom_produit] = (summary[l.nom_produit] || 0) + l.quantite;
+  });
+
+  doc.setFontSize(11);
+  doc.setTextColor(99, 102, 255);
+  doc.text("RÉCAPITULATIF DE CHARGEMENT (TOTAL TOURNEE) :", 120, 50);
+  
+  let summaryX = 120;
+  let summaryY = 56;
+  Object.entries(summary).forEach(([name, qty], idx) => {
+    if (idx > 0 && idx % 3 === 0) {
+      summaryX = 120;
+      summaryY += 6;
+    }
+    doc.setFontSize(9);
+    doc.setTextColor(30, 41, 59);
+    doc.setFont("helvetica", "bold");
+    doc.text(`• ${name}:`, summaryX, summaryY);
+    doc.setTextColor(99, 102, 255);
+    doc.text(`${qty}`, summaryX + 45, summaryY);
+    summaryX += 60;
+  });
 
   // Commandes Table
   const tableRows = (commandes || []).map((c, i) => {
     const itemsStr = (c.lignes || []).map((l: LigneCommande) => 
-      `${l.nom_produit} (${l.quantite} x ${(l.prix_unitaire || 0).toLocaleString()})`
-    ).join('\n');
+      `${l.nom_produit} (x${l.quantite})`
+    ).join(' | ');
     
     return [
       i + 1,
-      `#${(c.id || "").substring(0, 8).toUpperCase()}\n${c.nom_client || "Client"}`,
-      `${c.commune_livraison || "-"}\n${c.adresse_livraison?.slice(0, 40) || ""}`,
+      `#${(c.id || "").substring(0, 8).toUpperCase()}`,
+      c.nom_client || "Client",
+      `${c.commune_livraison || "-"}\n${c.adresse_livraison?.slice(0, 50) || ""}`,
       itemsStr || "SANS ARTICLES",
       `${(c.montant_total || 0).toLocaleString()} CFA`
     ];
@@ -185,18 +217,19 @@ export const generateDeliverySlipPDF = (feuilleRoute: any, commandes: Commande[]
 
   autoTable(doc, {
     startY: 75,
-    head: [['N°', 'Référence / Client', 'Zone / Adresse', 'Articles (Détails)', 'À Encaisser']],
+    head: [['N°', 'Réf', 'Client', 'Zone / Adresse Détail', 'Articles (Détails)', 'À Encaisser']],
     body: tableRows,
     theme: 'grid',
-    headStyles: { fillColor: [30, 41, 59] },
+    headStyles: { fillColor: [30, 41, 59], fontSize: 10 },
     columnStyles: {
-      0: { cellWidth: 8 },
-      1: { cellWidth: 35 },
+      0: { cellWidth: 10 },
+      1: { cellWidth: 25 },
       2: { cellWidth: 40 },
-      3: { cellWidth: 'auto' },
-      4: { halign: 'right', cellWidth: 35 }
+      3: { cellWidth: 60 },
+      4: { cellWidth: 'auto', fontSize: 9 },
+      5: { halign: 'right', cellWidth: 35, fontStyle: 'bold' }
     },
-    styles: { fontSize: 8, cellPadding: 3 }
+    styles: { fontSize: 9, cellPadding: 4 }
   });
 
   const finalY = (doc as any).lastAutoTable?.finalY || 100;

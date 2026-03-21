@@ -75,17 +75,29 @@ export const getFeuillesRoute = async () => {
 };
 
 export const getCommandesByFeuille = async (feuilleId: string): Promise<Commande[]> => {
-  const { data, error } = await insforge.database
+  const { data: orders, error: orderError } = await insforge.database
     .from('commandes')
     .select('*, clients(nom_complet, telephone)')
     .eq('feuille_route_id', feuilleId);
 
-  if (error) throw error;
+  if (orderError) throw orderError;
+  if (!orders || orders.length === 0) return [];
+
+  const orderIds = orders.map(o => o.id);
   
-  return (data || []).map((c: any) => ({
-    ...c,
-    nom_client: c.clients?.nom_complet,
-    telephone_client: c.clients?.telephone
+  // Fetch associated lines
+  const { data: lines, error: linesError } = await insforge.database
+    .from('lignes_commandes')
+    .select('*')
+    .in('commande_id', orderIds);
+
+  if (linesError) throw linesError;
+
+  return orders.map((o: any) => ({
+    ...o,
+    nom_client: o.clients?.nom_complet,
+    telephone_client: o.clients?.telephone,
+    lignes: (lines || []).filter((l: any) => l.commande_id === o.id)
   }));
 };
 

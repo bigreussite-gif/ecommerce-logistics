@@ -197,30 +197,53 @@ const ReviewModal = ({ feuille, commandes, loading, onClose, showToast }: any) =
                  <table>
                    <thead>
                      <tr>
-                       <th>Réf</th>
-                       <th>Client</th>
-                       <th>P.U.</th>
-                       <th>Qty</th>
-                       <th style={{ textAlign: 'right' }}>Montant</th>
-                       <th>Statut</th>
+                       <th style={{ width: '80px' }}>Réf</th>
+                       <th style={{ width: '180px' }}>Client</th>
+                       <th colSpan={3}>Détails des Articles (Nom, Qté, P.U.)</th>
+                       <th style={{ width: '100px' }}>Statut</th>
                      </tr>
                    </thead>
-                   <tbody>
-                     {commandes.map((c: any) => (
-                       <tr key={c.id}>
-                         <td style={{ fontWeight: 700 }}>#{c.id.slice(0,8).toUpperCase()}</td>
-                         <td>{c.nom_client}</td>
-                         <td>{((Number(c.montant_total) - (Number(c.frais_livraison) || 0)) / (c.nombre_produits || 1)).toLocaleString()}</td>
-                         <td style={{ textAlign: 'center' }}>{c.nombre_produits || 1}</td>
-                         <td style={{ textAlign: 'right', fontWeight: 800 }}>{c.montant_total?.toLocaleString()} CFA</td>
-                         <td>
-                            <span className={`badge ${c.statut_commande === 'livree' || c.statut_commande === 'terminee' ? 'badge-success' : 'badge-danger'}`}>
-                              {c.statut_commande}
-                            </span>
-                         </td>
-                       </tr>
-                     ))}
-                   </tbody>
+                    <tbody>
+                      {commandes.map((c: any) => (
+                        <tr key={c.id}>
+                          <td style={{ verticalAlign: 'top', paddingTop: '1.25rem' }}>
+                            <div style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '0.85rem' }}>#{c.id.slice(0,8).toUpperCase()}</div>
+                          </td>
+                          <td style={{ verticalAlign: 'top', paddingTop: '1.25rem' }}>
+                            <div style={{ fontWeight: 800, color: 'var(--text-main)' }}>{c.nom_client}</div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{c.commune_livraison}</div>
+                          </td>
+                          <td colSpan={3} style={{ padding: 0 }}>
+                             <table style={{ width: '100%', border: 'none', margin: 0 }}>
+                               <tbody>
+                                 {(c.lignes || []).map((l: any, idx: number) => (
+                                   <tr key={idx} style={{ borderBottom: idx === (c.lignes?.length || 0) - 1 ? 'none' : '1px solid #f8fafc' }}>
+                                     <td style={{ border: 'none', padding: '0.75rem 1rem', width: '60%' }}>
+                                        <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{l.nom_produit}</div>
+                                     </td>
+                                     <td style={{ border: 'none', padding: '0.75rem 1rem', width: '20%', textAlign: 'center' }}>
+                                        <span style={{ background: '#f1f5f9', padding: '0.2rem 0.5rem', borderRadius: '6px', fontWeight: 800, fontSize: '0.8rem' }}>x{l.quantite}</span>
+                                     </td>
+                                     <td style={{ border: 'none', padding: '0.75rem 1rem', width: '20%', textAlign: 'right', fontWeight: 700, fontSize: '0.9rem' }}>
+                                        {l.prix_unitaire?.toLocaleString()}
+                                     </td>
+                                   </tr>
+                                 ))}
+                                 <tr style={{ background: 'rgba(99, 102, 255, 0.03)' }}>
+                                    <td colSpan={2} style={{ border: 'none', padding: '0.5rem 1rem', fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)' }}>TOTAL COMMANDE (LIVR: {c.frais_livraison || 0})</td>
+                                    <td style={{ border: 'none', padding: '0.5rem 1rem', textAlign: 'right', fontWeight: 900, fontSize: '1rem', color: 'var(--primary)' }}>{c.montant_total?.toLocaleString()}</td>
+                                 </tr>
+                               </tbody>
+                             </table>
+                          </td>
+                          <td style={{ verticalAlign: 'top', paddingTop: '1.25rem' }}>
+                             <span className={`badge ${c.statut_commande === 'livree' || c.statut_commande === 'terminee' ? 'badge-success' : 'badge-danger'}`}>
+                               {c.statut_commande}
+                             </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
                  </table>
                </div>
              </>

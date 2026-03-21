@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
 import { getCommandesByStatus } from '../services/commandeService';
-import { getAvailableLivreurs, creerFeuilleRoute } from '../services/logistiqueService';
-import type { Commande, User } from '../types';
-import { Truck, Printer, Eye } from 'lucide-react';
+import { getAvailableLivreurs, creerFeuilleRoute, getFeuillesRoute, getCommandesByFeuille } from '../services/logistiqueService';
+import type { Commande, User, FeuilleRoute } from '../types';
+import { Truck, Printer, Eye, Clock } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { generateDeliverySlipPDF } from '../services/pdfService';
+import { format } from 'date-fns';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
 
 export const Logistique = () => {
   const { showToast } = useToast();
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [livreurs, setLivreurs] = useState<User[]>([]);
+  const [activeFeuilles, setActiveFeuilles] = useState<FeuilleRoute[]>([]);
   const [loading, setLoading] = useState(true);
   
   const [selectedCommands, setSelectedCommands] = useState<Set<string>>(new Set());
@@ -20,12 +22,21 @@ export const Logistique = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [cmds, livs] = await Promise.all([
+      const [cmds, livs, allFeuilles] = await Promise.all([
         getCommandesByStatus(['validee', 'a_rappeler']),
-        getAvailableLivreurs()
+        getAvailableLivreurs(),
+        getFeuillesRoute()
       ]);
       setCommandes(cmds);
       setLivreurs(livs);
+      
+      const enCours = (allFeuilles || [])
+        .filter((f: any) => f.statut_feuille === 'en_cours')
+        .map((f: any) => ({
+          ...f,
+          nom_livreur: f.users?.nom_complet || f.nom_livreur
+        }));
+      setActiveFeuilles(enCours);
     } catch (error) {
       console.error(error);
     } finally {
@@ -236,6 +247,47 @@ export const Logistique = () => {
             L'affectation notifiera instantanément le livreur sur son application mobile.
           </p>
         </div>
+
+        {/* TOURNEES EN COURS (DEJA CREEES) */}
+        {activeFeuilles.length > 0 && (
+          <div className="card glass-effect" style={{ marginTop: '2rem', padding: '1.5rem', background: 'rgba(255,255,255,0.8)' }}>
+             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Clock size={20} color="var(--primary)" />
+                Tournées en cours ({activeFeuilles.length})
+             </h3>
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {activeFeuilles.map(f => (
+                  <div key={f.id} style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '16px', background: 'white' }}>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                        <div>
+                           <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-main)' }}>#{f.id.slice(0, 8).toUpperCase()}</div>
+                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{f.nom_livreur}</div>
+                        </div>
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ padding: '0.4rem', borderRadius: '8px' }}
+                          onClick={async () => {
+                            try {
+                              const cmds = await getCommandesByFeuille(f.id);
+                              generateDeliverySlipPDF(f, cmds);
+                              showToast("Réimpression lancée.", "success");
+                            } catch (e) {
+                              showToast("Erreur lors de la réimpression", "error");
+                            }
+                          }}
+                        >
+                          <Printer size={16} />
+                        </button>
+                     </div>
+                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)' }}>
+                        <span>{f.total_commandes} colis</span>
+                        <span>{format(new Date(f.date), 'HH:mm')}</span>
+                     </div>
+                  </div>
+                ))}
+             </div>
+          </div>
+        )}
 
       </div>
 
