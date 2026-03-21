@@ -122,30 +122,88 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
 };
 
 export const updateCommandeStatus = async (id: string, status: string, additionalData: any = {}): Promise<void> => {
+  // 1. Fetch current status to check if we need to restore stock
+  const { data: currentCmd } = await insforge.database
+    .from('commandes')
+    .select('statut_commande')
+    .eq('id', id)
+    .single();
+
+  const prevStatus = currentCmd?.statut_commande;
+
+  // 2. Update status
   const { error } = await insforge.database
     .from('commandes')
     .update({ statut_commande: status, ...additionalData, updated_at: new Date() })
     .eq('id', id);
   
   if (error) throw error;
+
+  // 3. Stock restoration logic: 
+  // If we move TO 'annulee' or 'a_rappeler' FROM a state that had stock removed (like en_attente_appel or validee)
+  const stockRemovedStates = ['en_attente_appel', 'validee', 'en_cours_livraison'];
+  const stockRestoreStates = ['annulee', 'a_rappeler'];
+
+  if (stockRestoreStates.includes(status) && stockRemovedStates.includes(prevStatus)) {
+    try {
+      const { data: lines } = await insforge.database
+        .from('lignes_commandes')
+        .select('*')
+        .eq('commande_id', id);
+
+      if (lines) {
+        for (const l of lines) {
+          await addMouvementStock({
+            produit_id: l.produit_id,
+            type_mouvement: 'entree',
+            quantite: l.quantite,
+            reference: `Retour Stock (${status}) Cmd #${id.substring(0, 8)}`
+          } as any);
+        }
+      }
+    } catch (stockErr) {
+      console.error("Erreur lors de la restauration du stock:", stockErr);
+    }
+  }
 };
 
-export const getTopSellingProducts = async (limit = 5): Promise<{ nom: string, nb_ventes: number, total_ca: number }[]> => {
-  const { data, error } = await insforge.database
+export const getTopSellingProducts = async (limit = 10): Promise<{ nom: string, nb_ventes: number, total_ca: number, total_sorties: number, taux_succes: number }[]> => {
+  const { data: lines, error: linesError } = await insforge.database
     .from('lignes_commandes')
-    .select('nom_produit, quantite, montant_ligne');
+    .select('*, commandes(statut_commande)');
   
-  if (error) throw error;
+  if (linesError) throw linesError;
   
-  const aggregates: Record<string, { nb: number, ca: number }> = {};
-  (data || []).forEach((l: any) => {
-    if (!aggregates[l.nom_produit]) aggregates[l.nom_produit] = { nb: 0, ca: 0 };
-    aggregates[l.nom_produit].nb += l.quantite;
-    aggregates[l.nom_produit].ca += l.montant_ligne;
+  const aggregates: Record<string, { nb: number, ca: number, sorties: number, livrees: number }> = {};
+  
+  (lines || []).forEach((l: any) => {
+    if (!aggregates[l.nom_produit]) {
+      aggregates[l.nom_produit] = { nb: 0, ca: 0, sorties: 0, livrees: 0 };
+    }
+    
+    const status = l.commandes?.statut_commande;
+    const isSortie = ['en_cours_livraison', 'livree', 'echouee', 'retour_stock', 'retour_livreur'].includes(status);
+    const isLivree = ['livree', 'terminee'].includes(status);
+    
+    if (isLivree) {
+      aggregates[l.nom_produit].nb += l.quantite;
+      aggregates[l.nom_produit].ca += l.montant_ligne;
+      aggregates[l.nom_produit].livrees += l.quantite;
+    }
+    
+    if (isSortie) {
+      aggregates[l.nom_produit].sorties += l.quantite;
+    }
   });
 
   return Object.entries(aggregates)
-    .map(([nom, stats]) => ({ nom, nb_ventes: stats.nb, total_ca: stats.ca }))
+    .map(([nom, stats]) => ({ 
+      nom, 
+      nb_ventes: stats.livrees, 
+      total_ca: stats.ca,
+      total_sorties: stats.sorties,
+      taux_succes: stats.sorties > 0 ? Math.round((stats.livrees / stats.sorties) * 100) : 0
+    }))
     .sort((a, b) => b.nb_ventes - a.nb_ventes)
     .slice(0, limit);
 };

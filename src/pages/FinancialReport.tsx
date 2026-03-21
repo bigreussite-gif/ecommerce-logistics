@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import { getDailyFinancials } from '../services/caisseService';
-import { TrendingUp, TrendingDown, Target, Compass, PieChart, AlertTriangle, Lightbulb, Calendar } from 'lucide-react';
+import { TrendingUp, TrendingDown, Target, Compass, PieChart, AlertTriangle, Lightbulb, Calendar, Truck, FileText } from 'lucide-react';
+import { generateAnalyticalReportPDF } from '../services/pdfService';
+import { useToast } from '../contexts/ToastContext';
+import { Commande } from '../types';
 
 export const FinancialReport = () => {
-  const [data, setData] = useState<{ retours: any[], commandes: any[] } | null>(null);
+  const { showToast } = useToast();
+  const [data, setData] = useState<{ retours: any[], commandes: Commande[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -26,23 +30,35 @@ export const FinancialReport = () => {
     return <div style={{ padding: '2rem', textAlign: 'center' }}>Veuillez patienter pendant l'analyse...</div>;
   }
 
-  // --- CALCULSTATS ---
-  const totalEncaisse = data.retours.reduce((acc, r) => acc + (r.montant_remis_par_livreur || 0), 0);
+  // Helper for historical delivery fee fallback
+  const getFrais = (c: Commande) => {
+    if (c.frais_livraison !== undefined && c.frais_livraison !== null) return Number(c.frais_livraison);
+    if (c.statut_commande === 'terminee' || c.statut_commande === 'livree') return 1000;
+    return 0;
+  };
+
+  // --- CALCUL STATS ---
+  const totalEncaisseBrut = data.retours.reduce((acc, r) => acc + (r.montant_remis_par_livreur || 0), 0);
+  
+  // Decouplage: On calcule les frais de livraison encaissés avec fallback
+  const succesCommandes = data.commandes.filter(c => c.statut_commande === 'terminee' || c.statut_commande === 'livree');
+  const totalFraisLivraison = succesCommandes.reduce((acc, c) => acc + getFrais(c), 0);
+  const totalProduitsNet = totalEncaisseBrut - totalFraisLivraison;
+
   const ecartTotal = data.retours.reduce((acc, r) => acc + (r.ecart || 0), 0);
 
   const totalNonEncaisse = data.commandes
-    .filter(c => ['retour_stock', 'annulee', 'a_rappeler', 'echouee'].includes(c.statut_commande))
+    .filter(c => ['retour_stock', 'annulee', 'a_rappeler', 'echouee', 'retour_livreur'].includes(c.statut_commande))
     .reduce((acc, c) => acc + (c.montant_total || 0), 0);
 
   const successRate = data.commandes.length > 0 
-    ? (data.commandes.filter(c => c.statut_commande === 'terminee').length / data.commandes.length) * 100 
+    ? (succesCommandes.length / data.commandes.length) * 100 
     : 0;
 
   // --- ANALYSIS ENGINE ---
   const generateInsights = () => {
     const insights: any[] = [];
     
-    // Performance Insight
     if (successRate < 70) {
       insights.push({
         type: 'danger',
@@ -59,8 +75,7 @@ export const FinancialReport = () => {
       });
     }
 
-    // Cash Leakage Insight
-    if (totalNonEncaisse > totalEncaisse * 0.3) {
+    if (totalNonEncaisse > totalEncaisseBrut * 0.3) {
       insights.push({
         type: 'warning',
         icon: <AlertTriangle size={20} />,
@@ -75,7 +90,6 @@ export const FinancialReport = () => {
   const generateOrientations = () => {
     const orientations: any[] = [];
     
-    // Recommendations
     if (data.commandes.filter(c => c.statut_commande === 'a_rappeler').length > 5) {
       orientations.push({
         icon: <Compass size={20} />,
@@ -92,7 +106,6 @@ export const FinancialReport = () => {
       });
     }
 
-    // Default Orientation if none
     if (orientations.length === 0) {
       orientations.push({
         icon: <Lightbulb size={20} />,
@@ -102,6 +115,15 @@ export const FinancialReport = () => {
     }
 
     return orientations;
+  };
+
+  const handleGeneratePDF = () => {
+    try {
+      generateAnalyticalReportPDF(data, selectedDate);
+      showToast("Rapport analytique généré !", "success");
+    } catch (e) {
+      showToast("Erreur lors de la génération du PDF", "error");
+    }
   };
 
   const insights = generateInsights();
@@ -125,45 +147,49 @@ export const FinancialReport = () => {
         </div>
       </div>
 
-      {/* KPI CARDS */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <div className="card glass-effect" style={{ padding: '2rem', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-            <span style={{ color: '#059669', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recettes Encaissées (Cash)</span>
-            <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', padding: '0.4rem', borderRadius: '10px' }}><TrendingUp size={18} /></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+        <div className="card glass-effect" style={{ padding: '1.5rem', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <span style={{ color: '#059669', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Revenue Produits (Net)</span>
+            <TrendingUp size={16} color="#10b981" />
           </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#059669' }}>{totalEncaisse.toLocaleString()} <span style={{ fontSize: '1rem' }}>CFA</span></div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#059669' }}>{totalProduitsNet.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
         </div>
 
-        <div className="card glass-effect" style={{ padding: '2rem', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-            <span style={{ color: '#dc2626', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Manque à gagner (Retours/Echecs)</span>
-            <div style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', padding: '0.4rem', borderRadius: '10px' }}><TrendingDown size={18} /></div>
+        <div className="card glass-effect" style={{ padding: '1.5rem', border: '1px solid rgba(99, 102, 255, 0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <span style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Frais Livraison (Cash)</span>
+            <Truck size={16} color="var(--primary)" />
           </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#dc2626' }}>{totalNonEncaisse.toLocaleString()} <span style={{ fontSize: '1rem' }}>CFA</span></div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--primary)' }}>{totalFraisLivraison.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
         </div>
 
-        <div className="card glass-effect" style={{ padding: '2rem', border: '1px solid rgba(99, 102, 255, 0.2)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-            <span style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Taux de Succès Livraison</span>
-            <div style={{ background: 'rgba(99, 102, 255, 0.1)', color: 'var(--primary)', padding: '0.4rem', borderRadius: '10px' }}><Target size={18} /></div>
+        <div className="card glass-effect" style={{ padding: '1.5rem', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <span style={{ color: '#dc2626', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Manque à gagner</span>
+            <TrendingDown size={16} color="#ef4444" />
           </div>
-          <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--primary)' }}>{successRate.toFixed(1)}%</div>
-          <div style={{ height: '4px', background: '#f1f5f9', borderRadius: '2px', marginTop: '1rem', overflow: 'hidden' }}>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#dc2626' }}>{totalNonEncaisse.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+        </div>
+
+        <div className="card glass-effect" style={{ padding: '1.5rem', border: '1px solid rgba(148, 163, 184, 0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Taux de Succès</span>
+            <Target size={16} color="var(--text-muted)" />
+          </div>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-main)' }}>{successRate.toFixed(1)}%</div>
+          <div style={{ height: '4px', background: '#f1f5f9', borderRadius: '2px', marginTop: '0.5rem', overflow: 'hidden' }}>
             <div style={{ width: `${successRate}%`, height: '100%', background: 'var(--primary)' }}></div>
           </div>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 400px', gap: '2.5rem' }} className="responsive-grid">
-        
-        {/* ANALYSE & FLOWS */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <div className="card" style={{ padding: '2rem' }}>
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <PieChart size={22} style={{ color: 'var(--primary)' }} /> Analyse des Flux du Jour
             </h3>
-            
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {insights.map((ins, i) => (
                 <div key={i} style={{ 
@@ -221,7 +247,6 @@ export const FinancialReport = () => {
           </div>
         </div>
 
-        {/* ORIENTATION PANEL */}
         <div style={{ position: 'sticky', top: '2rem' }}>
            <div className="card glass-effect" style={{ padding: '2.5rem', background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', color: 'white', border: 'none', borderRadius: '32px', boxShadow: '0 20px 40px rgba(0,0,0,0.15)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
@@ -230,28 +255,25 @@ export const FinancialReport = () => {
                 </div>
                 <h3 style={{ fontSize: '1.5rem', fontWeight: 900, margin: 0 }}>Gombo Orientation</h3>
               </div>
-
               <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                  {orientations.map((o, i) => (
-                   <div key={i} style={{ borderLeft: '3px solid var(--primary)', paddingLeft: '1.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
-                        <span style={{ color: 'var(--primary)' }}>{o.icon}</span>
-                        <h5 style={{ margin: 0, fontWeight: 800, textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.1em' }}>{o.title}</h5>
-                      </div>
-                      <p style={{ margin: 0, fontSize: '0.95rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.6', fontWeight: 500 }}>{o.text}</p>
-                   </div>
+                    <div key={i} style={{ borderLeft: '3px solid var(--primary)', paddingLeft: '1.5rem' }}>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                         <span style={{ color: 'var(--primary)' }}>{o.icon}</span>
+                         <h5 style={{ margin: 0, fontWeight: 800, textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.1em' }}>{o.title}</h5>
+                       </div>
+                       <p style={{ margin: 0, fontSize: '0.95rem', color: 'rgba(255,255,255,0.7)', lineHeight: '1.6', fontWeight: 500 }}>{o.text}</p>
+                    </div>
                  ))}
               </div>
-
               <div style={{ marginTop: '3.5rem', padding: '1.5rem', background: 'rgba(255,255,255,0.05)', borderRadius: '24px', textAlign: 'center' }}>
                  <p style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>Besoin d'un audit complet ?</p>
-                 <button className="btn btn-primary" style={{ width: '100%', borderRadius: '14px', height: '50px', fontWeight: 900, background: 'white', color: 'var(--primary)' }}>
-                    GÉNÉRER PDF ANALYTIQUE
+                 <button className="btn btn-primary" style={{ width: '100%', borderRadius: '14px', height: '50px', fontWeight: 900, background: 'white', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }} onClick={handleGeneratePDF}>
+                    <FileText size={20} /> GÉNÉRER PDF ANALYTIQUE
                  </button>
               </div>
            </div>
         </div>
-
       </div>
     </div>
   );

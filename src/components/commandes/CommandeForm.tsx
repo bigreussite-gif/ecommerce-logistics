@@ -68,7 +68,6 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
 
   const parsePrice = (p: any): number => {
     if (!p) return 0;
-    // Try exhaustive list of potential field names
     const fields = ['prix_vente', 'prixVente', 'prix_unitaire', 'prixUnitaire', 'prix', 'price', 'prix_achat'];
     let rawValue = undefined;
     for (const f of fields) {
@@ -83,23 +82,13 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
     return isNaN(val) ? 0 : val;
   };
 
-  useEffect(() => {
-    if (catalogue.length > 0) {
-      console.log('Structure du premier produit du catalogue:');
-      console.table(Object.keys(catalogue[0]).map(key => ({ key, value: (catalogue[0] as any)[key], type: typeof (catalogue[0] as any)[key] })));
-    }
-  }, [catalogue]);
-
   const updateLigne = (index: number, field: keyof LigneCommande, value: any) => {
     const newLignes = [...lignes];
     if (field === 'produit_id') {
       const prod = catalogue.find(p => p.id === value);
       if (!prod) return;
 
-      console.log('Produit sélectionné:', prod); // For debugging
       let prixActif = parsePrice(prod);
-      
-      // Check for active promotion
       const promoVal = prod.prix_promo !== undefined ? prod.prix_promo : (prod as any).prixPromo;
       if (promoVal !== undefined && promoVal !== null && promoVal !== 0) {
         const now = new Date().getTime();
@@ -141,8 +130,6 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
     setLoading(true);
     try {
       let finalClientId = clientId;
-      
-      // Verify if client exists by phone if not explicitly set
       if (!finalClientId && clientRecherche.telephone) {
         const existing = await searchClientByPhone(clientRecherche.telephone);
         if (existing) {
@@ -188,31 +175,10 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
   };
 
   return (
-    <div style={{ 
-      position: 'fixed', 
-      inset: 0, 
-      backgroundColor: 'rgba(15, 23, 42, 0.7)', 
-      backdropFilter: 'blur(8px)',
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      zIndex: 1000,
-      padding: '1.5rem',
-      animation: 'pageEnter 0.4s ease-out'
-    }}>
-      <div className="card" style={{ 
-        width: '100%', 
-        maxWidth: '900px', 
-        maxHeight: 'min(900px, 95vh)', 
-        overflowY: 'auto', 
-        position: 'relative',
-        padding: '2.5rem',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-        border: '1px solid rgba(255, 255, 255, 0.1)'
-      }}>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content card" style={{ maxWidth: '900px', padding: '2.5rem' }} onClick={e => e.stopPropagation()}>
         <button 
           onClick={onClose} 
-          className="btn-outline"
           style={{ 
             position: 'absolute', 
             top: '1.5rem', 
@@ -240,7 +206,6 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
         
         <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '2rem' }}>
           
-          {/* SECTION 1: CLIENT */}
           <div style={{ padding: '2rem', background: '#f8fafc', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem' }}>1</div>
@@ -251,47 +216,19 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 700 }}>Téléphone Mobile *</label>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    style={{ background: 'white', height: '48px', fontWeight: 600 }}
-                    placeholder="Ex: 0707070707" 
-                    required 
-                    value={clientRecherche.telephone} 
-                    onChange={e => { setClientRecherche({...clientRecherche, telephone: e.target.value}); setClientId(null); }} 
-                  />
-                  <button 
-                    type="button" 
-                    className="btn btn-primary" 
-                    style={{ width: '48px', padding: 0, borderRadius: '12px' }}
-                    onClick={handleSearchClient} 
-                    title="Vérifier l'existence"
-                  >
-                    <Search size={20} strokeWidth={2.5} />
-                  </button>
+                  <input type="text" className="form-input" style={{ background: 'white', height: '48px', fontWeight: 600 }} placeholder="Ex: 0707070707" required value={clientRecherche.telephone} onChange={e => { setClientRecherche({...clientRecherche, telephone: e.target.value}); setClientId(null); }} />
+                  <button type="button" className="btn btn-primary" style={{ width: '48px', padding: 0, borderRadius: '12px' }} onClick={handleSearchClient} title="Vérifier l'existence"><Search size={20} strokeWidth={2.5} /></button>
                 </div>
               </div>
               
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 700 }}>Nom Complet *</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  style={{ background: 'white', height: '48px' }}
-                  required 
-                  value={clientRecherche.nom_complet} 
-                  onChange={e => setClientRecherche({...clientRecherche, nom_complet: e.target.value})} 
-                />
+                <input type="text" className="form-input" style={{ background: 'white', height: '48px' }} required value={clientRecherche.nom_complet} onChange={e => setClientRecherche({...clientRecherche, nom_complet: e.target.value})} />
               </div>
 
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 700 }}>Zone / Commune de Livraison</label>
-                 <select 
-                   className="form-select" 
-                   style={{ background: 'white', height: '48px' }}
-                   value={clientRecherche.commune || ''} 
-                   onChange={e => setClientRecherche({...clientRecherche, commune: e.target.value})}
-                 >
+                 <select className="form-select" style={{ background: 'white', height: '48px' }} value={clientRecherche.commune || ''} onChange={e => setClientRecherche({...clientRecherche, commune: e.target.value})}>
                   <option value="">Sélectionner une zone...</option>
                   {communesDb.map(c => <option key={c.id} value={c.nom}>{c.nom} ({c.tarif_livraison.toLocaleString()} CFA)</option>)}
                   <option value="Autre">Autre (Hors zone)</option>
@@ -300,33 +237,18 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
 
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 700 }}>Adresse Détaillée</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  style={{ background: 'white', height: '48px' }}
-                  placeholder="Quartier, rue, bâtiment..."
-                  value={clientRecherche.adresse} 
-                  onChange={e => setClientRecherche({...clientRecherche, adresse: e.target.value})} 
-                />
+                <input type="text" className="form-input" style={{ background: 'white', height: '48px' }} placeholder="Quartier, rue, bâtiment..." value={clientRecherche.adresse} onChange={e => setClientRecherche({...clientRecherche, adresse: e.target.value})} />
               </div>
             </div>
           </div>
 
-          {/* SECTION 2: PRODUITS */}
           <div style={{ padding: '2rem', border: '2px solid #f1f5f9', borderRadius: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem' }}>2</div>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Panier Commande</h3>
               </div>
-              <button 
-                type="button" 
-                className="btn btn-outline" 
-                onClick={addLigne} 
-                style={{ padding: '0.6rem 1.25rem', fontSize: '0.85rem', fontWeight: 700, borderRadius: '12px' }}
-              >
-                <Plus size={16} strokeWidth={2.5} /> Ajouter un article
-              </button>
+              <button type="button" className="btn btn-outline" onClick={addLigne} style={{ padding: '0.6rem 1.25rem', fontSize: '0.85rem', fontWeight: 700, borderRadius: '12px' }}><Plus size={16} strokeWidth={2.5} /> Ajouter un article</button>
             </div>
             
             <div style={{ display: 'grid', gap: '1rem' }}>
@@ -347,13 +269,9 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
                   </div>
                   <div style={{ flex: '1', textAlign: 'right' }}>
                     <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Sous-total</label>
-                    <div className="brand-glow" style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>
-                      {(l.montant_ligne || 0).toLocaleString()} <span style={{ fontSize: '0.75rem' }}>CFA</span>
-                    </div>
+                    <div className="brand-glow" style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>{(l.montant_ligne || 0).toLocaleString()} <span style={{ fontSize: '0.75rem' }}>CFA</span></div>
                   </div>
-                  <button type="button" className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', padding: '0.75rem', borderRadius: '12px' }} onClick={() => setLignes(lignes.filter((_, i) => i !== idx))}>
-                    <Trash2 size={20} />
-                  </button>
+                  <button type="button" className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', padding: '0.75rem', borderRadius: '12px' }} onClick={() => setLignes(lignes.filter((_, i) => i !== idx))}><Trash2 size={20} /></button>
                 </div>
               ))}
             </div>
@@ -372,7 +290,6 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
             )}
           </div>
 
-          {/* SECTION 3: OPTIONS */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
             <div className="form-group">
               <label className="form-label" style={{ fontWeight: 700 }}>Provenance Commande</label>

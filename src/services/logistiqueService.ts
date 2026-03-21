@@ -13,26 +13,29 @@ export const getAvailableLivreurs = async (): Promise<User[]> => {
 };
 
 export const creerFeuilleRoute = async (livreurId: string, commandeIds: string[]): Promise<string> => {
+  // 1. Fetch commands to verify they exist and get totals
   const { data: cmdData, error: cmdFetchError } = await insforge.database
     .from('commandes')
     .select('*, clients(nom_complet, telephone)')
     .in('id', commandeIds);
 
-  if (cmdFetchError) throw cmdFetchError;
+  if (cmdFetchError) throw new Error(`Erreur lors de la récupération des commandes : ${cmdFetchError.message}`);
+  if (!cmdData || cmdData.length === 0) throw new Error("Aucune commande valide trouvée pour cette feuille de route.");
   
-  const mappedCmds = (cmdData || []).map((c: any) => ({
+  const mappedCmds = cmdData.map((c: any) => ({
     ...c,
     nom_client: c.clients?.nom_complet,
     telephone_client: c.clients?.telephone
   }));
   
   const total_montant = mappedCmds.reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
-  const communes = Array.from(new Set(mappedCmds.map(c => c.commune_livraison)));
+  const communes = Array.from(new Set(mappedCmds.map(c => c.commune_livraison).filter(Boolean)));
 
+  // 2. Insert the delivery sheet
   const { data: frData, error: frError } = await insforge.database
     .from('feuilles_route')
     .insert([{
-      date: new Date(),
+      date: new Date().toISOString(),
       livreur_id: livreurId,
       statut_feuille: 'en_cours',
       communes_couvertes: communes,
@@ -41,21 +44,22 @@ export const creerFeuilleRoute = async (livreurId: string, commandeIds: string[]
     }])
     .select();
 
-  if (frError) throw frError;
+  if (frError) throw new Error(`Erreur lors de la création de la feuille de route : ${frError.message}`);
+  
   const feuilleId = frData?.[0]?.id;
+  if (!feuilleId) throw new Error("Échec de la récupération de l'ID de la nouvelle feuille de route.");
 
-  for (const cid of commandeIds) {
-    const { error } = await insforge.database
-      .from('commandes')
-      .update({ 
-        statut_commande: 'en_cours_livraison', 
-        livreur_id: livreurId, 
-        feuille_route_id: feuilleId 
-      })
-      .eq('id', cid);
-    
-    if (error) throw error;
-  }
+  // 3. Batch update all orders in one request (Atomic and efficient)
+  const { error: batchUpdateError } = await insforge.database
+    .from('commandes')
+    .update({ 
+      statut_commande: 'en_cours_livraison', 
+      livreur_id: livreurId, 
+      feuille_route_id: feuilleId 
+    })
+    .in('id', commandeIds);
+  
+  if (batchUpdateError) throw new Error(`Erreur lors de l'affectation des commandes : ${batchUpdateError.message}`);
 
   return feuilleId;
 };
@@ -83,6 +87,22 @@ export const getCommandesByFeuille = async (feuilleId: string): Promise<Commande
     nom_client: c.clients?.nom_complet,
     telephone_client: c.clients?.telephone
   }));
+};
+
+export const getCommandeByReference = async (id: string): Promise<Commande | null> => {
+  const { data, error } = await insforge.database
+    .from('commandes')
+    .select('*, clients(nom_complet, telephone)')
+    .eq('id', id)
+    .single();
+
+  if (error) return null;
+  
+  return {
+    ...data,
+    nom_client: data.clients?.nom_complet,
+    telephone_client: data.clients?.telephone
+  };
 };
 
 export const supprimerFeuilleRoute = async (feuilleId: string): Promise<void> => {

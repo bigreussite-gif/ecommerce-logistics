@@ -84,26 +84,8 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
   const currentSubtotal = Number(commande.montant_total) - (Number(commande.frais_livraison) || 0);
 
   return (
-    <div style={{ 
-      position: 'fixed', 
-      inset: 0, 
-      backgroundColor: 'rgba(15, 23, 42, 0.7)', 
-      backdropFilter: 'blur(10px)',
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      zIndex: 1000,
-      padding: '1.5rem',
-      animation: 'pageEnter 0.4s ease-out'
-    }}>
-      <div className="card" style={{ 
-        width: '100%', 
-        maxWidth: '550px', 
-        position: 'relative',
-        padding: '2.5rem',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.3)',
-        border: '1px solid rgba(255, 255, 255, 0.1)'
-      }}>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content card" style={{ maxWidth: '550px', padding: '2.5rem' }} onClick={e => e.stopPropagation()}>
         <button 
           onClick={onClose} 
           style={{ 

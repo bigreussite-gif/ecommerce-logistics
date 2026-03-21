@@ -13,6 +13,22 @@ export const getFeuillesEnCours = async (livreurId: string): Promise<FeuilleRout
   return data || [];
 };
 
+export const getCloturedFeuilles = async (): Promise<FeuilleRoute[]> => {
+  const { data, error } = await insforge.database
+    .from('feuilles_route')
+    .select('*, livreurs:livreur_id(nom_complet)')
+    .in('statut_feuille', ['cloturee', 'terminee'])
+    .order('date_traitement', { ascending: false });
+
+  if (error) throw error;
+  
+  // Transform to include nom_livreur directly
+  return (data || []).map((f: any) => ({
+    ...f,
+    nom_livreur: f.livreurs?.nom_complet
+  }));
+};
+
 export const getCommandesConcernees = async (feuilleRouteId: string): Promise<Commande[]> => {
   const { data, error } = await insforge.database
     .from('commandes')
@@ -24,13 +40,14 @@ export const getCommandesConcernees = async (feuilleRouteId: string): Promise<Co
 };
 
 export const processCaisse = async (feuilleRouteId: string, resolutions: {id: string, statut: string, mode_paiement: string}[], montantPhysique: number, ecart: number, commentaire: string): Promise<void> => {
+  // 1. Update Feuille Route status and summary financials
   const { error: frError } = await insforge.database
     .from('feuilles_route')
     .update({
       statut_feuille: 'terminee',
       date_traitement: new Date().toISOString(),
-      total_montant_theorique: montantPhysique, // This usually comes from the sum of delivered orders
-      // ecart_caisse: ecart // Note: Verify if this column exists in your schema or add it
+      montant_encaisse: montantPhysique,
+      ecart_caisse: ecart
     })
     .eq('id', feuilleRouteId);
 
@@ -67,13 +84,14 @@ export const processCaisse = async (feuilleRouteId: string, resolutions: {id: st
     }
   }
   
+  // 2. Log formal Caisse Retour
   const { error: retourError } = await insforge.database
     .from('caisse_retours')
     .insert([{ 
       date: new Date(), 
       feuille_route_id: feuilleRouteId, 
       montant_remis_par_livreur: montantPhysique, 
-      montant_attendu: montantPhysique - ecart, // Simplified logic
+      montant_attendu: montantPhysique - ecart,
       ecart, 
       commentaire_caissiere: commentaire 
     }]);
@@ -82,25 +100,25 @@ export const processCaisse = async (feuilleRouteId: string, resolutions: {id: st
 };
 
 export const getDailyFinancials = async (dateStr: string): Promise<any> => {
-  const startOfDay = new Date(dateStr);
-  startOfDay.setHours(0,0,0,0);
-  const endOfDay = new Date(dateStr);
-  endOfDay.setHours(23,59,59,999);
+  const startOfDayDate = new Date(dateStr);
+  startOfDayDate.setHours(0,0,0,0);
+  const endOfDayDate = new Date(dateStr);
+  endOfDayDate.setHours(23,59,59,999);
 
   // 1. Get Caisse Retours for the day
   const { data: retours, error: retoursError } = await insforge.database
     .from('caisse_retours')
     .select('*')
-    .gte('date', startOfDay.toISOString())
-    .lte('date', endOfDay.toISOString());
+    .gte('date', startOfDayDate.toISOString())
+    .lte('date', endOfDayDate.toISOString());
 
   if (retoursError) throw retoursError;
 
   // 2. Get All Commandes modified or delivered today for stats
   const { data: commandes, error: cmdError } = await insforge.database
     .from('commandes')
-    .select('id, montant_total, statut_commande, mode_paiement')
-    .or(`date_livraison_effective.gte.${startOfDay.toISOString()},date_creation.gte.${startOfDay.toISOString()}`);
+    .select('id, montant_total, statut_commande, mode_paiement, frais_livraison')
+    .or(`date_livraison_effective.gte.${startOfDayDate.toISOString()},updated_at.gte.${startOfDayDate.toISOString()}`);
 
   if (cmdError) throw cmdError;
 

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { 
-  Users, Search, MessageCircle, Phone, MapPin, 
-  X
+  Users, Search, 
+  X, TrendingUp
 } from 'lucide-react';
 import { getClientsWithIntelligence, getClientCommandes, ClientFidelityStats } from '../services/clientService';
 import type { Client, Commande } from '../types';
 import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 export const Clients = () => {
   const [clients, setClients] = useState<(Client & ClientFidelityStats)[]>([]);
@@ -30,10 +31,13 @@ export const Clients = () => {
   };
 
   const openClientDetails = async (client: Client & ClientFidelityStats) => {
-    const cmds = await getClientCommandes(client.id);
-    cmds.sort((a, b) => new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime());
-    setSelectedClient({ client, commandes: cmds });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    try {
+      const cmds = await getClientCommandes(client.id);
+      cmds.sort((a, b) => new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime());
+      setSelectedClient({ client, commandes: cmds });
+    } catch(e) {
+      console.error(e);
+    }
   };
 
   const sendWhatsApp = (client: Client, templateName: 'friendly' | 'promo' | 'reminder') => {
@@ -41,13 +45,13 @@ export const Clients = () => {
     const nom = client.nom_complet.split(' ')[0] || 'Cher client';
     
     if (templateName === 'friendly') {
-      message = `Bonjour ${nom} ! 🌟\nComment allez-vous ? J'espère que vous êtes satisfait de nos services. Si vous avez besoin de quoi que ce soit, nous sommes à votre disposition !\n- L'équipe`;
+      message = `Bonjour ${nom} ! 🌟\nComment allez-vous ? J'espère que vous êtes satisfait de nos services. Si vous avez besoin de quoi que ce soit, nous sommes à votre disposition !\n- GomboSwift`;
     } 
     else if (templateName === 'promo') {
-      message = `Coucou ${nom} ! 🎉\nEn tant que client fidèle, nous vous offrons une remise spéciale sur votre prochaine commande chez nous ! Utilisez ce code PROMO VIP.\nDécouvrez nos nouveautés dès maintenant : [Lien]`;
+      message = `Coucou ${nom} ! 🎉\nEn tant que client fidèle, nous vous offrons une remise spéciale sur votre prochaine commande chez nous ! Utilisez ce code PROMO VIP.\nDécouvrez nos nouveautés dès maintenant !`;
     } 
     else if (templateName === 'reminder') {
-      message = `Bonjour ${nom} ! 😊\nOn ne vous a pas vu depuis un moment ! On espère que tout va bien. \nNous avons rentré de nouveaux articles qui pourraient vous intéresser. À très vite !`;
+      message = `Bonjour ${nom} ! 😊\nOn ne vous a pas vu depuis un moment ! On espère que tout va bien. Nous avons rentré de nouveaux articles qui pourraient vous intéresser. À très vite !`;
     }
 
     let phone = client.telephone.replace(/\D/g, '');
@@ -62,222 +66,175 @@ export const Clients = () => {
     c.telephone.includes(searchTerm)
   );
 
-  if (loading) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
-      <div className="loading-spinner"></div>
-      <p style={{ marginTop: '1.5rem', fontWeight: 600, color: 'var(--text-muted)' }}>Analyse intelligente de la base CRM...</p>
-    </div>
-  );
-
   return (
-    <div style={{ animation: 'pageEnter 0.6s ease' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
-        <div>
-          <h1 className="text-premium" style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Users size={36} strokeWidth={2.5} color="var(--primary)" />
-            Customer Intelligence 2.0
-          </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginTop: '0.4rem', fontWeight: 500 }}>Fidélisez vos clients avec une segmentation IA et des actions WhatsApp ciblées.</p>
-        </div>
-        
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <div style={{ background: 'white', padding: '1rem 1.5rem', borderRadius: '18px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Audience</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--primary)' }}>{clients.length} <span style={{ fontSize: '0.8rem' }}>leads</span></div>
+    <>
+      <div style={{ animation: 'pageEnter 0.6s ease' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
+          <div>
+            <h1 className="text-premium" style={{ fontSize: '2.4rem', fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <Users size={36} strokeWidth={2.5} color="var(--primary)" />
+              Customer Intelligence 2.0
+            </h1>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginTop: '0.4rem', fontWeight: 600 }}>Pilotez votre fidélité client avec des segments IA.</p>
           </div>
-          <div style={{ background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', padding: '1rem 1.5rem', borderRadius: '18px', color: 'white' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, opacity: 0.9, textTransform: 'uppercase' }}>Clients VIP</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{clients.filter(c => c.segment === 'Diamant 💎').length}</div>
+          
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <div className="card glass-effect" style={{ padding: '1rem 1.5rem', borderRadius: '18px', display: 'flex', flexDirection: 'column', minWidth: '140px' }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Audience</span>
+              <span style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--primary)' }}>{clients.length}</span>
+            </div>
+            <div className="card glass-effect" style={{ padding: '1rem 1.5rem', borderRadius: '18px', background: 'var(--primary)', color: 'white', display: 'flex', flexDirection: 'column', minWidth: '140px', border: 'none' }}>
+              <span style={{ fontSize: '0.7rem', fontWeight: 800, opacity: 0.8, textTransform: 'uppercase' }}>VIP Diamant</span>
+              <span style={{ fontSize: '1.6rem', fontWeight: 900 }}>{clients.filter(c => c.segment === 'Diamant 💎').length}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="card glass-effect" style={{ marginBottom: '2.5rem', padding: '1.5rem' }}>
-        <div style={{ position: 'relative', maxWidth: '600px' }}>
-          <Search size={22} style={{ position: 'absolute', top: '50%', left: '1.25rem', transform: 'translateY(-50%)', color: 'var(--primary)' }} />
-          <input 
-            type="text" 
-            className="form-input" 
-            placeholder="Rechercher par nom ou téléphone..." 
-            style={{ paddingLeft: '3.5rem', height: '54px', borderRadius: '14px' }}
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
+        <div className="card glass-effect" style={{ marginBottom: '2rem', padding: '1.25rem' }}>
+          <div style={{ position: 'relative' }}>
+            <Search size={20} style={{ position: 'absolute', top: '50%', left: '1.25rem', transform: 'translateY(-50%)', color: 'var(--primary)' }} />
+            <input 
+              type="text" 
+              className="form-input" 
+              placeholder="Rechercher par nom ou téléphone..." 
+              style={{ paddingLeft: '3.5rem', height: '54px', borderRadius: '14px', width: '100%', border: 'none', background: 'transparent' }}
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="card glass-effect" style={{ padding: 0, overflow: 'hidden' }}>
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Identité & Client</th>
-                <th>Segment IA</th>
-                <th style={{ textAlign: 'center' }}>Commandes (Total)</th>
-                <th style={{ textAlign: 'right' }}>Dépense (Livré)</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredClients.map((client: Client & ClientFidelityStats) => (
-                <tr key={client.id} onClick={() => openClientDetails(client)} className="hover-card">
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                       <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
-                         {client.nom_complet.charAt(0).toUpperCase()}
-                       </div>
-                       <div>
-                         <div style={{ fontWeight: 800, color: 'var(--text-main)' }}>{client.nom_complet}</div>
-                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>{client.telephone}</div>
-                       </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span style={{ 
-                      padding: '0.4rem 0.8rem', 
-                      borderRadius: '10px', 
-                      fontSize: '0.75rem', 
-                      fontWeight: 800,
-                      backgroundColor: client.segment === 'Diamant 💎' ? '#fef3c7' : client.segment === 'À relancer ⚠️' ? '#fee2e2' : '#f1f5f9',
-                      color: client.segment === 'Diamant 💎' ? '#92400e' : client.segment === 'À relancer ⚠️' ? '#991b1b' : '#64748b'
-                    }}>
-                      {client.segment}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: 'center', fontWeight: 700 }}>
-                    <div style={{ fontSize: '1rem' }}>{client.total_commandes}</div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{client.total_brut.toLocaleString()} CFA</div>
-                  </td>
-                  <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--primary)' }}>
-                    {client.total_encaisse.toLocaleString()} <span style={{ fontSize: '0.7rem' }}>CFA</span>
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <button className="btn btn-outline" style={{ borderRadius: '10px', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
-                      Détails
-                    </button>
-                  </td>
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Identité & Client</th>
+                  <th>Segment IA</th>
+                  <th style={{ textAlign: 'center' }}>Fréquence</th>
+                  <th style={{ textAlign: 'right' }}>Volume d'achat</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: '4rem' }}>Chargement...</td></tr>
+                ) : filteredClients.map((client: Client & ClientFidelityStats) => (
+                  <tr key={client.id} onClick={() => openClientDetails(client)} style={{ cursor: 'pointer' }}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                         <div style={{ width: '42px', height: '42px', borderRadius: '14px', background: 'var(--bg-app)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, border: '1px solid #e2e8f0' }}>
+                           {client.nom_complet.charAt(0).toUpperCase()}
+                         </div>
+                         <div>
+                           <div style={{ fontWeight: 800, color: 'var(--text-main)' }}>{client.nom_complet}</div>
+                           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>{client.telephone}</div>
+                         </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span style={{ 
+                        padding: '0.4rem 1rem', 
+                        borderRadius: '12px', 
+                        fontSize: '0.75rem', 
+                        fontWeight: 800,
+                        backgroundColor: client.segment === 'Diamant 💎' ? '#f0fdf4' : client.segment === 'À relancer ⚠️' ? '#fef2f2' : '#f8fafc',
+                        color: client.segment === 'Diamant 💎' ? '#166534' : client.segment === 'À relancer ⚠️' ? '#991b1b' : '#64748b'
+                      }}>
+                        {client.segment}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: 'center', fontWeight: 800 }}>
+                      {client.total_commandes} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>colis</span>
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: 900, color: 'var(--primary)' }}>
+                      {client.total_encaisse.toLocaleString()} CFA
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button className="btn btn-outline btn-sm" onClick={(e) => { e.stopPropagation(); openClientDetails(client); }}>Profil</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
+      {/* RENDER MODAL OUTSIDE MAIN CONTAINER STREAM TO AVOID TRANSFORM TRAPPING */}
       {selectedClient && (
-        <div style={{ 
-          position: 'fixed', 
-          inset: 0, 
-          backgroundColor: 'rgba(0,0,0,0.4)', 
-          backdropFilter: 'blur(8px)', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          zIndex: 9999, 
-          padding: '1.5rem',
-          animation: 'modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
-        }} onClick={() => setSelectedClient(null)}>
-          <div className="card" style={{ 
-            maxWidth: '900px', 
-            width: '100%', 
-            maxHeight: '90vh', 
-            overflowY: 'auto', 
-            position: 'relative', 
-            padding: '2.5rem', 
-            background: 'white',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            border: 'none',
-            borderRadius: '24px'
-          }} onClick={e => e.stopPropagation()}>
-            <button 
-              onClick={() => setSelectedClient(null)} 
-              style={{ 
-                position: 'absolute', 
-                top: '1.5rem', 
-                right: '1.5rem', 
-                background: '#f1f5f9', 
-                border: 'none', 
-                borderRadius: '50%', 
-                width: '40px', 
-                height: '40px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                color: 'var(--text-muted)'
-              }}
-            >
-              <X size={20} />
-            </button>
-            
-            <div style={{ display: 'flex', gap: '2rem', marginBottom: '3rem', flexWrap: 'wrap' }}>
-              <div style={{ width: '100px', height: '100px', borderRadius: '30px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 900 }}>
-                {selectedClient.client.nom_complet.charAt(0).toUpperCase()}
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <h2 style={{ fontSize: '2rem', fontWeight: 900, margin: 0 }}>{selectedClient.client.nom_complet}</h2>
-                  <span style={{ padding: '0.4rem 1rem', background: '#dcfce7', color: '#166534', borderRadius: '30px', fontSize: '0.75rem', fontWeight: 800 }}>{selectedClient.client.segment}</span>
-                </div>
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                    <Phone size={16} color="var(--primary)" /> {selectedClient.client.telephone}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                    <MapPin size={16} color="var(--primary)" /> {selectedClient.client.commune || 'Abidjan'}
-                  </div>
-                </div>
-              </div>
+        <div className="modal-backdrop" onClick={() => setSelectedClient(null)}>
+          <div className="modal-content" style={{ maxWidth: '800px', padding: 0, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div style={{ padding: '2rem', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', position: 'relative' }}>
+               <button onClick={() => setSelectedClient(null)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '0.5rem', cursor: 'pointer' }}>
+                 <X size={20} />
+               </button>
+               <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                 <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 900 }}>
+                    {selectedClient.client.nom_complet.charAt(0).toUpperCase()}
+                 </div>
+                 <div>
+                   <h2 style={{ fontSize: '1.75rem', fontWeight: 900, margin: 0 }}>{selectedClient.client.nom_complet}</h2>
+                   <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                      <span className="badge badge-success">{selectedClient.client.segment}</span>
+                      <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>{selectedClient.client.telephone}</span>
+                   </div>
+                 </div>
+               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-              <div className="card" style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>Volume Total (Brut)</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-main)' }}>{selectedClient.client.total_brut.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
-              </div>
-              <div className="card" style={{ background: '#f0fdf4', padding: '1.25rem', borderRadius: '16px', border: '1px solid #bbf7d0' }}>
-                <div style={{ color: '#166534', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>Revenu Encaissé (Livré)</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#15803d' }}>{selectedClient.client.total_encaisse.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
-              </div>
-              <div className="card" style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>Panier Moyen</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{selectedClient.client.panier_moyen.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
-              </div>
+            {/* Modal Body */}
+            <div style={{ padding: '2rem', maxHeight: '60vh', overflowY: 'auto' }}>
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
+                  <div style={{ padding: '1.25rem', borderRadius: '16px', background: '#f1f5f9' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Volume Total</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{selectedClient.client.total_encaisse.toLocaleString()} CFA</div>
+                  </div>
+                  <div style={{ padding: '1.25rem', borderRadius: '16px', background: '#f1f5f9' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Panier Moyen</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{selectedClient.client.panier_moyen.toLocaleString()} CFA</div>
+                  </div>
+                  <div style={{ padding: '1.25rem', borderRadius: '16px', background: '#f1f5f9' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Dernier Achat</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{selectedClient.commandes[0] ? format(new Date(selectedClient.commandes[0].date_creation), 'dd/MM/yy') : 'N/A'}</div>
+                  </div>
+               </div>
+
+               <div style={{ marginBottom: '2.5rem' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <TrendingUp size={20} color="var(--primary)" /> Actions Marketing WhatsApp
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                    <button className="btn" style={{ background: '#22c55e', color: 'white', fontSize: '0.85rem' }} onClick={() => sendWhatsApp(selectedClient.client, 'friendly')}>Bienvenue 👋</button>
+                    <button className="btn" style={{ background: '#16a34a', color: 'white', fontSize: '0.85rem' }} onClick={() => sendWhatsApp(selectedClient.client, 'promo')}>Promo VIP 🎁</button>
+                    <button className="btn" style={{ background: '#15803d', color: 'white', fontSize: '0.85rem' }} onClick={() => sendWhatsApp(selectedClient.client, 'reminder')}>Relance 🔄</button>
+                  </div>
+               </div>
+
+               <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '1rem' }}>Historique des Commandes</h3>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                 {selectedClient.commandes.map((cmd) => (
+                   <div key={cmd.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>#{cmd.id.slice(0,8).toUpperCase()}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{format(new Date(cmd.date_creation), 'dd MMMM yyyy', { locale: fr })}</div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontWeight: 900 }}>{cmd.montant_total?.toLocaleString()} CFA</div>
+                        <span className={`badge ${['livree', 'terminee'].includes(cmd.statut_commande) ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.65rem' }}>{cmd.statut_commande}</span>
+                      </div>
+                   </div>
+                 ))}
+               </div>
             </div>
 
-            <div style={{ background: '#f0fdf4', padding: '1.5rem', borderRadius: '20px', border: '1px solid #bbf7d0', marginBottom: '2.5rem' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 900, color: '#166534', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
-                <MessageCircle size={20} /> Actions CRM Directes
-              </h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                <button className="btn" style={{ backgroundColor: '#25D366', color: 'white', fontWeight: 800, border: 'none', height: '50px', borderRadius: '12px' }} onClick={() => sendWhatsApp(selectedClient.client, 'friendly')}>
-                  Message Bienvenue 👋
-                </button>
-                <button className="btn" style={{ backgroundColor: '#128C7E', color: 'white', fontWeight: 800, border: 'none', height: '50px', borderRadius: '12px' }} onClick={() => sendWhatsApp(selectedClient.client, 'promo')}>
-                  Offre Spéciale 🎁
-                </button>
-                <button className="btn" style={{ backgroundColor: '#075E54', color: 'white', fontWeight: 800, border: 'none', height: '50px', borderRadius: '12px' }} onClick={() => sendWhatsApp(selectedClient.client, 'reminder')}>
-                  Relance Client 🔄
-                </button>
-              </div>
-            </div>
-            
-            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-              <h4 style={{ fontWeight: 800, marginBottom: '1rem' }}>Historique des Commandes</h4>
-              {selectedClient.commandes.map((cmd: Commande) => (
-                <div key={cmd.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'white', borderRadius: '12px', border: '1px solid #f1f5f9', marginBottom: '0.5rem' }}>
-                  <div>
-                    <div style={{ fontWeight: 700 }}>#{cmd.id.slice(0,8).toUpperCase()} - {format(new Date(cmd.date_creation), 'dd/MM/yyyy')}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{cmd.statut_commande.replace('_', ' ').toUpperCase()}</div>
-                  </div>
-                  <div style={{ fontWeight: 800, color: ['livree', 'terminee'].includes(cmd.statut_commande) ? '#10b981' : 'var(--primary)' }}>
-                    {Number(cmd.montant_total).toLocaleString()} CFA
-                  </div>
-                </div>
-              ))}
+            <div style={{ padding: '1.5rem 2rem', borderTop: '1px solid #f1f5f9', textAlign: 'right' }}>
+               <button className="btn btn-primary" onClick={() => setSelectedClient(null)}>Fermer l'Analyse</button>
             </div>
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };

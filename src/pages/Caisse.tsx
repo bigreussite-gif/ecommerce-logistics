@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { getAvailableLivreurs } from '../services/logistiqueService';
 import { getFeuillesEnCours, getCommandesConcernees, processCaisse } from '../services/caisseService';
+import { insforge } from '../lib/insforge';
 import type { User, Commande, FeuilleRoute } from '../types';
-import { Calculator, CheckCircle2, ChevronRight } from 'lucide-react';
+import { Calculator, CheckCircle2, ChevronRight, Plus, Search } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '../contexts/ToastContext';
 
@@ -17,6 +18,7 @@ export const Caisse = () => {
   const [resolutions, setResolutions] = useState<Record<string, { statut: string, mode_paiement: string }>>({});
 
   const [loading, setLoading] = useState(false);
+  const [extraSearch, setExtraSearch] = useState('');
 
   // Form State
   const [montantRemisStr, setMontantRemisStr] = useState<string>('');
@@ -56,7 +58,7 @@ export const Caisse = () => {
       const newRes: any = {};
       cmds.forEach(c => {
         let statutInit = c.statut_commande;
-        if (statutInit === 'en_cours_livraison') statutInit = 'retour_livreur';
+        if (statutInit === 'en_cours_livraison' || statutInit === 'validee') statutInit = 'livree';
         
         newRes[c.id] = {
            statut: statutInit,
@@ -69,6 +71,69 @@ export const Caisse = () => {
       setCommentaire('');
     } catch(e) {
       console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddExtraOrder = async () => {
+    if (!extraSearch || !feuille) return;
+    
+    // Clean search string (could be #ID... or just ID)
+    const cleanId = extraSearch.trim().replace('#', '').toLowerCase();
+    
+    // Check if already in list
+    if (commandes.find(c => c.id.toLowerCase().includes(cleanId) || cleanId.includes(c.id.toLowerCase()))) {
+      showToast("Cette commande est déjà dans la liste.", "info");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Find the command by partial ID or full ID
+      const { data: results } = await insforge.database
+        .from('commandes')
+        .select('*, clients(nom_complet, telephone)')
+        .or(`id.ilike.%${cleanId}%`)
+        .limit(1);
+
+      if (!results || results.length === 0) {
+        showToast("Aucune commande trouvée avec cette référence.", "error");
+        return;
+      }
+
+      const cmd = results[0];
+      const fullCmd = {
+        ...cmd,
+        nom_client: cmd.clients?.nom_complet,
+        telephone_client: cmd.clients?.telephone
+      };
+
+      // 1. Assign to current sheet in DB
+      await insforge.database
+        .from('commandes')
+        .update({ 
+          feuille_route_id: feuille.id, 
+          livreur_id: selectedLivreur,
+          statut_commande: 'en_cours_livraison' 
+        })
+        .eq('id', cmd.id);
+
+      // 2. Add to local state
+      setCommandes(prev => [...prev, fullCmd]);
+      setResolutions(prev => ({
+        ...prev,
+        [cmd.id]: {
+          statut: 'livree',
+          mode_paiement: 'Cash à la livraison'
+        }
+      }));
+
+      setExtraSearch('');
+      showToast(`Commande #${cmd.id.slice(0,8)} ajoutée à la tournée.`, "success");
+
+    } catch (e) {
+      showToast("Erreur lors de l'ajout.", "error");
     } finally {
       setLoading(false);
     }
@@ -208,6 +273,25 @@ export const Caisse = () => {
                     </span>
                  </h3>
                  <button className="btn btn-outline" style={{ borderRadius: '12px', height: '40px', fontWeight: 700 }} onClick={() => setFeuille(null)}>Changer de feuille</button>
+              </div>
+
+              {/* QUICK ADD EXTRA ORDERS */}
+              <div style={{ padding: '1.5rem 2.5rem', borderBottom: '1px solid #f1f5f9', background: '#fffef0', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                 <div style={{ position: 'relative', flex: 1 }}>
+                    <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="Ajouter un colis hors-bordereau (Ref #...)"
+                      style={{ paddingLeft: '2.75rem', height: '44px', borderRadius: '12px', border: '2px solid #fef3c7' }}
+                      value={extraSearch}
+                      onChange={e => setExtraSearch(e.target.value)}
+                      onKeyPress={e => e.key === 'Enter' && handleAddExtraOrder()}
+                    />
+                 </div>
+                 <button className="btn btn-secondary" style={{ height: '44px', borderRadius: '12px', padding: '0 1.5rem', fontWeight: 800, whiteSpace: 'nowrap' }} onClick={handleAddExtraOrder}>
+                    <Plus size={18} style={{ marginRight: '0.5rem' }} /> Ajouter
+                 </button>
               </div>
 
               <div className="table-container">

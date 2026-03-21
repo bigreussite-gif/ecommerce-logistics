@@ -53,26 +53,8 @@ export const StockForm = ({ produit, onClose, onSave }: StockFormProps) => {
   };
 
   return (
-    <div style={{ 
-      position: 'fixed', 
-      inset: 0, 
-      backgroundColor: 'rgba(15, 23, 42, 0.65)', 
-      backdropFilter: 'blur(8px)',
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      zIndex: 100,
-      animation: 'fadeIn 0.3s ease'
-    }}>
-      <div className="card glass-effect" style={{ 
-        width: '95%', 
-        maxWidth: '550px', 
-        position: 'relative',
-        padding: '2.5rem',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-        animation: 'slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
-      }}>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content card glass-effect" style={{ maxWidth: '550px', padding: '2.5rem' }} onClick={e => e.stopPropagation()}>
         <button onClick={onClose} className="btn-close-premium" style={{ 
           position: 'absolute', top: '1.5rem', right: '1.5rem', 
           background: 'rgba(255,255,255,0.05)', border: 'none', cursor: 'pointer', 
@@ -92,7 +74,7 @@ export const StockForm = ({ produit, onClose, onSave }: StockFormProps) => {
             </div>
             <div style={{ textAlign: 'right' }}>
               <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stock Actuel</p>
-              <span className={`badge ${produit.stock_actuel <= produit.stock_minimum ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '1rem', padding: '0.4rem 0.8rem' }}>
+              <span className={`badge ${produit.stock_actuel <= (produit.stock_minimum || 0) ? 'badge-danger' : 'badge-success'}`} style={{ fontSize: '1rem', padding: '0.4rem 0.8rem' }}>
                 {produit.stock_actuel} unités
               </span>
             </div>
@@ -116,7 +98,7 @@ export const StockForm = ({ produit, onClose, onSave }: StockFormProps) => {
                 }}
               >
                 <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
-                  <ArrowDownRight size={24} strokeWidth={2.5} />
+                   <ArrowDownRight size={24} strokeWidth={2.5} />
                 </div>
                 <span style={{ fontSize: '0.9rem', fontWeight: 800, color: formData.type_mouvement === 'entree' ? '#10b981' : 'var(--text-muted)' }}>Entrée</span>
               </div>
@@ -133,11 +115,11 @@ export const StockForm = ({ produit, onClose, onSave }: StockFormProps) => {
                 }}
               >
                 <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(239, 68, 68, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
-                  <ArrowUpRight size={24} strokeWidth={2.5} />
+                   <ArrowUpRight size={24} strokeWidth={2.5} />
                 </div>
                 <span style={{ fontSize: '0.9rem', fontWeight: 800, color: formData.type_mouvement === 'sortie' ? '#ef4444' : 'var(--text-muted)' }}>Sortie</span>
               </div>
-
+              
               <div 
                 onClick={() => setFormData({...formData, type_mouvement: 'retour'})}
                 style={{ 
@@ -150,7 +132,7 @@ export const StockForm = ({ produit, onClose, onSave }: StockFormProps) => {
                 }}
               >
                 <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
-                  <RefreshCcw size={24} strokeWidth={2.5} />
+                   <RefreshCcw size={24} strokeWidth={2.5} />
                 </div>
                 <span style={{ fontSize: '0.9rem', fontWeight: 800, color: formData.type_mouvement === 'retour' ? '#f59e0b' : 'var(--text-muted)' }}>Retour</span>
               </div>
@@ -213,7 +195,7 @@ export const StockForm = ({ produit, onClose, onSave }: StockFormProps) => {
             </button>
             <button 
               type="submit" 
-              className="btn" 
+              className="btn btn-primary" 
               disabled={loading}
               style={{ 
                 background: getAccentColor(), 

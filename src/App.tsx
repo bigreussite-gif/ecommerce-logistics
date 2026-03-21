@@ -81,7 +81,7 @@ const AppRoutes = () => {
 
         {/* Financial Report */}
         <Route path="rapport-financier" element={
-          <ProtectedRoute requiredPermission="FINANCE"><FinancialReport /></ProtectedRoute>
+          <ProtectedRoute requiredPermission="ADMIN"><FinancialReport /></ProtectedRoute>
         } />
 
         {/* Historique et Impression */}
@@ -101,7 +101,7 @@ const AppRoutes = () => {
 
         {/* Net Profit & Expenses */}
         <Route path="net-profit" element={
-          <ProtectedRoute requiredPermission="FINANCE"><NetProfit /></ProtectedRoute>
+          <ProtectedRoute requiredPermission="ADMIN"><NetProfit /></ProtectedRoute>
         } />
 
         {/* Profil Route */}

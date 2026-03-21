@@ -90,7 +90,7 @@ export const Livraison = () => {
 
       <div style={{ display: 'grid', gap: '1.5rem', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
         {commandes.map(c => {
-          const isDone = c.statut_commande === 'livree' || c.statut_commande === 'retour_livreur';
+          const isDone = c.statut_commande === 'livree' || c.statut_commande === 'retour_livreur' || c.statut_commande === 'terminee';
           
           return (
             <div key={c.id} className="card" style={{ 
@@ -110,7 +110,7 @@ export const Livraison = () => {
                   <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginTop: '0.2rem' }}>CODE: #{c.id.slice(0, 8).toUpperCase()}</span>
                 </div>
                 <div>
-                  {c.statut_commande === 'livree' && <span className="badge badge-success" style={{ background: '#10b981', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '10px' }}>Livrée</span>}
+                  {(c.statut_commande === 'livree' || c.statut_commande === 'terminee') && <span className="badge badge-success" style={{ background: '#10b981', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '10px' }}>Livrée</span>}
                   {c.statut_commande === 'retour_livreur' && <span className="badge badge-danger" style={{ background: '#ef4444', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '10px' }}>Échec</span>}
                   {c.statut_commande === 'en_cours_livraison' && <div className="loading-spinner-small"></div>}
                 </div>
@@ -138,7 +138,7 @@ export const Livraison = () => {
                   <button 
                     className="btn btn-primary" 
                     style={{ flex: 1.5, height: '52px', borderRadius: '14px', fontWeight: 800, boxShadow: '0 8px 15px -3px rgba(16, 185, 129, 0.3)', background: '#10b981' }}
-                    onClick={() => { setSelectedCommande(c); setStatusAction('livree'); setModeForm(c.mode_paiement); setNoteForm(''); }}
+                    onClick={() => { setSelectedCommande(c); setStatusAction('livree'); setModeForm(c.mode_paiement || 'Cash'); setNoteForm(''); }}
                   >
                     <CheckCircle size={20} strokeWidth={2.5} /> Livré
                   </button>

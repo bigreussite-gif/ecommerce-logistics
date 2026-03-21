@@ -50,18 +50,29 @@ export const Logistique = () => {
       setLoading(true);
       const feuilleId = await creerFeuilleRoute(selectedLivreur, Array.from(selectedCommands));
       
+      if (!feuilleId) {
+        throw new Error("L'identifiant de la feuille de route est manquant après la création.");
+      }
+
       // Auto-generate PDF
       const selectedFullCommandes = commandes.filter(c => selectedCommands.has(c.id));
       const livreurName = livreurs.find(l => l.id === selectedLivreur)?.nom_complet || "Livreur";
-      generateDeliverySlipPDF({ id: feuilleId, nom_livreur: livreurName }, selectedFullCommandes);
+      
+      try {
+        generateDeliverySlipPDF({ id: feuilleId, nom_livreur: livreurName }, selectedFullCommandes);
+      } catch (pdfErr) {
+        console.error("Erreur PDF:", pdfErr);
+        showToast("Feuille créée, mais erreur lors de la génération du PDF. Vous pouvez le réimprimer depuis l'historique.", "info");
+      }
 
-      showToast("Feuille de route et PDF générés avec succès !", "success");
+      showToast("Feuille de route générée avec succès !", "success");
       setSelectedCommands(new Set());
       setSelectedLivreur('');
       fetchData();
-    } catch (error) {
-      console.error(error);
-      showToast("Erreur lors de la génération.", "error");
+    } catch (error: any) {
+      console.error("Détails de l'erreur Logistique:", error);
+      const message = error.message || "Une erreur inattendue est survenue.";
+      showToast(`Échec de la génération : ${message}`, "error");
     } finally {
       setLoading(false);
     }

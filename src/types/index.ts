@@ -78,7 +78,7 @@ export interface Commande {
   source_commande: string;
   statut_commande: StatutCommande;
   montant_total: number;
-  frais_livraison?: number;
+  frais_livraison: number;
   mode_paiement: string;
   commune_livraison: string;
   adresse_livraison: string;
@@ -90,6 +90,9 @@ export interface Commande {
   date_livraison_effective?: Date | any;
   montant_encaisse?: number;
   notes_livreur?: string;
+  commentaire_agent?: string;
+  // Extras for Dashboard/Reporting
+  nombre_produits?: number;
 }
 
 export interface LigneCommande {
@@ -122,6 +125,10 @@ export interface FeuilleRoute {
   total_montant_theorique: number;
   lien_pdf?: string;
   date_traitement?: string | Date;
+  // Extras
+  montant_encaisse?: number;
+  ecart_caisse?: number;
+  nom_livreur?: string;
 }
 
 export interface MouvementStock {

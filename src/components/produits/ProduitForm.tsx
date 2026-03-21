@@ -69,8 +69,8 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
   };
 
   return (
-    <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1.5rem', animation: 'fadeIn 0.3s ease' }} onClick={onClose}>
-      <div className="card glass-effect" style={{ width: '100%', maxWidth: '750px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', padding: '3rem', border: '1px solid rgba(255,255,255,0.2)', animation: 'modalEnter 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' }} onClick={e => e.stopPropagation()}>
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content card glass-effect" style={{ maxWidth: '750px', padding: '3rem' }} onClick={e => e.stopPropagation()}>
         <button onClick={onClose} style={{ position: 'absolute', top: '2rem', right: '2rem', background: 'rgba(0,0,0,0.05)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease' }} className="hover-card">
           <X size={22} strokeWidth={2.5} />
         </button>

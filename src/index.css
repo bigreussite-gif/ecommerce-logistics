@@ -451,8 +451,76 @@ tr:hover td {
   background: rgba(255, 255, 255, 0.08) !important;
 }
 
-/* Custom Scrollbar for Premium Feel */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* --- MODALS --- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 1.5rem;
+  overflow-y: auto;
+  animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+  background: white;
+  width: 100%;
+  max-width: 500px;
+  border-radius: var(--radius-xl);
+  padding: 2.5rem;
+  position: relative;
+  margin: auto; /* Allows centering in scrollable backdrop */
+  box-shadow: 0 30px 60px -12px rgba(0,0,0,0.4);
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (max-width: 640px) {
+  .modal-backdrop {
+    padding: 0;
+    align-items: flex-end; /* Slide from bottom on mobile */
+  }
+  .modal-content {
+    border-radius: 30px 30px 0 0;
+    padding: 1.5rem;
+    padding-bottom: 3rem;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  display: block;
+}

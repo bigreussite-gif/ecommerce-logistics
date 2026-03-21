@@ -1,311 +1,239 @@
 import { useState, useEffect } from 'react';
-import { getAvailableLivreurs, getFeuillesRoute, getCommandesByFeuille, supprimerFeuilleRoute } from '../services/logistiqueService';
-import type { Commande, User, FeuilleRoute } from '../types';
-import { History, Printer, Lock, Calendar, Trash2 } from 'lucide-react';
+import { getCommandesByFeuille } from '../services/logistiqueService';
+import { getCloturedFeuilles } from '../services/caisseService';
+import { Calendar, Search, Truck, X, Printer } from 'lucide-react';
 import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { FeuilleRoute, Commande } from '../types';
+import { generateDeliverySlipPDF } from '../services/pdfService';
 import { useToast } from '../contexts/ToastContext';
-import { useAuth } from '../contexts/AuthContext';
 
 export const Historique = () => {
   const { showToast } = useToast();
-  const { hasPermission } = useAuth();
-  const isAdmin = hasPermission('ADMIN');
-  const [loading, setLoading] = useState(true);
-  const [livreurs, setLivreurs] = useState<User[]>([]);
   const [feuilles, setFeuilles] = useState<FeuilleRoute[]>([]);
-  const [impression, setImpression] = useState<{feuille: any, commandes: Commande[]} | null>(null);
-
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const [livs, hist] = await Promise.all([
-        getAvailableLivreurs(),
-        getFeuillesRoute()
-      ]);
-      setLivreurs(livs);
-      
-      // Sort by descending date
-      const sortedHist = hist.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setFeuilles(sortedHist);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const [selectedFeuille, setSelectedFeuille] = useState<FeuilleRoute | null>(null);
+  const [associatedCommandes, setAssociatedCommandes] = useState<Commande[]>([]);
+  const [modalLoading, setModalLoading] = useState(false);
 
   useEffect(() => {
-    fetchData();
+    const load = async () => {
+      try {
+        const data = await getCloturedFeuilles();
+        setFeuilles(data);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
-  const handlePrint = async (feuille: any) => {
+  const handleReview = async (f: FeuilleRoute, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedFeuille(f);
+    setModalLoading(true);
     try {
-      const cmds = await getCommandesByFeuille(feuille.id);
-      setImpression({ feuille, commandes: cmds });
-      setTimeout(() => window.print(), 500);
-    } catch(e) {
-      showToast("Erreur lors de l'impression", "error");
+      const cmds = await getCommandesByFeuille(f.id);
+      setAssociatedCommandes(cmds);
+    } catch (e) {
+      showToast("Erreur lors du chargement des détails", "error");
+    } finally {
+      setModalLoading(false);
     }
   };
 
-  const handleDeleteFeuille = async (feuille: FeuilleRoute) => {
-    if (feuille.statut_feuille === 'terminee') {
-      showToast("Impossible de supprimer une archive classée.", "error");
-      return;
-    }
-    
-    if (window.confirm("Êtes-vous sûr de vouloir supprimer définitivement cette feuille de route ? Les colis non-livrés repasseront en 'Validé' pour ré-affectation.")) {
-      try {
-        await supprimerFeuilleRoute(feuille.id);
-        showToast("Feuille de route supprimée et colis libérés.", "success");
-        fetchData();
-      } catch (e) {
-        showToast("Erreur lors de la suppression.", "error");
-      }
-    }
-  };
-
-  const feuillesEnCours = feuilles.filter(f => f.statut_feuille !== 'terminee');
-  const feuillesTraitees = feuilles.filter(f => f.statut_feuille === 'terminee');
-
-  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Chargement...</div>;
+  const filtered = feuilles.filter(f => 
+    f.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    f.nom_livreur?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div style={{ animation: 'pageEnter 0.6s ease' }}>
-      <div style={{ marginBottom: '2.5rem' }} className="no-print">
-        <h1 className="text-premium" style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <History size={36} strokeWidth={2.5} />
-          Historique & Archives
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginTop: '0.4rem', fontWeight: 500 }}>Consultez et réimprimez les feuilles de route passées ou en cours.</p>
-      </div>
-
-      {/* SECTION EN COURS */}
-      <div className="card glass-effect no-print" style={{ marginBottom: '2.5rem', border: '1px solid rgba(245, 158, 11, 0.2)', padding: '0', overflow: 'hidden' }}>
-        <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(245, 158, 11, 0.03)' }}>
-          <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#d97706', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Calendar size={22} strokeWidth={2.5} />
-            Tournées en cours d'exécution
-            <span style={{ marginLeft: '1rem', padding: '0.2rem 0.6rem', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '8px', fontSize: '0.8rem' }}>
-              {feuillesEnCours.length} actives
-            </span>
-          </h2>
+    <>
+      <div style={{ animation: 'pageEnter 0.6s ease' }}>
+        <div style={{ marginBottom: '2.5rem' }}>
+          <h1 className="text-premium" style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>Archives Scellées & Clôturées</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginTop: '0.4rem', fontWeight: 500 }}>Historique complet des tournées et retours de caisse</p>
         </div>
-        
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Date / Heure</th>
-                <th>Réf. ID</th>
-                <th>Agent de Livraison</th>
-                <th>Flux Colis</th>
-                <th>Valeur Théorique</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {feuillesEnCours.map(h => {
-                const livreur = livreurs.find(l => l.id === h.livreur_id);
-                return (
-                   <tr key={h.id}>
-                    <td>
-                       <div style={{ fontWeight: 700 }}>{format(new Date(h.date), 'dd MMM yyyy')}</div>
-                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{format(new Date(h.date), 'HH:mm')}</div>
-                    </td>
-                    <td style={{ fontWeight: 800, color: 'var(--primary)', fontFamily: 'monospace' }}>#{h.id.slice(0, 8).toUpperCase()}</td>
-                    <td>
-                       <div style={{ fontWeight: 700 }}>{livreur?.nom_complet || 'Livreur inconnu'}</div>
-                    </td>
-                    <td>
-                      <span className="badge badge-warning" style={{ fontWeight: 800 }}>{h.total_commandes} commandes</span>
-                    </td>
-                    <td style={{ fontWeight: 900, color: 'var(--text-main)', fontSize: '1.05rem' }}>{Number(h.total_montant_theorique).toLocaleString()} <span style={{ fontSize: '0.75rem' }}>CFA</span></td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <button className="btn btn-outline" style={{ padding: '0.5rem', borderRadius: '10px', height: '40px', width: '40px' }} title="Imprimer pour le livreur" onClick={() => handlePrint(h)}>
-                          <Printer size={18} strokeWidth={2.5} />
-                        </button>
-                        {isAdmin && (
-                          <button className="btn btn-outline" style={{ padding: '0.5rem', borderRadius: '10px', height: '40px', width: '40px', color: '#ef4444', borderColor: '#fee2e2' }} title="Supprimer la feuille (Admin)" onClick={() => handleDeleteFeuille(h)}>
-                            <Trash2 size={18} strokeWidth={2.5} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {feuillesEnCours.length === 0 && (
+
+        <div className="card" style={{ padding: '1.5rem', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <Search size={20} color="var(--text-muted)" />
+            <input 
+              type="text" 
+              placeholder="Rechercher une feuille de route ou un livreur..." 
+              className="form-input" 
+              style={{ border: 'none', fontSize: '1.1rem', width: '100%' }}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="card table-responsive-cards" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="table-container">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
-                    <p style={{ fontWeight: 600, fontSize: '1.1rem' }}>Libre comme l'air !</p>
-                    <p style={{ fontSize: '0.9rem' }}>Aucune feuille de route active n'a été trouvée.</p>
-                  </td>
+                  <th>Date & Réf</th>
+                  <th>Livreur</th>
+                  <th style={{ textAlign: 'center' }}>Colis</th>
+                  <th style={{ textAlign: 'right' }}>Total Théorique</th>
+                  <th style={{ textAlign: 'right' }}>Somme Reçue</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '3rem' }}>Chargement...</td></tr>
+                ) : filtered.length === 0 ? (
+                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>Aucune archive trouvée.</td></tr>
+                ) : (
+                  filtered.map(f => (
+                    <tr key={f.id} style={{ cursor: 'pointer' }} onClick={() => handleReview(f)}>
+                      <td data-label="Date & Réf">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'rgba(99, 102, 255, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Calendar size={18} />
+                          </div>
+                          <div>
+                            <p style={{ margin: 0, fontWeight: 800, color: 'var(--text-main)' }}>{format(new Date(f.date), 'dd/MM/yyyy')}</p>
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>#{f.id.slice(0, 8).toUpperCase()}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td data-label="Livreur">
+                        <p style={{ margin: 0, fontWeight: 700 }}>{f.nom_livreur || 'Inconnu'}</p>
+                      </td>
+                      <td data-label="Colis" style={{ textAlign: 'center' }}>
+                        <span className="badge badge-info">{f.total_commandes}</span>
+                      </td>
+                      <td data-label="Total Théorique" style={{ textAlign: 'right', fontWeight: 600 }}>
+                        {f.total_montant_theorique?.toLocaleString()} CFA
+                      </td>
+                      <td data-label="Somme Reçue" style={{ textAlign: 'right', fontWeight: 900, color: 'var(--primary)' }}>
+                        {(f.montant_encaisse ?? f.total_montant_theorique)?.toLocaleString()} CFA
+                      </td>
+                      <td data-label="Actions" style={{ textAlign: 'right' }}>
+                        <button className="btn btn-outline btn-sm" onClick={(e) => handleReview(f, e)}>Revoir</button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      {/* SECTION ARCHIVES */}
-      <div className="card glass-effect no-print" style={{ border: '1px solid rgba(16, 185, 129, 0.2)', padding: '0', overflow: 'hidden' }}>
-        <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(16, 185, 129, 0.03)' }}>
-          <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: '#059669', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Lock size={22} strokeWidth={2.5} />
-            Archives Scellées & Clôturées
-            <span style={{ marginLeft: '1rem', padding: '0.2rem 0.6rem', background: 'rgba(16, 185, 129, 0.1)', borderRadius: '8px', fontSize: '0.8rem' }}>
-              {feuillesTraitees.length} terminées
-            </span>
-          </h2>
-        </div>
-
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr style={{ backgroundColor: '#f9fafb' }}>
-                <th>Clôturé le</th>
-                <th>Réf. ID</th>
-                <th>Livreur</th>
-                <th>Performance</th>
-                <th style={{ textAlign: 'right' }}>Caisse Reçue</th>
-                <th style={{ textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {feuillesTraitees.map(h => {
-                const livreur = livreurs.find(l => l.id === h.livreur_id);
-                return (
-                  <tr key={h.id}>
-                    <td>
-                      <div style={{ fontWeight: 700, color: '#059669' }}>
-                        {h.date_traitement ? format(new Date(h.date_traitement), 'dd MMM yyyy') : '---'}
-                      </div>
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                         {h.date_traitement ? format(new Date(h.date_traitement), 'HH:mm') : ''}
-                      </div>
-                    </td>
-                    <td style={{ fontWeight: 800, color: 'var(--text-muted)', fontFamily: 'monospace' }}>#{h.id.slice(0, 8).toUpperCase()}</td>
-                    <td>
-                       <div style={{ fontWeight: 700 }}>{livreur?.nom_complet || 'Livreur inconnu'}</div>
-                    </td>
-                    <td>
-                      <span className="badge badge-success" style={{ fontWeight: 800, padding: '0.3rem 0.7rem' }}>Succès total</span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                       <div style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--text-main)' }}>{(h as any).montant_encaisse?.toLocaleString() || '0'} <span style={{ fontSize: '0.7rem' }}>CFA</span></div>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button className="btn btn-outline" style={{ borderRadius: '12px', fontWeight: 800, fontSize: '0.85rem' }} onClick={() => handlePrint(h)}>
-                        <Printer size={16} strokeWidth={2.5} style={{ marginRight: '0.4rem' }} /> Revoir
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-              {feuillesTraitees.length === 0 && (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
-                    <p style={{ fontWeight: 600 }}>Le coffre est vide !</p>
-                    <p style={{ fontSize: '0.9rem' }}>Aucune feuille de route n'a encore été clôturée en caisse.</p>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Impression View Optimized */}
-      {impression && (
-        <div id="print-area">
-           <style>{`
-            @media print {
-              @page { size: landscape; margin: 15mm; }
-              body * { visibility: hidden; }
-              #print-area, #print-area * { visibility: visible; }
-              #print-area { display: block !important; position: absolute; left: 0; top: 0; width: 100%; height: 100%; padding: 0; background: white; color: black; font-family: 'Inter', sans-serif; }
-              .no-print { display: none !important; }
-              table { border-collapse: collapse; width: 100%; margin-top: 1.5rem; table-layout: fixed; }
-              th, td { border: 1px solid #1a1a1a; padding: 12px 8px; text-align: left; font-size: 11px; word-wrap: break-word; }
-              th { background-color: #f1f5f9 !important; -webkit-print-color-adjust: exact; font-weight: 800; text-transform: uppercase; }
-              .print-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #000; padding-bottom: 1.5rem; margin-bottom: 1.5rem; }
-              .print-logo { font-size: 24px; font-weight: 900; letter-spacing: -0.05em; }
-              .print-title { font-size: 18px; font-weight: 800; color: #6366f1; text-transform: uppercase; margin-top: 0.5rem; }
-            }
-          `}</style>
-          
-          <div className="print-header">
-            <div>
-              <div className="print-logo">MIXLOGISTIC <span style={{ color: '#6366f1' }}>PRO</span></div>
-              <div className="print-title">FEUILLE DE ROUTE LOGISTIQUE</div>
-              <p style={{ margin: '0.75rem 0 0 0', fontSize: '12px', fontWeight: 600 }}>RÉFÉRENCE : #{impression.feuille.id.toUpperCase()}</p>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '14px', fontWeight: 800, marginBottom: '0.5rem' }}>LIVREUR : {(livreurs.find(l => l.id === impression.feuille.livreur_id)?.nom_complet || 'INCONNU').toUpperCase()}</div>
-              <div style={{ fontSize: '12px', fontWeight: 600 }}>DATE DE SORTIE : {format(new Date(impression.feuille.date), 'dd/MM/yyyy HH:mm')}</div>
-              {impression.feuille.date_traitement && (
-                 <div style={{ fontSize: '12px', fontWeight: 800, color: '#059669', marginTop: '0.4rem' }}>CLÔTURÉE LE : {format(new Date(impression.feuille.date_traitement), 'dd/MM/yyyy HH:mm')}</div>
-              )}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem' }}>
-             <div style={{ flex: 1, padding: '1rem', border: '2px dashed #e2e8f0', borderRadius: '12px' }}>
-                <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Volume de chargement</span>
-                <div style={{ fontSize: '20px', fontWeight: 900 }}>{impression.feuille.total_commandes} <span style={{ fontSize: '12px' }}>Colis</span></div>
-             </div>
-             <div style={{ flex: 1, padding: '1rem', border: '2px dashed #e2e8f0', borderRadius: '12px' }}>
-                <span style={{ fontSize: '10px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Valeur Marchande Théorique</span>
-                <div style={{ fontSize: '20px', fontWeight: 900 }}>{Number(impression.feuille.total_montant_theorique).toLocaleString()} <span style={{ fontSize: '12px' }}>CFA</span></div>
-             </div>
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: '10%' }}>ID</th>
-                <th style={{ width: '20%' }}>Nom du Client</th>
-                <th style={{ width: '15%' }}>Téléphone</th>
-                <th style={{ width: '15%' }}>Zone / Ville</th>
-                <th style={{ width: '20%' }}>Adresse Exacte</th>
-                <th style={{ width: '10%' }}>Net à Payer</th>
-                <th style={{ width: '10%' }}>Signature</th>
-              </tr>
-            </thead>
-            <tbody>
-              {impression.commandes.map(cmd => (
-                <tr key={cmd.id}>
-                  <td style={{ fontWeight: 800 }}>#{cmd.id.slice(0,5).toUpperCase()}</td>
-                  <td style={{ fontWeight: 600 }}>{cmd.nom_client || 'Client Privé'}</td>
-                  <td style={{ fontWeight: 900, fontSize: '13px' }}>{cmd.telephone_client}</td>
-                  <td style={{ fontWeight: 600 }}>{cmd.commune_livraison}</td>
-                  <td>{cmd.adresse_livraison}</td>
-                  <td style={{ fontWeight: 900, fontSize: '12px' }}>{Number(cmd.montant_total).toLocaleString()}</td>
-                  <td></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          <div style={{ marginTop: '4rem', display: 'flex', justifyContent: 'space-between' }}>
-             <div style={{ borderTop: '2px solid black', width: '280px', textAlign: 'center', paddingTop: '1rem' }}>
-                <div style={{ fontWeight: 900, fontSize: '12px' }}>VISA CONTRÔLE LOGISTIQUE</div>
-                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '0.2rem' }}>Date et Heure de vérification</div>
-             </div>
-             <div style={{ borderTop: '2px solid black', width: '280px', textAlign: 'center', paddingTop: '1rem' }}>
-                <div style={{ fontWeight: 900, fontSize: '12px' }}>SIGNATURE CHARGEMENT LIVREUR</div>
-                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '0.2rem' }}>Prière de vérifier l'intégrité des colis</div>
-             </div>
-          </div>
-          
-          <div style={{ position: 'fixed', bottom: '10mm', left: '15mm', right: '15mm', fontSize: '9px', color: '#94a3b8', borderTop: '1px solid #e2e8f0', paddingTop: '0.5rem', textAlign: 'center' }}>
-            Document généré automatiquement le {format(new Date(), 'dd/MM/yyyy HH:mm')} par MIXLOGISTIC PRO. 
-            Une fois clôturée, cette archive devient inviolable et certifiée conforme aux encaissements caisse.
-          </div>
-        </div>
+      {selectedFeuille && (
+        <ReviewModal 
+          feuille={selectedFeuille} 
+          commandes={associatedCommandes} 
+          loading={modalLoading} 
+          onClose={() => setSelectedFeuille(null)} 
+          showToast={showToast}
+        />
       )}
+    </>
+  );
+};
+
+const ReviewModal = ({ feuille, commandes, loading, onClose, showToast }: any) => {
+  const handleReprint = async () => {
+    try {
+      await generateDeliverySlipPDF(feuille, commandes);
+      showToast("Réimpression lancée.", "success");
+    } catch (e) {
+      showToast("Erreur lors de la génération PDF.", "error");
+    }
+  };
+
+  const succesCount = commandes.filter((c: any) => c.statut_commande === 'livree' || c.statut_commande === 'terminee').length;
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-content card glass-effect" onClick={e => e.stopPropagation()} style={{ maxWidth: '900px', padding: 0 }}>
+        
+        {/* Header Modal */}
+        <div style={{ padding: '2rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', borderRadius: '24px 24px 0 0' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.4rem' }}>
+              <Truck size={24} color="var(--primary)" />
+              <h2 style={{ margin: 0, fontWeight: 900, fontSize: '1.5rem' }}>Feuille de Route #{feuille.id.slice(0, 8).toUpperCase()}</h2>
+            </div>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontWeight: 600 }}>Livreur: <span style={{ color: 'var(--text-main)' }}>{feuille.nom_livreur}</span> | Date: {format(new Date(feuille.date), 'dd MMMM yyyy', { locale: fr })}</p>
+          </div>
+          <button onClick={onClose} className="btn btn-outline" style={{ borderRadius: '12px', padding: '0.6rem' }}>
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div style={{ padding: '2rem', maxHeight: '70vh', overflowY: 'auto' }}>
+          {loading ? (
+             <div style={{ textAlign: 'center', padding: '4rem' }}>Chargement...</div>
+          ) : (
+             <>
+               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
+                  <div style={{ padding: '1.5rem', borderRadius: '20px', background: '#f0fdf4', border: '1px solid #dcfce7' }}>
+                    <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 800, color: '#166534', textTransform: 'uppercase' }}>Encaissement</p>
+                    <p style={{ margin: '0.5rem 0 0', fontSize: '1.5rem', fontWeight: 900, color: '#15803d' }}>{(feuille.montant_encaisse ?? feuille.total_montant_theorique)?.toLocaleString()} CFA</p>
+                  </div>
+                  <div style={{ padding: '1.5rem', borderRadius: '20px', background: feuille.ecart_caisse !== 0 ? '#fef2f2' : '#f8fafc', border: `1px solid ${feuille.ecart_caisse !== 0 ? '#fee2e2' : '#e2e8f0'}` }}>
+                    <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 800, color: feuille.ecart_caisse !== 0 ? '#991b1b' : '#64748b', textTransform: 'uppercase' }}>Écart Caisse</p>
+                    <p style={{ margin: '0.5rem 0 0', fontSize: '1.5rem', fontWeight: 900, color: feuille.ecart_caisse !== 0 ? '#dc2626' : '#1e293b' }}>{feuille.ecart_caisse?.toLocaleString() || 0} CFA</p>
+                  </div>
+                  <div style={{ padding: '1.5rem', borderRadius: '20px', background: '#eff6ff', border: '1px solid #dbeafe' }}>
+                    <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 800, color: '#1e40af', textTransform: 'uppercase' }}>Fidélité Joueurs</p>
+                    <p style={{ margin: '0.5rem 0 0', fontSize: '1.5rem', fontWeight: 900, color: '#1d4ed8' }}>{succesCount} / {feuille.total_commandes}</p>
+                  </div>
+               </div>
+
+               <div className="table-container" style={{ border: '1px solid #f1f5f9' }}>
+                 <table>
+                   <thead>
+                     <tr>
+                       <th>Réf</th>
+                       <th>Client</th>
+                       <th>P.U.</th>
+                       <th>Qty</th>
+                       <th style={{ textAlign: 'right' }}>Montant</th>
+                       <th>Statut</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                     {commandes.map((c: any) => (
+                       <tr key={c.id}>
+                         <td style={{ fontWeight: 700 }}>#{c.id.slice(0,8).toUpperCase()}</td>
+                         <td>{c.nom_client}</td>
+                         <td>{((Number(c.montant_total) - (Number(c.frais_livraison) || 0)) / (c.nombre_produits || 1)).toLocaleString()}</td>
+                         <td style={{ textAlign: 'center' }}>{c.nombre_produits || 1}</td>
+                         <td style={{ textAlign: 'right', fontWeight: 800 }}>{c.montant_total?.toLocaleString()} CFA</td>
+                         <td>
+                            <span className={`badge ${c.statut_commande === 'livree' || c.statut_commande === 'terminee' ? 'badge-success' : 'badge-danger'}`}>
+                              {c.statut_commande}
+                            </span>
+                         </td>
+                       </tr>
+                     ))}
+                   </tbody>
+                 </table>
+               </div>
+             </>
+          )}
+        </div>
+
+        <div style={{ padding: '1.5rem 2rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+           <button className="btn btn-outline" onClick={onClose}>Fermer</button>
+           <button className="btn btn-primary" onClick={handleReprint}>
+             <Printer size={18} /> Ré-imprimer
+           </button>
+        </div>
+      </div>
     </div>
   );
 };
