@@ -276,80 +276,158 @@ const CommunesManager = ({ showToast }: { showToast: any }) => {
     try {
       const data = await getCommunes();
       setCommunes(data || []);
-    } catch (e) { showToast("Erreur.", "error"); } finally { setLoading(false); }
+    } catch (e) {
+      if (showToast) showToast("Erreur lors du chargement des zones.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { loadCommunes(); }, []);
 
   const handleSave = async () => {
-    if (!form?.nom || typeof form?.tarif_livraison !== 'number') {
-       showToast("Nom et Tarif requis.", "error"); return;
+    const nom = form?.nom?.trim();
+    const tarif = Number(form?.tarif_livraison);
+
+    if (!nom || isNaN(tarif)) {
+      if (showToast) showToast("Veuillez saisir un nom et un tarif valide.", "error");
+      return;
     }
+
     setLoading(true);
     try {
-      if (editingId === 'new') await createCommune(form as Omit<Commune, 'id'>);
-      else if (editingId) await updateCommune(editingId, form);
-      showToast("Zone sauvée.", "success");
-      setEditingId(null); setForm({}); loadCommunes();
-    } catch (e: any) { showToast(e.message || "Erreur.", "error"); } finally { setLoading(false); }
+      if (editingId === 'new') {
+        await createCommune({ nom, tarif_livraison: tarif });
+      } else if (editingId) {
+        await updateCommune(editingId, { nom, tarif_livraison: tarif });
+      }
+      if (showToast) showToast("Zone enregistrée avec succès.", "success");
+      setEditingId(null);
+      setForm({});
+      loadCommunes();
+    } catch (e: any) {
+      if (showToast) showToast(e.message || "Erreur de sauvegarde.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
-    if(window.confirm("Supprimer ?")) {
-       try { await deleteCommune(id); showToast("Supprimé."); loadCommunes(); } catch (e) { showToast("Erreur."); }
+    if (window.confirm("Voulez-vous vraiment supprimer cette zone ?")) {
+      try {
+        await deleteCommune(id);
+        if (showToast) showToast("Zone supprimée.");
+        loadCommunes();
+      } catch (e) {
+        if (showToast) showToast("Erreur lors de la suppression.", "error");
+      }
     }
   };
 
   return (
     <div style={{ padding: '1rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
-        <h3 style={{ margin: 0 }}>Zones & Tarifs</h3>
-        <button className="btn btn-primary btn-sm" onClick={() => { setEditingId('new'); setForm({ tarif_livraison: 1500 }); }}>
-          <Plus size={16} /> Ajouter
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'center' }}>
+        <h3 style={{ margin: 0 }}>Zones & Tarifs de Livraison</h3>
+        <button 
+          className="btn btn-primary btn-sm" 
+          onClick={() => { setEditingId('new'); setForm({ tarif_livraison: 1500 }); }}
+          disabled={loading}
+        >
+          <Plus size={16} /> Ajouter une zone
         </button>
       </div>
+
       <div className="table-container">
         <table>
           <thead>
             <tr>
               <th>Zone / Commune</th>
               <th>Tarif (CFA)</th>
-              <th style={{ textAlign: 'right' }}>Actions</th>
+              <th style={{ textAlign: 'right', width: '120px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-             {editingId === 'new' && (
+            {editingId === 'new' && (
               <tr style={{ backgroundColor: 'rgba(79, 70, 229, 0.05)' }}>
-                <td><input className="form-input" placeholder="Nom" value={form?.nom || ''} onChange={e => setForm({...form, nom: e.target.value})} /></td>
-                <td><input className="form-input" type="number" value={form?.tarif_livraison ?? ''} onChange={e => setForm({...form, tarif_livraison: e.target.value === '' ? '' : Number(e.target.value)} as any)} /></td>
+                <td>
+                  <input 
+                    className="form-input" 
+                    placeholder="Nom de la zone" 
+                    value={form?.nom || ''} 
+                    onChange={e => setForm({ ...form, nom: e.target.value })} 
+                  />
+                </td>
+                <td>
+                  <input 
+                    className="form-input" 
+                    type="number" 
+                    value={form?.tarif_livraison ?? ''} 
+                    onChange={e => setForm({ ...form, tarif_livraison: e.target.value === '' ? '' : Number(e.target.value) } as any)} 
+                  />
+                </td>
                 <td style={{ textAlign: 'right' }}>
                   <button className="btn btn-primary btn-sm" disabled={loading} onClick={handleSave}>OK</button>
-                  <button className="btn btn-outline btn-sm" onClick={() => setEditingId(null)}>Annuler</button>
+                  <button className="btn btn-outline btn-sm" style={{ marginLeft: '0.25rem' }} onClick={() => setEditingId(null)}>X</button>
                 </td>
               </tr>
             )}
-            {communes.map((c: Commune) => editingId === c.id ? (
-              <tr key={c.id} style={{ backgroundColor: 'rgba(79, 70, 229, 0.05)' }}>
-                <td><input className="form-input" value={form?.nom || ''} onChange={e => setForm({...form, nom: e.target.value})} /></td>
-                <td><input className="form-input" type="number" value={form?.tarif_livraison ?? ''} onChange={e => setForm({...form, tarif_livraison: e.target.value === '' ? '' : Number(e.target.value)} as any)} /></td>
-                <td style={{ textAlign: 'right' }}>
-                  <button className="btn btn-primary btn-sm" disabled={loading} onClick={handleSave}>Sauver</button>
-                  <button className="btn btn-outline btn-sm" onClick={() => setEditingId(null)}>X</button>
-                </td>
-              </tr>
-            ) : (
-              <tr key={c.id}>
-                <td style={{ fontWeight: 600 }}>{c.nom}</td>
-                <td style={{ color: 'var(--primary-color)', fontWeight: 700 }}>{Number(c.tarif_livraison || 0).toLocaleString()} CFA</td>
-                <td style={{ textAlign: 'right' }}>
-                  <button className="btn btn-outline btn-sm" onClick={() => {setEditingId(c.id); setForm(c);}}>Modifier</button>
-                  <button className="btn btn-outline btn-sm" style={{ color: 'var(--danger-color)', marginLeft: '0.5rem' }} onClick={() => handleDelete(c.id)}><Trash2 size={16}/></button>
-                </td>
-              </tr>
-            ))}
+
+            {communes.map((c: Commune) => {
+              const isEditing = editingId === c.id;
+              if (!c) return null;
+
+              return isEditing ? (
+                <tr key={c.id} style={{ backgroundColor: 'rgba(79, 70, 229, 0.05)' }}>
+                  <td>
+                    <input 
+                      className="form-input" 
+                      value={form?.nom || ''} 
+                      onChange={e => setForm({ ...form, nom: e.target.value })} 
+                    />
+                  </td>
+                  <td>
+                    <input 
+                      className="form-input" 
+                      type="number" 
+                      value={form?.tarif_livraison ?? ''} 
+                      onChange={e => setForm({ ...form, tarif_livraison: e.target.value === '' ? '' : Number(e.target.value) } as any)} 
+                    />
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button className="btn btn-primary btn-sm" disabled={loading} onClick={handleSave}>Sauver</button>
+                    <button className="btn btn-outline btn-sm" style={{ marginLeft: '0.25rem' }} onClick={() => setEditingId(null)}>X</button>
+                  </td>
+                </tr>
+              ) : (
+                <tr key={c.id}>
+                  <td style={{ fontWeight: 600 }}>{c.nom || 'Sans nom'}</td>
+                  <td style={{ color: 'var(--primary-color)', fontWeight: 700 }}>
+                    {typeof c.tarif_livraison === 'number' ? c.tarif_livraison.toLocaleString() : c.tarif_livraison} CFA
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <button 
+                      className="btn btn-outline btn-sm" 
+                      onClick={() => { setEditingId(c.id); setForm({ ...c }); }}
+                    >
+                      Modifier
+                    </button>
+                    <button 
+                      className="btn btn-outline btn-sm" 
+                      style={{ color: 'var(--danger-color)', marginLeft: '0.5rem' }} 
+                      onClick={() => handleDelete(c.id)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+
             {communes.length === 0 && editingId !== 'new' && (
               <tr>
-                <td colSpan={3} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Aucune zone configurée.</td>
+                <td colSpan={3} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                  Aucune zone configurée.
+                </td>
               </tr>
             )}
           </tbody>
