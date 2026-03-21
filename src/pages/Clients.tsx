@@ -34,6 +34,7 @@ export const Clients = () => {
     const cmds = await getClientCommandes(client.id);
     cmds.sort((a, b) => new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime());
     setSelectedClient({ client, commandes: cmds });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const sendWhatsApp = (client: Client, templateName: 'friendly' | 'promo' | 'reminder') => {
@@ -161,10 +162,49 @@ export const Clients = () => {
       </div>
 
       {selectedClient && (
-        <div className="modal-backdrop" onClick={() => setSelectedClient(null)}>
-          <div className="modal-content card glass-effect" style={{ maxWidth: '900px', width: '95%', padding: '2.5rem' }} onClick={e => e.stopPropagation()}>
-            <button onClick={() => setSelectedClient(null)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-              <X size={24} />
+        <div style={{ 
+          position: 'fixed', 
+          inset: 0, 
+          backgroundColor: 'rgba(0,0,0,0.4)', 
+          backdropFilter: 'blur(8px)', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          zIndex: 9999, 
+          padding: '1.5rem',
+          animation: 'modalEnter 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+        }} onClick={() => setSelectedClient(null)}>
+          <div className="card" style={{ 
+            maxWidth: '900px', 
+            width: '100%', 
+            maxHeight: '90vh', 
+            overflowY: 'auto', 
+            position: 'relative', 
+            padding: '2.5rem', 
+            background: 'white',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            border: 'none',
+            borderRadius: '24px'
+          }} onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setSelectedClient(null)} 
+              style={{ 
+                position: 'absolute', 
+                top: '1.5rem', 
+                right: '1.5rem', 
+                background: '#f1f5f9', 
+                border: 'none', 
+                borderRadius: '50%', 
+                width: '40px', 
+                height: '40px', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                color: 'var(--text-muted)'
+              }}
+            >
+              <X size={20} />
             </button>
             
             <div style={{ display: 'flex', gap: '2rem', marginBottom: '3rem', flexWrap: 'wrap' }}>
