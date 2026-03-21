@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentFeuilleRoute, getCommandesForFeuille, markCommandeLivre, markCommandeEchouee } from '../services/livraisonService';
 import type { Commande, FeuilleRoute } from '../types';
-import { MapPin, CheckCircle, XCircle, Truck } from 'lucide-react';
+import { 
+  MapPin, CheckCircle, XCircle, Truck, 
+  Phone, MessageCircle, ExternalLink, Eye 
+} from 'lucide-react';
+import { CommandeDetails } from '../components/commandes/CommandeDetails';
 
 export const Livraison = () => {
   const { currentUser } = useAuth();
@@ -12,6 +16,7 @@ export const Livraison = () => {
 
   // Modal specific
   const [selectedCommande, setSelectedCommande] = useState<Commande | null>(null);
+  const [selectedViewOrderId, setSelectedViewOrderId] = useState<string | null>(null);
   const [statusAction, setStatusAction] = useState<'livree' | 'retour_livreur'>('livree');
   const [noteForm, setNoteForm] = useState('');
   const [modeForm, setModeForm] = useState('');
@@ -72,83 +77,132 @@ export const Livraison = () => {
     );
   }
 
+  const totalEncaiss = commandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande)).reduce((acc, c) => acc + (Number(c.montant_encaisse) || 0), 0);
+  const totalObjectif = Number(feuille.total_montant_theorique) || 0;
+  const progressPercent = commandes.length > 0 ? Math.round((commandes.filter(c => ['livree', 'retour_livreur', 'terminee'].includes(c.statut_commande)).length / commandes.length) * 100) : 0;
+
   return (
-    <div style={{ animation: 'pageEnter 0.6s ease' }}>
-      <div style={{ marginBottom: '2.5rem' }}>
-        <h1 className="text-premium" style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>Ma Tournée</h1>
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-          <div className="card glass-effect" style={{ padding: '0.75rem 1.25rem', border: '1px solid rgba(255,255,255,0.1)', flex: 1, minWidth: '180px' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Objectif Encaiss.</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>{Number(feuille.total_montant_theorique).toLocaleString()} <span style={{ fontSize: '0.7rem' }}>CFA</span></div>
+    <div style={{ animation: 'pageEnter 0.6s ease', paddingBottom: '4rem' }}>
+      <div style={{ marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '1.5rem' }}>
+          <div>
+            <h1 className="text-premium" style={{ fontSize: '2rem', fontWeight: 900, margin: 0 }}>Ma Tournée</h1>
+            <p style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.9rem' }}>Feuille #{feuille.id.slice(-6).toUpperCase()}</p>
           </div>
-          <div className="card glass-effect" style={{ padding: '0.75rem 1.25rem', border: '1px solid rgba(255,255,255,0.1)', flex: 1, minWidth: '180px' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '0.2rem' }}>Colis à livrer</div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>{commandes.length} <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>unités</span></div>
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--primary)' }}>{progressPercent}%</span>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>Progression</div>
+          </div>
+        </div>
+
+        <div style={{ width: '100%', height: '8px', background: '#e2e8f0', borderRadius: '4px', marginBottom: '2rem', overflow: 'hidden' }}>
+          <div style={{ width: `${progressPercent}%`, height: '100%', background: 'var(--primary)', transition: 'width 1s ease' }} />
+        </div>
+
+        <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr 1fr' }}>
+          <div className="card glass-effect" style={{ padding: '1.25rem', border: 'none', background: 'white' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.4rem' }}>Objectif</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{totalObjectif.toLocaleString()} <span style={{ fontSize: '0.7rem' }}>CFA</span></div>
+          </div>
+          <div className="card glass-effect" style={{ padding: '1.25rem', border: 'none', background: 'var(--primary)', color: 'white' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 800, opacity: 0.8, textTransform: 'uppercase', marginBottom: '0.4rem' }}>Récolté</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{totalEncaiss.toLocaleString()} <span style={{ fontSize: '0.7rem' }}>CFA</span></div>
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gap: '1.5rem', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))' }}>
+      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr' }}>
         {commandes.map(c => {
-          const isDone = c.statut_commande === 'livree' || c.statut_commande === 'retour_livreur' || c.statut_commande === 'terminee';
-          
+          const isDone = ['livree', 'retour_livreur', 'terminee'].includes(c.statut_commande);
+          const itemCount = (c.lignes || []).reduce((acc: number, l: any) => acc + l.quantite, 0);
+
           return (
             <div key={c.id} className="card" style={{ 
-              opacity: isDone ? 0.7 : 1, 
-              display: 'flex', 
-              flexDirection: 'column',
-              padding: '1.75rem',
+              opacity: isDone ? 0.6 : 1, 
+              padding: '1.5rem',
               borderRadius: '24px',
-              border: isDone ? '1px solid #f1f5f9' : '2px solid transparent',
+              border: isDone ? '1px solid #f1f5f9' : '1px solid #e2e8f0',
               background: isDone ? '#f8fafc' : 'white',
-              boxShadow: isDone ? 'none' : 'var(--shadow-premium)',
-              transition: 'all 0.3s ease'
+              boxShadow: isDone ? 'none' : '0 10px 20px -5px rgba(0,0,0,0.05)',
+              marginBottom: '0.5rem'
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', alignItems: 'flex-start' }}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-main)' }}>{Number(c.montant_total).toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></span>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', marginTop: '0.2rem' }}>CODE: #{c.id.slice(0, 8).toUpperCase()}</span>
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
                 <div>
-                  {(c.statut_commande === 'livree' || c.statut_commande === 'terminee') && <span className="badge badge-success" style={{ background: '#10b981', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '10px' }}>Livrée</span>}
-                  {c.statut_commande === 'retour_livreur' && <span className="badge badge-danger" style={{ background: '#ef4444', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '10px' }}>Échec</span>}
-                  {c.statut_commande === 'en_cours_livraison' && <div className="loading-spinner-small"></div>}
+                   <div style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--text-main)' }}>{Number(c.montant_total).toLocaleString()} <span style={{ fontSize: '0.75rem' }}>CFA</span></div>
+                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.25rem' }}>
+                     <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)' }}>#{c.id.slice(-6).toUpperCase()}</span>
+                     <span className="badge" style={{ fontSize: '0.65rem', background: '#f1f5f9', color: 'var(--text-muted)' }}>{itemCount} art.</span>
+                   </div>
                 </div>
+                <button 
+                  className="btn btn-outline" 
+                   style={{ padding: '0.6rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}
+                   onClick={() => setSelectedViewOrderId(c.id)}
+                >
+                  <Eye size={18} />
+                </button>
               </div>
 
-              <div style={{ marginBottom: '1.5rem' }}>
-                 <div style={{ fontWeight: 800, fontSize: '1.2rem', color: isDone ? 'var(--text-muted)' : 'var(--primary)', marginBottom: '0.4rem' }}>{c.nom_client || 'Client Privé'}</div>
-                 <a href={`tel:${c.telephone_client}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(99, 102, 255, 0.1)', padding: '0.5rem 1rem', borderRadius: '12px', color: 'var(--primary)', fontWeight: 800, textDecoration: 'none', fontSize: '1.1rem' }}>
-                   📞 {c.telephone_client}
-                 </a>
+              <div style={{ marginBottom: '1.25rem' }}>
+                 <div style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: '0.75rem' }}>{c.nom_client}</div>
+                 <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <a href={`tel:${c.telephone_client}`} className="btn" style={{ flex: 1, padding: '0.6rem', borderRadius: '12px', background: 'rgba(99, 102, 255, 0.1)', color: 'var(--primary)', justifyContent: 'center' }}>
+                      <Phone size={18} />
+                    </a>
+                    <a 
+                      href={`https://wa.me/${c.telephone_client?.replace(/\s/g, '')}?text=${encodeURIComponent(`Bonjour ${c.nom_client}, c'est votre livreur GomboSwift. Je suis en route pour votre commande de ${c.montant_total} CFA. Serez-vous disponible ?`)}`}
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="btn" 
+                      style={{ flex: 1, padding: '0.6rem', borderRadius: '12px', background: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', justifyContent: 'center' }}
+                    >
+                      <MessageCircle size={18} />
+                    </a>
+                 </div>
               </div>
 
-              <div style={{ marginBottom: '1.5rem', flex: 1 }}>
-                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', background: '#f8fafc', padding: '1rem', borderRadius: '16px' }}>
-                  <MapPin size={20} style={{ color: 'var(--primary)', marginTop: '2px' }} strokeWidth={2.5} />
-                  <div>
-                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>{c.commune_livraison}</div>
-                    <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', lineHeight: '1.4', marginTop: '0.25rem', fontWeight: 500 }}>{c.adresse_livraison}</div>
-                  </div>
-                </div>
+              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '16px', marginBottom: '1.5rem' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <MapPin size={16} style={{ color: 'var(--primary)', marginTop: '2px' }} />
+                      <div>
+                         <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{c.commune_livraison}</div>
+                         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500, marginTop: '0.1rem' }}>{c.adresse_livraison}</div>
+                      </div>
+                    </div>
+                    <a 
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${c.adresse_livraison}, ${c.commune_livraison}`)}`}
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="btn" 
+                      style={{ padding: '0.4rem', borderRadius: '8px', background: 'white', border: '1px solid #e2e8f0' }}
+                    >
+                      <ExternalLink size={14} />
+                    </a>
+                 </div>
               </div>
 
-              {!isDone && (
+              {!isDone ? (
                 <div style={{ display: 'flex', gap: '1rem' }}>
                   <button 
                     className="btn btn-primary" 
-                    style={{ flex: 1.5, height: '52px', borderRadius: '14px', fontWeight: 800, boxShadow: '0 8px 15px -3px rgba(16, 185, 129, 0.3)', background: '#10b981' }}
+                    style={{ flex: 2, height: '48px', borderRadius: '14px', background: '#10b981', fontWeight: 800 }}
                     onClick={() => { setSelectedCommande(c); setStatusAction('livree'); setModeForm(c.mode_paiement || 'Cash'); setNoteForm(''); }}
                   >
-                    <CheckCircle size={20} strokeWidth={2.5} /> Livré
+                    Confirmer Livraison
                   </button>
                   <button 
                     className="btn btn-outline" 
-                    style={{ flex: 1, height: '52px', borderRadius: '14px', fontWeight: 800, color: '#ef4444', borderColor: '#fee2e2' }}
+                    style={{ flex: 1, height: '48px', borderRadius: '14px', color: '#ef4444', borderColor: '#fee2e2' }}
                     onClick={() => { setSelectedCommande(c); setStatusAction('retour_livreur'); setNoteForm(''); }}
                   >
-                    <XCircle size={20} strokeWidth={2.5} /> Échec
+                    Échec
                   </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: c.statut_commande === 'livree' ? '#10b981' : '#ef4444', fontWeight: 700, fontSize: '0.85rem' }}>
+                   {c.statut_commande === 'livree' ? <CheckCircle size={16} /> : <XCircle size={16} />}
+                   {c.statut_commande === 'livree' ? 'Livraison Confirmée' : 'Échec de Livraison'}
                 </div>
               )}
             </div>
@@ -211,6 +265,12 @@ export const Livraison = () => {
             </div>
           </div>
         </div>
+      )}
+      {selectedViewOrderId && (
+        <CommandeDetails 
+          commandeId={selectedViewOrderId} 
+          onClose={() => setSelectedViewOrderId(null)} 
+        />
       )}
     </div>
   );
