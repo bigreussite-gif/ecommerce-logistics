@@ -66,8 +66,9 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
         payload.adresse_livraison = adresseLocal;
         if (typeof fraisLivraison === 'number') {
           payload.frais_livraison = fraisLivraison;
-          // IMPORTANT: Calculate subtotal by removing old fee to avoid doubling
-          const subtotal = Number(commande.montant_total) - (Number(commande.frais_livraison) || 0);
+          // Robust subtotal: always remove what's currently marked as delivery fee
+          const currentFee = Number(commande.frais_livraison) || 0;
+          const subtotal = Number(commande.montant_total) - currentFee;
           payload.montant_total = subtotal + fraisLivraison;
         }
       }

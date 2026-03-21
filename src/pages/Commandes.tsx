@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { CommandeList } from '../components/commandes/CommandeList';
 import { CommandeForm } from '../components/commandes/CommandeForm';
+import { CommandeDetails } from '../components/commandes/CommandeDetails';
 import { subscribeToCommandes, deleteCommande, getCommandeWithLines } from '../services/commandeService';
 import { generateInvoicePDF } from '../services/pdfService';
 import type { Commande } from '../types';
@@ -12,6 +13,7 @@ export const Commandes = () => {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [selectedCommandeId, setSelectedCommandeId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleInvoice = async (commande: Commande) => {
@@ -96,7 +98,7 @@ export const Commandes = () => {
                 c.nom_client?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 c.commune_livraison?.toLowerCase().includes(searchTerm.toLowerCase())
               )} 
-              onActionClick={() => {}}
+              onActionClick={(c) => setSelectedCommandeId(c.id)}
               onDelete={handleDelete}
               onInvoiceClick={handleInvoice}
             />
@@ -108,6 +110,13 @@ export const Commandes = () => {
         <CommandeForm 
           onClose={() => setIsFormOpen(false)} 
           onSave={() => setIsFormOpen(false)} 
+        />
+      )}
+
+      {selectedCommandeId && (
+        <CommandeDetails 
+          commandeId={selectedCommandeId} 
+          onClose={() => setSelectedCommandeId(null)} 
         />
       )}
     </>

@@ -6,6 +6,7 @@ import { Eye, PhoneCall, Truck, Trash2, FileText } from 'lucide-react';
 interface CommandeListProps {
   commandes: Commande[];
   onActionClick?: (commande: Commande) => void;
+  onViewClick?: (commande: Commande) => void;
   onDelete?: (commande: Commande) => void;
   onInvoiceClick?: (commande: Commande) => void;
   actionIcon?: 'Eye' | 'PhoneCall' | 'Truck';
@@ -38,6 +39,7 @@ const getIconComponent = (iconName: string) => {
 export const CommandeList = ({ 
   commandes, 
   onActionClick, 
+  onViewClick,
   onDelete, 
   onInvoiceClick, 
   actionIcon = 'Eye', 
@@ -106,6 +108,17 @@ export const CommandeList = ({
                       >
                         {getIconComponent(actionIcon)}
                       </button>
+
+                      {onViewClick && (
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ padding: '0.6rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} 
+                          title="Détails Articles"
+                          onClick={() => onViewClick(c)}
+                        >
+                          <Eye size={18} strokeWidth={2.5} />
+                        </button>
+                      )}
                       
                       {onInvoiceClick && (
                         <button 

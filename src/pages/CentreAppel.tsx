@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { CommandeList } from '../components/commandes/CommandeList';
 import { AppelForm } from '../components/centre-appel/AppelForm';
+import { CommandeDetails } from '../components/commandes/CommandeDetails';
 import { subscribeToCommandesByStatus } from '../services/commandeService';
 import type { Commande } from '../types';
 
@@ -8,6 +9,7 @@ export const CentreAppel = () => {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCommande, setSelectedCommande] = useState<Commande | null>(null);
+  const [viewingCommandeId, setViewingCommandeId] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -45,6 +47,7 @@ export const CentreAppel = () => {
             <CommandeList 
               commandes={commandes} 
               onActionClick={setSelectedCommande}
+              onViewClick={(c) => setViewingCommandeId(c.id)}
               actionIcon="PhoneCall"
               actionLabel="Lancer l'appel"
             />
@@ -57,6 +60,13 @@ export const CentreAppel = () => {
           commande={selectedCommande}
           onClose={() => setSelectedCommande(null)}
           onSave={() => setSelectedCommande(null)}
+        />
+      )}
+
+      {viewingCommandeId && (
+        <CommandeDetails 
+          commandeId={viewingCommandeId} 
+          onClose={() => setViewingCommandeId(null)} 
         />
       )}
     </>
