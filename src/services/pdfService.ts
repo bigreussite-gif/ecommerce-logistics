@@ -143,49 +143,60 @@ export const generateDeliverySlipPDF = (feuilleRoute: any, commandes: Commande[]
 
   const doc = new jsPDF('l', 'mm', 'a4') as jsPDFWithPlugin;
   const pageWidth = doc.internal.pageSize.width;
-  const greyTheme: [number, number, number] = [30, 41, 59]; // Dark Slate Grey
+  const pageHeight = doc.internal.pageSize.height;
+  const lightGrey: [number, number, number] = [226, 232, 240]; 
+  const darkText: [number, number, number] = [30, 41, 59];
   
-  // Title
+  // Custom price formatter: 7.500 instead of 7 500
+  const fP = (num: number) => {
+    return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
+  // Title - Small and top with branding
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(24);
-  doc.setTextColor(51, 65, 85);
+  doc.setFontSize(10);
+  doc.setTextColor(148, 163, 184);
+  doc.text("LOGICIEL GOMBOSWIFT - GESTION LOGISTIQUE", 15, 10);
+  
+  doc.setFontSize(14);
+  doc.setTextColor(darkText[0], darkText[1], darkText[2]);
   const displayDate = feuilleRoute.date ? new Date(feuilleRoute.date) : new Date();
-  doc.text(`Feuille de route de Livraison - ${format(displayDate, 'yyyy-MM-dd')}`, 15, 20);
+  doc.text(`Feuille de route de Livraison - ${format(displayDate, 'yyyy-MM-dd')}`, pageWidth - 15, 10, { align: 'right' });
 
   // --- TABLEAU RÉSUMÉ 1: INFOS LIVREUR ---
   const totalObjectif = (commandes || []).reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
   
   autoTable(doc, {
-    startY: 30,
+    startY: 15,
     margin: { left: 15, right: 15 },
-    head: [['Nom & Prénoms', 'Téléphone', 'Nombre de colis', 'Montant Total à encaisser']],
+    head: [['Nom & Prénoms du Livreur', 'Téléphone', 'Nombre de colis', 'Somme Totale à Encaisser']],
     body: [[
-      feuilleRoute.nom_livreur || "Personnel GomboSwift",
-      "-", // Telephone if available in user object
+      (feuilleRoute.nom_livreur || "Personnel GomboSwift").toUpperCase(),
+      "-", 
       commandes.length.toString(),
-      `${totalObjectif.toLocaleString()} F`
+      `${fP(totalObjectif)}`
     ]],
     theme: 'grid',
-    headStyles: { fillColor: greyTheme, fontSize: 10, halign: 'left' },
-    styles: { fontSize: 10, cellPadding: 3, textColor: [30, 41, 59] },
+    headStyles: { fillColor: lightGrey, textColor: darkText, fontSize: 9, fontStyle: 'bold' },
+    styles: { fontSize: 10, cellPadding: 2, textColor: darkText },
     columnStyles: {
       0: { cellWidth: 80 },
       1: { cellWidth: 50 },
       2: { cellWidth: 40 },
-      3: { cellWidth: 'auto', fontStyle: 'bold' }
+      3: { cellWidth: 'auto', fontStyle: 'bold', fontSize: 12 } // Grand prix
     }
   });
 
   // --- TABLEAU RÉSUMÉ 2: RÉCONCILIATION ---
-  const lastY1 = (doc as any).lastAutoTable.finalY + 8;
+  const lastY1 = (doc as any).lastAutoTable.finalY + 5;
   autoTable(doc, {
     startY: lastY1,
     margin: { left: 15, right: 15 },
-    head: [['Colis Retournés', 'Colis Livrés', 'Somme à verser', 'Reste']],
-    body: [['0', '0', '0 F', '0 F']], // Placeholders for manual completion or future logic
+    head: [['Colis Retournés', 'Colis Livrés', 'Somme à verser à la caisse', 'Reste à percevoir']],
+    body: [[' ', ' ', ' ', ' ']], 
     theme: 'grid',
-    headStyles: { fillColor: greyTheme, fontSize: 10, halign: 'left' },
-    styles: { fontSize: 10, cellPadding: 3, textColor: [30, 41, 59] },
+    headStyles: { fillColor: lightGrey, textColor: darkText, fontSize: 9, fontStyle: 'bold' },
+    styles: { fontSize: 10, cellPadding: 2, textColor: darkText },
     columnStyles: {
       0: { cellWidth: 85 },
       1: { cellWidth: 65 },
@@ -195,14 +206,14 @@ export const generateDeliverySlipPDF = (feuilleRoute: any, commandes: Commande[]
   });
 
   // --- TABLEAU PRINCIPAL: DÉTAILS COMMANDES ---
-  const lastY2 = (doc as any).lastAutoTable.finalY + 12;
+  const lastY2 = (doc as any).lastAutoTable.finalY + 8;
   const tableRows = (commandes || []).map((c) => {
     const itemsStr = (c.lignes || []).map((l: LigneCommande) => 
       `${l.nom_produit} (x${l.quantite})`
     ).join('\n');
     
     const puStr = (c.lignes || []).map((l: LigneCommande) => 
-       `${(l.prix_unitaire || 0).toLocaleString()} F`
+       `${fP(l.prix_unitaire || 0)}`
     ).join('\n');
 
     const qtyStr = (c.lignes || []).map((l: LigneCommande) => 
@@ -212,15 +223,15 @@ export const generateDeliverySlipPDF = (feuilleRoute: any, commandes: Commande[]
     return [
       `#${(c.id || "").substring(0, 8).toUpperCase()}`,
       itemsStr || "SANS ARTICLES",
-      " ", // Taille/Colis
+      " ", 
       c.nom_client || "Client",
-      puStr || "0 F",
-      `${(c.frais_livraison || 0).toLocaleString()} F`,
+      puStr || "0",
+      `${fP(c.frais_livraison || 0)}`,
       qtyStr || "0",
-      `${(c.montant_total || 0).toLocaleString()} F`,
+      `${fP(c.montant_total || 0)}`,
       c.telephone_client || "-",
       c.commune_livraison || "-",
-      " " // Observation
+      " " 
     ];
   });
 
@@ -228,42 +239,55 @@ export const generateDeliverySlipPDF = (feuilleRoute: any, commandes: Commande[]
     startY: lastY2,
     margin: { left: 15, right: 15 },
     head: [[
-      'N° commandes', 
+      'N°', 
       'Articles commandés', 
-      'Taille/Colis', 
+      'Taille', 
       'Client', 
-      'Prix unitaire', 
-      'Livraison', 
-      'Quantité', 
+      'P.U.', 
+      'Frais', 
+      'Qté', 
       'Net à payer', 
-      'Numéro du Client', 
-      'Lieu de livraison', 
+      'Téléphone', 
+      'Zone / Lieu', 
       'Observation'
     ]],
     body: tableRows,
     theme: 'grid',
-    headStyles: { fillColor: greyTheme, fontSize: 8, halign: 'left' },
-    styles: { fontSize: 8, cellPadding: 3, textColor: [30, 41, 59] },
+    headStyles: { fillColor: lightGrey, textColor: darkText, fontSize: 8, fontStyle: 'bold' },
+    styles: { fontSize: 8, cellPadding: 2, textColor: darkText },
     columnStyles: {
-      0: { cellWidth: 25 }, // N°
+      0: { cellWidth: 20 }, // N°
       1: { cellWidth: 60 }, // Articles
-      2: { cellWidth: 20 }, // Taille
+      2: { cellWidth: 15 }, // Taille
       3: { cellWidth: 25 }, // Client
       4: { cellWidth: 20 }, // P.U.
       5: { cellWidth: 20 }, // Livraison
-      6: { cellWidth: 15 }, // Qty
-      7: { cellWidth: 25, fontStyle: 'bold' }, // Net
-      8: { cellWidth: 25 }, // Tel
+      6: { cellWidth: 10 }, // Qty
+      7: { cellWidth: 25, fontStyle: 'bold', fontSize: 10 }, // Net
+      8: { cellWidth: 30 }, // Tel
       9: { cellWidth: 25 }, // Lieu
       10: { cellWidth: 'auto' } // Observation
     }
   });
 
   const finalY = (doc as any).lastAutoTable.finalY;
-  doc.setFontSize(10);
-  doc.setTextColor(100, 116, 139);
-  doc.text("Signature Livreur", 15, finalY + 15);
-  doc.text("Cachet Logistique", pageWidth - 15, finalY + 15, { align: 'right' });
+  
+  // Footer with specific requested info
+  doc.setFontSize(8);
+  doc.setTextColor(148, 163, 184);
+  const footerY = pageHeight - 15;
+  
+  doc.text("Signature Livreur (précédé de 'Reçu')", 15, finalY + 12);
+  doc.text("Cachet & Signature Logistique", pageWidth - 15, finalY + 12, { align: 'right' });
+
+  doc.setDrawColor(226, 232, 240);
+  doc.line(15, footerY - 2, pageWidth - 15, footerY - 2);
+  
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(51, 65, 85);
+  doc.text("SUPPORT CLIENT & CALL CENTER : +225 01 72 57 13 52", pageWidth / 2, footerY + 2, { align: 'center' });
+  doc.setFont("helvetica", "normal");
+  doc.text("Adresse : Yop Toit rouge, Non loin de la grande Mosquée, stade BAE", pageWidth / 2, footerY + 7, { align: 'center' });
 
   doc.save(`FeuilleRoute_GomboSwift_${format(displayDate, 'dd_MM_yyyy')}.pdf`);
 };
