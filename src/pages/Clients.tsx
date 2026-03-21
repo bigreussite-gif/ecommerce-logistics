@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { 
   Users, Search, MessageCircle, Phone, MapPin, 
-  X
+  X, ShoppingBag, TrendingUp, DollarSign
 } from 'lucide-react';
 import { getClientsWithIntelligence, getClientCommandes, ClientFidelityStats } from '../services/clientService';
 import type { Client, Commande } from '../types';
@@ -114,8 +114,8 @@ export const Clients = () => {
               <tr>
                 <th>Identité & Client</th>
                 <th>Segment IA</th>
-                <th style={{ textAlign: 'center' }}>Total Commandes</th>
-                <th style={{ textAlign: 'right' }}>Dépense Totale</th>
+                <th style={{ textAlign: 'center' }}>Commandes (Total)</th>
+                <th style={{ textAlign: 'right' }}>Dépense (Livré)</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
@@ -145,9 +145,12 @@ export const Clients = () => {
                       {client.segment}
                     </span>
                   </td>
-                  <td style={{ textAlign: 'center', fontWeight: 700 }}>{client.total_commandes}</td>
+                  <td style={{ textAlign: 'center', fontWeight: 700 }}>
+                    <div style={{ fontSize: '1rem' }}>{client.total_commandes}</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{client.total_brut.toLocaleString()} CFA</div>
+                  </td>
                   <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--primary)' }}>
-                    {client.total_depense.toLocaleString()} <span style={{ fontSize: '0.7rem' }}>CFA</span>
+                    {client.total_encaisse.toLocaleString()} <span style={{ fontSize: '0.7rem' }}>CFA</span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
                     <button className="btn btn-outline" style={{ borderRadius: '10px', padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}>
@@ -212,7 +215,10 @@ export const Clients = () => {
                 {selectedClient.client.nom_complet.charAt(0).toUpperCase()}
               </div>
               <div style={{ flex: 1 }}>
-                <h2 style={{ fontSize: '2rem', fontWeight: 900, margin: 0 }}>{selectedClient.client.nom_complet}</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <h2 style={{ fontSize: '2rem', fontWeight: 900, margin: 0 }}>{selectedClient.client.nom_complet}</h2>
+                  <span style={{ padding: '0.4rem 1rem', background: '#dcfce7', color: '#166534', borderRadius: '30px', fontSize: '0.75rem', fontWeight: 800 }}>{selectedClient.client.segment}</span>
+                </div>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                     <Phone size={16} color="var(--primary)" /> {selectedClient.client.telephone}
@@ -226,18 +232,16 @@ export const Clients = () => {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
               <div className="card" style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>Volume Achats</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--primary)' }}>{selectedClient.client.total_depense.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>Volume Total (Brut)</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-main)' }}>{selectedClient.client.total_brut.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+              </div>
+              <div className="card" style={{ background: '#f0fdf4', padding: '1.25rem', borderRadius: '16px', border: '1px solid #bbf7d0' }}>
+                <div style={{ color: '#166534', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>Revenu Encaissé (Livré)</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#15803d' }}>{selectedClient.client.total_encaisse.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
               </div>
               <div className="card" style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>Panier Moyen</div>
                 <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{selectedClient.client.panier_moyen.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
-              </div>
-              <div className="card" style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase' }}>Dernier Achat</div>
-                <div style={{ fontSize: '1rem', fontWeight: 800, marginTop: '0.4rem' }}>
-                  {selectedClient.client.derniere_commande ? format(new Date(selectedClient.client.derniere_commande), 'dd MMM yyyy', { locale: fr }) : 'Jamais'}
-                </div>
               </div>
             </div>
 
@@ -264,9 +268,11 @@ export const Clients = () => {
                 <div key={cmd.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'white', borderRadius: '12px', border: '1px solid #f1f5f9', marginBottom: '0.5rem' }}>
                   <div>
                     <div style={{ fontWeight: 700 }}>#{cmd.id.slice(0,8).toUpperCase()} - {format(new Date(cmd.date_creation), 'dd/MM/yyyy')}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{cmd.statut_commande}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{cmd.statut_commande.replace('_', ' ').toUpperCase()}</div>
                   </div>
-                  <div style={{ fontWeight: 800, color: 'var(--primary)' }}>{Number(cmd.montant_total).toLocaleString()} CFA</div>
+                  <div style={{ fontWeight: 800, color: ['livree', 'terminee'].includes(cmd.statut_commande) ? '#10b981' : 'var(--primary)' }}>
+                    {Number(cmd.montant_total).toLocaleString()} CFA
+                  </div>
                 </div>
               ))}
             </div>

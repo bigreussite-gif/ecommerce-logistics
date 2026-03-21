@@ -47,9 +47,9 @@ export const StaffPerformance = () => {
             return true;
           });
           
-          const livrees = livreurCmds.filter((c: Commande) => c.statut_commande === 'livree').length;
+          const livrees = livreurCmds.filter((c: Commande) => ['livree', 'terminee'].includes(c.statut_commande)).length;
           const echouees = livreurCmds.filter((c: Commande) => ['echouee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande)).length;
-          const encaisse = livreurCmds.reduce((acc: number, c: Commande) => acc + (c.statut_commande === 'livree' ? (Number(c.montant_total) || 0) : 0), 0);
+          const encaisse = livreurCmds.reduce((acc: number, c: Commande) => acc + (['livree', 'terminee'].includes(c.statut_commande) ? (Number(c.montant_total) || 0) : 0), 0);
           
           return {
             id: livreur.id,

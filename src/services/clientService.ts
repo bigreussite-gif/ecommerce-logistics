@@ -45,33 +45,36 @@ export const createClient = async (client: Omit<Client, 'id'>): Promise<string> 
 
 export interface ClientFidelityStats {
   total_commandes: number;
-  total_depense: number;
+  total_brut: number;      // All orders
+  total_encaisse: number;  // Only livree/terminee
   panier_moyen: number;
   derniere_commande: Date | null;
   segment: 'Diamant 💎' | 'Fidèle ✅' | 'À relancer ⚠️' | 'Nouveau 🆕';
 }
 
 export const getClientsWithIntelligence = async (): Promise<(Client & ClientFidelityStats)[]> => {
-  const [clients, allOrders] = await Promise.all([
+  const [clients, allOrdersResult] = await Promise.all([
     getAllClients(),
-    insforge.database.from('commandes').select('*').eq('statut_commande', 'livree')
+    insforge.database.from('commandes').select('*')
   ]);
 
-  const orders = allOrders.data || [];
+  const orders = allOrdersResult.data || [];
 
   return clients.map(client => {
     const clientOrders = orders.filter(o => o.client_id === client.id);
-    const total_depense = clientOrders.reduce((acc, o) => acc + (Number(o.montant_total) || 0), 0);
+    const total_brut = clientOrders.reduce((acc, o) => acc + (Number(o.montant_total) || 0), 0);
+    const settledOrders = clientOrders.filter(o => ['livree', 'terminee'].includes(o.statut_commande));
+    const total_encaisse = settledOrders.reduce((acc, o) => acc + (Number(o.montant_total) || 0), 0);
     const total_commandes = clientOrders.length;
     
-    // Segmentation logic
+    // Segmentation logic based on SETTLED orders for loyalty, but also potential for recruitment
     let segment: any = 'Nouveau 🆕';
-    if (total_commandes >= 5 || total_depense > 150000) segment = 'Diamant 💎';
-    else if (total_commandes >= 2) segment = 'Fidèle ✅';
+    if (settledOrders.length >= 5 || total_encaisse > 150000) segment = 'Diamant 💎';
+    else if (settledOrders.length >= 2) segment = 'Fidèle ✅';
     
     // Check for "At Risk" (last order > 60 days ago)
     const now = new Date();
-    const lastOrderDate = clientOrders.length > 0 ? new Date(clientOrders[0].date_creation) : null;
+    const lastOrderDate = settledOrders.length > 0 ? new Date(settledOrders[0].date_creation) : null;
     if (lastOrderDate && (now.getTime() - lastOrderDate.getTime()) > 60 * 24 * 60 * 60 * 1000) {
       segment = 'À relancer ⚠️';
     }
@@ -79,8 +82,9 @@ export const getClientsWithIntelligence = async (): Promise<(Client & ClientFide
     return {
       ...client,
       total_commandes,
-      total_depense,
-      panier_moyen: total_commandes > 0 ? Math.round(total_depense / total_commandes) : 0,
+      total_brut,
+      total_encaisse,
+      panier_moyen: settledOrders.length > 0 ? Math.round(total_encaisse / settledOrders.length) : 0,
       derniere_commande: lastOrderDate,
       segment
     };
