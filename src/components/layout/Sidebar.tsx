@@ -13,6 +13,7 @@ import {
   Calculator,
   History,
   TrendingUp,
+  Home as HomeIcon,
   User as UserIcon
 } from 'lucide-react';
 
@@ -21,7 +22,8 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
   const location = useLocation();
 
   const navItems = [
-    { path: '/', label: 'Tableau de bord', icon: LayoutDashboard, permission: 'DASHBOARD' },
+    { path: '/', label: 'Accueil', icon: HomeIcon, permission: 'PROFIL' },
+    { path: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard, permission: 'DASHBOARD' },
     { path: '/produits', label: 'Produits & Stock', icon: Package, permission: 'PRODUITS' },
     { path: '/commandes', label: 'Commandes', icon: ShoppingCart, permission: 'COMMANDES' },
     { path: '/centre-appel', label: 'Centre d\'Appel', icon: Headset, permission: 'CENTRE_APPEL' },
