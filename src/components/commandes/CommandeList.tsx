@@ -1,12 +1,13 @@
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Commande, StatutCommande } from '../../types';
-import { Eye, PhoneCall, Truck, Trash2 } from 'lucide-react';
+import { Eye, PhoneCall, Truck, Trash2, FileText } from 'lucide-react';
 
 interface CommandeListProps {
   commandes: Commande[];
   onActionClick?: (commande: Commande) => void;
   onDelete?: (commande: Commande) => void;
+  onInvoiceClick?: (commande: Commande) => void;
   actionIcon?: 'Eye' | 'PhoneCall' | 'Truck';
   actionLabel?: string;
 }
@@ -34,7 +35,14 @@ const getIconComponent = (iconName: string) => {
   }
 };
 
-export const CommandeList = ({ commandes, onActionClick, onDelete, actionIcon = 'Eye', actionLabel = 'Voir détails' }: CommandeListProps) => {
+export const CommandeList = ({ 
+  commandes, 
+  onActionClick, 
+  onDelete, 
+  onInvoiceClick, 
+  actionIcon = 'Eye', 
+  actionLabel = 'Voir détails' 
+}: CommandeListProps) => {
   if (commandes.length === 0) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '5rem 0', color: 'var(--text-muted)', background: 'transparent', boxShadow: 'none' }}>
@@ -98,6 +106,18 @@ export const CommandeList = ({ commandes, onActionClick, onDelete, actionIcon = 
                       >
                         {getIconComponent(actionIcon)}
                       </button>
+                      
+                      {onInvoiceClick && (
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ padding: '0.6rem', borderRadius: '12px', border: '1px solid #e2e8f0' }} 
+                          title="Générer Facture PDF"
+                          onClick={() => onInvoiceClick(c)}
+                        >
+                          <FileText size={18} />
+                        </button>
+                      )}
+
                       {onDelete && (
                         <button 
                           className="btn btn-outline" 

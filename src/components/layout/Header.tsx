@@ -1,5 +1,6 @@
-import { Bell, Search, Menu, Home } from 'lucide-react';
+import { Search, Menu, Home } from 'lucide-react';
 import { useLocation, Link } from 'react-router-dom';
+import { NotificationCenter } from './NotificationCenter';
 
 export const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
   const location = useLocation();
@@ -44,9 +45,7 @@ export const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
           <Home size={20} />
         </Link>
 
-        <button className="btn btn-outline" style={{ border: 'none', padding: '0.6rem', borderRadius: '12px', background: '#f1f5f9' }}>
-          <Bell size={20} style={{ color: 'var(--text-muted)' }} />
-        </button>
+        <NotificationCenter />
       </div>
     </header>
   );

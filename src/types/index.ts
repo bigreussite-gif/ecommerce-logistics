@@ -99,6 +99,7 @@ export interface LigneCommande {
   nom_produit: string;
   quantite: number;
   prix_unitaire: number;
+  prix_achat_unitaire?: number; // Captures cost at time of sale
   montant_ligne: number;
 }
 
@@ -148,4 +149,15 @@ export interface CaisseRetour {
   montant_attendu: number;
   ecart: number;
   commentaire_caissiere?: string;
+  caissiere_id?: string;
+}
+
+export interface Depense {
+  id: string;
+  date: Date | string;
+  categorie: string;
+  montant: number;
+  description?: string;
+  piece_jointe_url?: string;
+  paye_par_id?: string;
 }

@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Plus, Search } from 'lucide-react';
 import { CommandeList } from '../components/commandes/CommandeList';
 import { CommandeForm } from '../components/commandes/CommandeForm';
-import { subscribeToCommandes, deleteCommande } from '../services/commandeService';
+import { subscribeToCommandes, deleteCommande, getCommandeWithLines } from '../services/commandeService';
+import { generateInvoicePDF } from '../services/pdfService';
 import type { Commande } from '../types';
 import { useToast } from '../contexts/ToastContext';
 
@@ -12,6 +13,18 @@ export const Commandes = () => {
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const handleInvoice = async (commande: Commande) => {
+    try {
+      showToast("Génération de la facture...", "info");
+      const fullCommande = await getCommandeWithLines(commande.id);
+      generateInvoicePDF(fullCommande);
+      showToast("Facture générée !", "success");
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur PDF.", "error");
+    }
+  };
 
   const handleDelete = async (commande: Commande) => {
     try {
@@ -84,6 +97,7 @@ export const Commandes = () => {
             )} 
             onActionClick={() => {}}
             onDelete={handleDelete}
+            onInvoiceClick={handleInvoice}
           />
         )}
       </div>

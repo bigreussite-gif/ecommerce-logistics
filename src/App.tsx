@@ -17,6 +17,8 @@ import { Profil } from './pages/Profil';
 import { Login } from './pages/Login';
 import { FinancialReport } from './pages/FinancialReport';
 import { Home } from './pages/Home';
+import { StaffPerformance } from './pages/StaffPerformance';
+import { NetProfit } from './pages/NetProfit';
 
 const ProtectedRoute = ({ children, requiredPermission }: { children: React.ReactNode, requiredPermission: string }) => {
   const { currentUser, hasPermission } = useAuth();
@@ -90,6 +92,16 @@ const AppRoutes = () => {
         {/* CRM Web - Clients */}
         <Route path="clients" element={
           <ProtectedRoute requiredPermission="CLIENTS"><Clients /></ProtectedRoute>
+        } />
+
+        {/* Staff Performance */}
+        <Route path="performance-staff" element={
+          <ProtectedRoute requiredPermission="GESTION_LIVREURS"><StaffPerformance /></ProtectedRoute>
+        } />
+
+        {/* Net Profit & Expenses */}
+        <Route path="net-profit" element={
+          <ProtectedRoute requiredPermission="FINANCE"><NetProfit /></ProtectedRoute>
         } />
 
         {/* Profil Route */}

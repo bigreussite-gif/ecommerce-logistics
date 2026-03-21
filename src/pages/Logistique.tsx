@@ -4,6 +4,7 @@ import { getAvailableLivreurs, creerFeuilleRoute } from '../services/logistiqueS
 import type { Commande, User } from '../types';
 import { Truck, Printer } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import { generateDeliverySlipPDF } from '../services/pdfService';
 
 export const Logistique = () => {
   const { showToast } = useToast();
@@ -47,8 +48,14 @@ export const Logistique = () => {
 
     try {
       setLoading(true);
-      await creerFeuilleRoute(selectedLivreur, Array.from(selectedCommands));
-      showToast("Feuille de route générée avec succès !", "success");
+      const feuilleId = await creerFeuilleRoute(selectedLivreur, Array.from(selectedCommands));
+      
+      // Auto-generate PDF
+      const selectedFullCommandes = commandes.filter(c => selectedCommands.has(c.id));
+      const livreurName = livreurs.find(l => l.id === selectedLivreur)?.nom_complet || "Livreur";
+      generateDeliverySlipPDF({ id: feuilleId, nom_livreur: livreurName }, selectedFullCommandes);
+
+      showToast("Feuille de route et PDF générés avec succès !", "success");
       setSelectedCommands(new Set());
       setSelectedLivreur('');
       fetchData();
