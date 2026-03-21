@@ -61,6 +61,8 @@ const PERMISSIONS_LIST: { id: Permission, label: string }[] = [
   { id: 'CAISSE', label: 'Caisse' },
   { id: 'CLIENTS', label: 'CRM' },
   { id: 'HISTORIQUE', label: 'Historique' },
+  { id: 'FINANCE', label: 'Rapport Journalier' },
+  { id: 'PROFIL', label: 'Mon Profil' },
 ];
 
 const UsersManager = ({ showToast }: { showToast: any }) => {

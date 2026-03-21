@@ -11,7 +11,8 @@ export type Permission =
   | 'CLIENTS'
   | 'HISTORIQUE'
   | 'ADMIN'
-  | 'PROFIL';
+  | 'PROFIL'
+  | 'FINANCE';
 
 export interface User {
   id: string;
