@@ -143,106 +143,129 @@ export const generateDeliverySlipPDF = (feuilleRoute: any, commandes: Commande[]
 
   const doc = new jsPDF('l', 'mm', 'a4') as jsPDFWithPlugin;
   const pageWidth = doc.internal.pageSize.width;
+  const greyTheme: [number, number, number] = [30, 41, 59]; // Dark Slate Grey
   
-  console.log(`Génération PDF Landscape pour ${commandes.length} commandes.`);
-  commandes.forEach(c => console.log(`Commande ${c.id}: ${c.lignes?.length || 0} articles`));
-
-  // Header
+  // Title
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.setTextColor(99, 102, 255);
-  doc.text("GomboSwift Logistique", 20, 25);
-  
-  doc.setFontSize(16);
-  doc.setTextColor(30, 41, 59);
-  doc.text("FEUILLE DE ROUTE LIVREUR", pageWidth - 20, 25, { align: 'right' });
-
-  doc.setFontSize(11);
-  doc.setTextColor(100, 116, 139);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Réf: #${(feuilleRoute.id || "0000").substring(0, 8).toUpperCase()}`, pageWidth - 20, 32, { align: 'right' });
+  doc.setFontSize(24);
+  doc.setTextColor(51, 65, 85);
   const displayDate = feuilleRoute.date ? new Date(feuilleRoute.date) : new Date();
-  doc.text(`Date: ${format(displayDate, 'dd MMMM yyyy', { locale: fr })}`, pageWidth - 20, 37, { align: 'right' });
+  doc.text(`Feuille de route de Livraison - ${format(displayDate, 'yyyy-MM-dd')}`, 15, 20);
 
-  // Livreur Info
-  doc.setFontSize(13);
-  doc.setTextColor(30, 41, 59);
-  doc.setFont("helvetica", "bold");
-  doc.text("LIVREUR ASSIGNÉ :", 20, 50);
-  doc.setFontSize(16);
-  doc.text(feuilleRoute.nom_livreur || "Personnel GomboSwift", 20, 60);
-
-  // --- RÉCAPITULATIF DE CHARGEMENT ---
-  const allLignes = (commandes || []).flatMap(c => c.lignes || []);
-  const summary: Record<string, number> = {};
-  allLignes.forEach(l => {
-    summary[l.nom_produit] = (summary[l.nom_produit] || 0) + l.quantite;
-  });
-
-  doc.setFontSize(11);
-  doc.setTextColor(99, 102, 255);
-  doc.text("RÉCAPITULATIF DE CHARGEMENT (TOTAL TOURNEE) :", 120, 50);
+  // --- TABLEAU RÉSUMÉ 1: INFOS LIVREUR ---
+  const totalObjectif = (commandes || []).reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
   
-  let summaryX = 120;
-  let summaryY = 56;
-  Object.entries(summary).forEach(([name, qty], idx) => {
-    if (idx > 0 && idx % 3 === 0) {
-      summaryX = 120;
-      summaryY += 6;
+  autoTable(doc, {
+    startY: 30,
+    margin: { left: 15, right: 15 },
+    head: [['Nom & Prénoms', 'Téléphone', 'Nombre de colis', 'Montant Total à encaisser']],
+    body: [[
+      feuilleRoute.nom_livreur || "Personnel GomboSwift",
+      "-", // Telephone if available in user object
+      commandes.length.toString(),
+      `${totalObjectif.toLocaleString()} F`
+    ]],
+    theme: 'grid',
+    headStyles: { fillColor: greyTheme, fontSize: 10, halign: 'left' },
+    styles: { fontSize: 10, cellPadding: 3, textColor: [30, 41, 59] },
+    columnStyles: {
+      0: { cellWidth: 80 },
+      1: { cellWidth: 50 },
+      2: { cellWidth: 40 },
+      3: { cellWidth: 'auto', fontStyle: 'bold' }
     }
-    doc.setFontSize(9);
-    doc.setTextColor(30, 41, 59);
-    doc.setFont("helvetica", "bold");
-    doc.text(`• ${name}:`, summaryX, summaryY);
-    doc.setTextColor(99, 102, 255);
-    doc.text(`${qty}`, summaryX + 45, summaryY);
-    summaryX += 60;
   });
 
-  // Commandes Table
-  const tableRows = (commandes || []).map((c, i) => {
+  // --- TABLEAU RÉSUMÉ 2: RÉCONCILIATION ---
+  const lastY1 = (doc as any).lastAutoTable.finalY + 8;
+  autoTable(doc, {
+    startY: lastY1,
+    margin: { left: 15, right: 15 },
+    head: [['Colis Retournés', 'Colis Livrés', 'Somme à verser', 'Reste']],
+    body: [['0', '0', '0 F', '0 F']], // Placeholders for manual completion or future logic
+    theme: 'grid',
+    headStyles: { fillColor: greyTheme, fontSize: 10, halign: 'left' },
+    styles: { fontSize: 10, cellPadding: 3, textColor: [30, 41, 59] },
+    columnStyles: {
+      0: { cellWidth: 85 },
+      1: { cellWidth: 65 },
+      2: { cellWidth: 85 },
+      3: { cellWidth: 'auto' }
+    }
+  });
+
+  // --- TABLEAU PRINCIPAL: DÉTAILS COMMANDES ---
+  const lastY2 = (doc as any).lastAutoTable.finalY + 12;
+  const tableRows = (commandes || []).map((c) => {
     const itemsStr = (c.lignes || []).map((l: LigneCommande) => 
       `${l.nom_produit} (x${l.quantite})`
-    ).join(' | ');
+    ).join('\n');
+    
+    const puStr = (c.lignes || []).map((l: LigneCommande) => 
+       `${(l.prix_unitaire || 0).toLocaleString()} F`
+    ).join('\n');
+
+    const qtyStr = (c.lignes || []).map((l: LigneCommande) => 
+       `${l.quantite}`
+    ).join('\n');
     
     return [
-      i + 1,
       `#${(c.id || "").substring(0, 8).toUpperCase()}`,
-      c.nom_client || "Client",
-      `${c.commune_livraison || "-"}\n${c.adresse_livraison?.slice(0, 50) || ""}`,
       itemsStr || "SANS ARTICLES",
-      `${(c.montant_total || 0).toLocaleString()} CFA`
+      " ", // Taille/Colis
+      c.nom_client || "Client",
+      puStr || "0 F",
+      `${(c.frais_livraison || 0).toLocaleString()} F`,
+      qtyStr || "0",
+      `${(c.montant_total || 0).toLocaleString()} F`,
+      c.telephone_client || "-",
+      c.commune_livraison || "-",
+      " " // Observation
     ];
   });
 
   autoTable(doc, {
-    startY: 75,
-    head: [['N°', 'Réf', 'Client', 'Zone / Adresse Détail', 'Articles (Détails)', 'À Encaisser']],
+    startY: lastY2,
+    margin: { left: 15, right: 15 },
+    head: [[
+      'N° commandes', 
+      'Articles commandés', 
+      'Taille/Colis', 
+      'Client', 
+      'Prix unitaire', 
+      'Livraison', 
+      'Quantité', 
+      'Net à payer', 
+      'Numéro du Client', 
+      'Lieu de livraison', 
+      'Observation'
+    ]],
     body: tableRows,
     theme: 'grid',
-    headStyles: { fillColor: [30, 41, 59], fontSize: 10 },
+    headStyles: { fillColor: greyTheme, fontSize: 8, halign: 'left' },
+    styles: { fontSize: 8, cellPadding: 3, textColor: [30, 41, 59] },
     columnStyles: {
-      0: { cellWidth: 10 },
-      1: { cellWidth: 25 },
-      2: { cellWidth: 40 },
-      3: { cellWidth: 60 },
-      4: { cellWidth: 'auto', fontSize: 9 },
-      5: { halign: 'right', cellWidth: 35, fontStyle: 'bold' }
-    },
-    styles: { fontSize: 9, cellPadding: 4 }
+      0: { cellWidth: 25 }, // N°
+      1: { cellWidth: 60 }, // Articles
+      2: { cellWidth: 20 }, // Taille
+      3: { cellWidth: 25 }, // Client
+      4: { cellWidth: 20 }, // P.U.
+      5: { cellWidth: 20 }, // Livraison
+      6: { cellWidth: 15 }, // Qty
+      7: { cellWidth: 25, fontStyle: 'bold' }, // Net
+      8: { cellWidth: 25 }, // Tel
+      9: { cellWidth: 25 }, // Lieu
+      10: { cellWidth: 'auto' } // Observation
+    }
   });
 
-  const finalY = (doc as any).lastAutoTable?.finalY || 100;
+  const finalY = (doc as any).lastAutoTable.finalY;
   doc.setFontSize(10);
-  doc.setTextColor(30, 41, 59);
-  doc.setDrawColor(200);
-  doc.line(20, finalY + 20, 80, finalY + 20);
-  doc.text("Signature Livreur", 20, finalY + 25);
+  doc.setTextColor(100, 116, 139);
+  doc.text("Signature Livreur", 15, finalY + 15);
+  doc.text("Cachet Logistique", pageWidth - 15, finalY + 15, { align: 'right' });
 
-  doc.line(pageWidth - 80, finalY + 20, pageWidth - 20, finalY + 20);
-  doc.text("Cachet Logistique", pageWidth - 80, finalY + 25);
-
-  doc.save(`FeuilleRoute_GomboSwift_${(feuilleRoute.id || "0000").substring(0, 8).toUpperCase()}.pdf`);
+  doc.save(`FeuilleRoute_GomboSwift_${format(displayDate, 'dd_MM_yyyy')}.pdf`);
 };
 
 export const generateAnalyticalReportPDF = (data: any, dateString: string) => {
