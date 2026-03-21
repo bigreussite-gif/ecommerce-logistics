@@ -122,47 +122,52 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
 };
 
 export const updateCommandeStatus = async (id: string, status: string, additionalData: any = {}): Promise<void> => {
-  // 1. Fetch current status to check if we need to restore stock
+  // 1. Fetch current status and lines
   const { data: currentCmd } = await insforge.database
     .from('commandes')
     .select('statut_commande')
     .eq('id', id)
     .single();
 
-  const prevStatus = currentCmd?.statut_commande;
+  if (!currentCmd) throw new Error("Commande introuvable");
+  const prevStatus = currentCmd.statut_commande;
+  const nextStatus = status;
 
-  // 2. Update status
+  // 2. Update status in DB
   const { error } = await insforge.database
     .from('commandes')
-    .update({ statut_commande: status, ...additionalData, updated_at: new Date() })
+    .update({ statut_commande: nextStatus, ...additionalData, updated_at: new Date() })
     .eq('id', id);
   
   if (error) throw error;
 
-  // 3. Stock restoration logic: 
-  // If we move TO 'annulee' or 'a_rappeler' FROM a state that had stock removed (like en_attente_appel or validee)
-  const stockRemovedStates = ['en_attente_appel', 'validee', 'en_cours_livraison'];
-  const stockRestoreStates = ['annulee', 'a_rappeler'];
+  // 3. Stock management state machine
+  const activeStates = ['en_attente_appel', 'validee', 'en_cours_livraison', 'livree', 'terminee'];
+  const inactiveStates = ['annulee', 'a_rappeler', 'echouee', 'retour_stock', 'retour_livreur', 'injoignable'];
 
-  if (stockRestoreStates.includes(status) && stockRemovedStates.includes(prevStatus)) {
+  const wasActive = activeStates.includes(prevStatus);
+  const isNowActive = activeStates.includes(nextStatus);
+
+  // If transition changes active status, move stock
+  if (wasActive !== isNowActive) {
     try {
       const { data: lines } = await insforge.database
         .from('lignes_commandes')
         .select('*')
         .eq('commande_id', id);
 
-      if (lines) {
+      if (lines && lines.length > 0) {
         for (const l of lines) {
           await addMouvementStock({
             produit_id: l.produit_id,
-            type_mouvement: 'entree',
+            type_mouvement: isNowActive ? 'sortie' : 'entree',
             quantite: l.quantite,
-            reference: `Retour Stock (${status}) Cmd #${id.substring(0, 8)}`
+            reference: `${isNowActive ? 'Sortie' : 'Retour'} Stock (${nextStatus}) Cmd #${id.substring(0, 8)}`
           } as any);
         }
       }
     } catch (stockErr) {
-      console.error("Erreur lors de la restauration du stock:", stockErr);
+      console.error("Erreur Stock Flow:", stockErr);
     }
   }
 };
