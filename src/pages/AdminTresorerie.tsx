@@ -62,11 +62,10 @@ export const AdminTresorerie = () => {
 
   // Calculations for Private Dashboard
   const totalRevenue = data.orders.reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
-  const totalItems = data.orders.reduce((acc, c) => acc + (c.lignes?.reduce((sum, l) => sum + l.quantite, 0) || 0), 0);
   
   const extractionVentes = data.orders.length * 250;
-  const extractionProduits = totalItems * 500;
-  const totalExtractions = extractionVentes + extractionProduits;
+  const extractionLogistique = data.orders.length * 500;
+  const totalExtractions = extractionVentes + extractionLogistique;
   const caRestant = totalRevenue - totalExtractions;
 
   // Cash Flow Logic
@@ -160,7 +159,7 @@ export const AdminTresorerie = () => {
           <h2 style={{ fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 800, color: '#ef4444' }}>{totalExtractions.toLocaleString()} F</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>• Charges Internes (-250/v): <strong>{extractionVentes.toLocaleString()} F</strong></p>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>• Frais Logistique (-500/u): <strong>{extractionProduits.toLocaleString()} F</strong></p>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>• Frais Logistique (-500/v): <strong>{extractionLogistique.toLocaleString()} F</strong></p>
           </div>
         </div>
 
@@ -245,7 +244,7 @@ export const AdminTresorerie = () => {
               </div>
               <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                 <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Logistique Additionnelle</p>
-                <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>500 F / Unité (Produit)</p>
+                <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>500 F / Livraison Livrée</p>
               </div>
             </div>
           </div>
