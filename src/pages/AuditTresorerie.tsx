@@ -27,7 +27,6 @@ import { useToast } from '../contexts/ToastContext';
 
 export const AuditTresorerie = () => {
   const { showToast } = useToast();
-  const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   
@@ -36,7 +35,6 @@ export const AuditTresorerie = () => {
   const [transactions, setTransactions] = useState<any[]>([]);
 
   const loadAuditData = async () => {
-    setLoading(true);
     try {
       const start = startOfDay(new Date(startDate)).toISOString();
       const end = endOfDay(new Date(endDate)).toISOString();
@@ -76,8 +74,6 @@ export const AuditTresorerie = () => {
       setTransactions(combinedTransactions);
     } catch (err) {
       showToast("Échec du chargement des données d'expertise", "error");
-    } finally {
-      setLoading(false);
     }
   };
 
