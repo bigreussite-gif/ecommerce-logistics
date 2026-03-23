@@ -4,6 +4,15 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Commande, LigneCommande } from '../types';
 
+/**
+ * Standardized Price Formatter for PDFs
+ * Uses '.' as thousands separator and ensures bold formatting.
+ */
+const fP = (num: number) => {
+  if (num === undefined || num === null) return "0";
+  return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+};
+
 // Extend jsPDF type to include autotable
 interface jsPDFWithPlugin extends jsPDF {
   autoTable: (options: any) => jsPDF;
@@ -23,7 +32,7 @@ export const generateInvoicePDF = (commande: Commande & { lignes: LigneCommande[
   doc.setTextColor(100, 116, 139);
   doc.setFont("helvetica", "normal");
   doc.text("Solution de Logistique E-commerce", 20, 32);
-  doc.text("Contact: +225 00 00 00 00", 20, 37);
+  doc.text("Contact: +225 01-72-57-13-52", 20, 37);
   doc.text("Abidjan, Côte d'Ivoire", 20, 42);
 
   // Invoice Title & Info
@@ -63,8 +72,8 @@ export const generateInvoicePDF = (commande: Commande & { lignes: LigneCommande[
     index + 1,
     l.nom_produit,
     l.quantite,
-    `${(l.prix_unitaire || 0).toLocaleString()} CFA`,
-    `${(l.montant_ligne || 0).toLocaleString()} CFA`
+    `${fP(l.prix_unitaire || 0)} CFA`,
+    `${fP(l.montant_ligne || 0)} CFA`
   ]);
 
   autoTable(doc, {
@@ -83,8 +92,8 @@ export const generateInvoicePDF = (commande: Commande & { lignes: LigneCommande[
       0: { halign: 'center', cellWidth: 10 },
       1: { cellWidth: 'auto' },
       2: { halign: 'center', cellWidth: 20 },
-      3: { halign: 'right', cellWidth: 35 },
-      4: { halign: 'right', cellWidth: 35 }
+      3: { halign: 'right', cellWidth: 35, fontStyle: 'bold' },
+      4: { halign: 'right', cellWidth: 35, fontStyle: 'bold' }
     },
     styles: {
       fontSize: 9,
@@ -104,11 +113,15 @@ export const generateInvoicePDF = (commande: Commande & { lignes: LigneCommande[
 
   doc.setFontSize(10);
   doc.setTextColor(71, 85, 105);
+  doc.setFont("helvetica", "normal");
   doc.text("Sous-total :", pageWidth - 80, finalY + 10);
-  doc.text(`${subtotal.toLocaleString()} CFA`, pageWidth - 20, finalY + 10, { align: 'right' });
+  doc.setFont("helvetica", "bold");
+  doc.text(`${fP(subtotal)} CFA`, pageWidth - 20, finalY + 10, { align: 'right' });
 
+  doc.setFont("helvetica", "normal");
   doc.text("Frais de livraison :", pageWidth - 80, finalY + 17);
-  doc.text(`${delivery.toLocaleString()} CFA`, pageWidth - 20, finalY + 17, { align: 'right' });
+  doc.setFont("helvetica", "bold");
+  doc.text(`${fP(delivery)} CFA`, pageWidth - 20, finalY + 17, { align: 'right' });
 
   doc.setDrawColor(99, 102, 255);
   doc.setLineWidth(0.5);
@@ -118,7 +131,7 @@ export const generateInvoicePDF = (commande: Commande & { lignes: LigneCommande[
   doc.setTextColor(30, 41, 59);
   doc.setFont("helvetica", "bold");
   doc.text("TOTAL À PAYER :", pageWidth - 85, finalY + 32);
-  doc.text(`${total.toLocaleString()} CFA`, pageWidth - 20, finalY + 32, { align: 'right' });
+  doc.text(`${fP(total)} CFA`, pageWidth - 20, finalY + 32, { align: 'right' });
 
   // --- FOOTER ---
   doc.setFontSize(9);
@@ -147,11 +160,6 @@ export const generateDeliverySlipPDF = (feuilleRoute: any, commandes: Commande[]
   const lightGrey: [number, number, number] = [226, 232, 240]; 
   const darkText: [number, number, number] = [30, 41, 59];
   
-  // Custom price formatter: 7.500 instead of 7 500
-  const fP = (num: number) => {
-    return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  };
-
   // Title - Small and top with branding
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
@@ -183,7 +191,7 @@ export const generateDeliverySlipPDF = (feuilleRoute: any, commandes: Commande[]
       0: { cellWidth: 80 },
       1: { cellWidth: 50 },
       2: { cellWidth: 40 },
-      3: { cellWidth: 'auto', fontStyle: 'bold', fontSize: 12 } // Grand prix
+      3: { cellWidth: 'auto', fontStyle: 'bold', fontSize: 12 } // Grand prix et Gras
     }
   });
 
@@ -256,17 +264,17 @@ export const generateDeliverySlipPDF = (feuilleRoute: any, commandes: Commande[]
     headStyles: { fillColor: lightGrey, textColor: darkText, fontSize: 8, fontStyle: 'bold' },
     styles: { fontSize: 8, cellPadding: 2, textColor: darkText },
     columnStyles: {
-      0: { cellWidth: 20 }, // N°
-      1: { cellWidth: 60 }, // Articles
-      2: { cellWidth: 15 }, // Taille
-      3: { cellWidth: 25 }, // Client
-      4: { cellWidth: 20 }, // P.U.
-      5: { cellWidth: 20 }, // Livraison
-      6: { cellWidth: 10 }, // Qty
-      7: { cellWidth: 25, fontStyle: 'bold', fontSize: 10 }, // Net
-      8: { cellWidth: 30 }, // Tel
-      9: { cellWidth: 25 }, // Lieu
-      10: { cellWidth: 'auto' } // Observation
+      0: { cellWidth: 20 },
+      1: { cellWidth: 60 },
+      2: { cellWidth: 15 },
+      3: { cellWidth: 25 },
+      4: { cellWidth: 20, fontStyle: 'bold' }, // PU Gras
+      5: { cellWidth: 20, fontStyle: 'bold' }, // Frais Gras
+      6: { cellWidth: 10 },
+      7: { cellWidth: 25, fontStyle: 'bold', fontSize: 10 }, // Net Gras
+      8: { cellWidth: 30 },
+      9: { cellWidth: 25 },
+      10: { cellWidth: 'auto' }
     }
   });
 
@@ -322,8 +330,6 @@ export const generateAnalyticalReportPDF = (data: any, dateString: string) => {
     };
 
     const succesCmds = (data.commandes || []).filter((c: any) => c.statut_commande === 'terminee' || c.statut_commande === 'livree');
-    const failureCmds = (data.commandes || []).filter((c: any) => !['terminee', 'livree', 'en_cours_livraison'].includes(c.statut_commande));
-    
     const totalEncaisseBrut = (data.retours || []).reduce((acc: number, r: any) => acc + (r.montant_remis_par_livreur || 0), 0);
     const totalFraisLivraison = succesCmds.reduce((acc: number, c: any) => acc + getFrais(c), 0);
     const totalNetProduits = totalEncaisseBrut - totalFraisLivraison;
@@ -342,22 +348,23 @@ export const generateAnalyticalReportPDF = (data: any, dateString: string) => {
     doc.setFontSize(14);
     doc.setTextColor(30, 41, 59);
     doc.setFont("helvetica", "bold");
-    doc.text(`CA Produits Net: ${totalNetProduits.toLocaleString()}`, 25, 63);
-    doc.text(`Logistique: ${totalFraisLivraison.toLocaleString()}`, 25, 73);
-    doc.text(`Total Encaissé: ${totalEncaisseBrut.toLocaleString()}`, pageWidth - 25, 63, { align: 'right' });
+    doc.text(`CA Produits Net: ${fP(totalNetProduits)}`, 25, 63);
+    doc.text(`Logistique: ${fP(totalFraisLivraison)}`, 25, 73);
+    doc.text(`Total Encaissé: ${fP(totalEncaisseBrut)}`, pageWidth - 25, 63, { align: 'right' });
     doc.text(`Taux de Succès: ${successRate.toFixed(1)}%`, pageWidth - 25, 73, { align: 'right' });
 
     // Detailed Table
     doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
     doc.text("Détails des Opérations de Caisse", 20, 100);
 
     const tableRows = (data.retours || []).map((r: any) => {
       const frId = String(r.feuille_route_id || "");
       return [
         frId ? `#${frId.substring(0, 8).toUpperCase()}` : "N/A",
-        r.montant_remis_par_livreur?.toLocaleString() || "0",
-        r.montant_attendu?.toLocaleString() || "0",
-        r.ecart?.toLocaleString() || "0",
+        fP(r.montant_remis_par_livreur || 0),
+        fP(r.montant_attendu || 0),
+        fP(r.ecart || 0),
         r.commentaire || "-"
       ];
     });
@@ -369,38 +376,13 @@ export const generateAnalyticalReportPDF = (data: any, dateString: string) => {
       theme: 'striped',
       headStyles: { fillColor: [99, 102, 255] },
       columnStyles: {
-        1: { halign: 'right' },
-        2: { halign: 'right' },
-        3: { halign: 'right' }
+        1: { halign: 'right', fontStyle: 'bold' },
+        2: { halign: 'right', fontStyle: 'bold' },
+        3: { halign: 'right', fontStyle: 'bold' }
       }
     });
 
-    // Anomalies / Failures
-    const nextY = (doc as any).lastAutoTable?.finalY || 150;
-    if (failureCmds.length > 0) {
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "bold");
-      doc.text("Anomalies & Echecs du Jour", 20, nextY + 15);
-      
-      const failureRows = failureCmds.map((c: any) => {
-        const cId = String(c.id || "");
-        return [
-          cId ? cId.substring(0, 8).toUpperCase() : "N/A",
-          c.nom_client || "Client",
-          c.statut_commande || "Inconnu",
-          c.commentaire_agent || "-"
-        ];
-      });
-
-      autoTable(doc, {
-        startY: nextY + 20,
-        head: [['Réf Cmd', 'Client', 'Statut Critique', 'Motif / Note Agent']],
-        body: failureRows,
-        theme: 'grid',
-        headStyles: { fillColor: [239, 68, 68] }
-      });
-    }
-
+    // Save
     doc.save(`Rapport_Analytique_${dateString || 'journee'}_GomboSwift.pdf`);
   } catch (err) {
     console.error("Critical error inside generateAnalyticalReportPDF:", err);
@@ -443,15 +425,18 @@ export const generateAuditReportPDF = (
     startY: 70,
     head: [['Indicateur de Performance', 'Valeur (CFA)', 'Observation']],
     body: [
-      ['Chiffre d\'Affaires Brut', metrics.ca_brut.toLocaleString(), 'Total des ventes enregistrées'],
-      ['Coût des Marchandises (COGS)', metrics.cogs_total.toLocaleString(), 'Prix d\'achat des produits vendus'],
-      ['Marge Brute d\'Exploitation', (metrics.ca_brut - metrics.cogs_total).toLocaleString(), `${metrics.marge_brute_percent}% du CA`],
-      ['Charges Fixes & Dépenses', metrics.depenses_fixes_total.toLocaleString(), 'Logistique et frais administratifs'],
-      ['BÉNÉFICE NET (EBITDA)', metrics.profit_net.toLocaleString(), `Marge nette: ${metrics.marge_nette_percent}%`]
+      ['Chiffre d\'Affaires Brut', fP(metrics.ca_brut), 'Total des ventes enregistrées'],
+      ['Coût des Marchandises (COGS)', fP(metrics.cogs_total), 'Prix d\'achat des produits vendus'],
+      ['Marge Brute d\'Exploitation', fP(metrics.ca_brut - metrics.cogs_total), `${metrics.marge_brute_percent}% du CA`],
+      ['Charges Fixes & Dépenses', fP(metrics.depenses_fixes_total), 'Logistique et frais administratifs'],
+      ['BÉNÉFICE NET (EBITDA)', fP(metrics.profit_net), `Marge nette: ${metrics.marge_nette_percent}%`]
     ],
     theme: 'grid',
     headStyles: { fillColor: [71, 85, 105], fontSize: 10 },
-    styles: { cellPadding: 5 }
+    styles: { cellPadding: 5 },
+    columnStyles: {
+      1: { halign: 'right', fontStyle: 'bold', fontSize: 11 } // Valeurs en gras
+    }
   });
 
   // --- 4. TRANSACTION RESUME ---
@@ -459,11 +444,11 @@ export const generateAuditReportPDF = (
   doc.setFont("helvetica", "bold");
   doc.text("Journal des Opérations Majeures", 20, finalY1);
 
-  const tableRows = transactions.slice(0, 20).map(t => [
+  const tableRows = transactions.slice(0, 30).map(t => [
     format(new Date(t.date), 'dd/MM/yyyy'),
     t.description.substring(0, 45),
     t.categorie,
-    t.montant.toLocaleString()
+    fP(t.montant)
   ]);
 
   autoTable(doc, {
@@ -471,25 +456,16 @@ export const generateAuditReportPDF = (
     head: [['Date', 'Description', 'Catégorie', 'Montant']],
     body: tableRows,
     theme: 'striped',
-    headStyles: { fillColor: [99, 102, 255] }
+    headStyles: { fillColor: [99, 102, 255] },
+    columnStyles: {
+      3: { halign: 'right', fontStyle: 'bold' } // Montant en gras
+    }
   });
-
-  // --- 5. SIGNATURES ---
-  const finalY2 = (doc as any).lastAutoTable.finalY + 30;
-  const sigY = finalY2 > 240 ? 40 : finalY2;
-  if (finalY2 > 240) doc.addPage();
-  
-  doc.setFontSize(10);
-  doc.text("Cachet et Signature de l'Auditeur", 20, sigY);
-  doc.setDrawColor(200, 200, 200);
-  doc.rect(20, sigY + 5, 60, 30);
-  
-  doc.text("Cachet de la Direction Générale", pageWidth - 80, sigY);
-  doc.rect(pageWidth - 80, sigY + 5, 60, 30);
 
   // --- FOOTER ---
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
+  doc.setFont("helvetica", "normal");
   doc.text("Ce document est certifié conforme aux écritures comptables enregistrées dans le système GomboSwift.", pageWidth / 2, 285, { align: 'center' });
 
   doc.save(`Bilan_Expertise_${dateRange.start}_${dateRange.end}.pdf`);
