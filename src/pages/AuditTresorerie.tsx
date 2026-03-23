@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { getFinancialData } from '../services/commandeService';
 import { getDepenses, calculateProfitMetrics, generateTimeSeriesData } from '../services/financialService';
-import { exportToExcel, exportToWord } from '../services/exportService';
+import { exportToExcel, exportToWord, exportToJson } from '../services/exportService';
 import { generateAuditReportPDF } from '../services/pdfService';
-import { format, subDays, startOfDay, endOfDay } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { 
   ShieldCheck, 
   FileText, 
@@ -12,7 +12,13 @@ import {
   Calendar,
   Target,
   BarChart4,
-  Zap
+  Zap,
+  Download,
+  Database,
+  Briefcase,
+  Layers,
+  TrendingUp,
+  FileCode
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -27,6 +33,7 @@ import { useToast } from '../contexts/ToastContext';
 
 export const AuditTresorerie = () => {
   const { showToast } = useToast();
+  const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   
@@ -35,6 +42,7 @@ export const AuditTresorerie = () => {
   const [transactions, setTransactions] = useState<any[]>([]);
 
   const loadAuditData = async () => {
+    setLoading(true);
     try {
       const start = startOfDay(new Date(startDate)).toISOString();
       const end = endOfDay(new Date(endDate)).toISOString();
@@ -67,13 +75,15 @@ export const AuditTresorerie = () => {
           categorie: e.categorie,
           montant: -Math.abs(e.montant)
         }))
-      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
       setFinancials(metrics);
       setChartData(timeseries);
       setTransactions(combinedTransactions);
     } catch (err) {
       showToast("Échec du chargement des données d'expertise", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -81,9 +91,80 @@ export const AuditTresorerie = () => {
     loadAuditData();
   }, [startDate, endDate]);
 
-  const handleExcelExport = () => {
-    exportToExcel(transactions, "Expertise_Comptable_Flux");
-    showToast("Journal des flux exporté (Excel)", "success");
+  // --- SPECIALIZED EXPORT LOGIC ---
+
+  const handleJournalExport = () => {
+    let balance = 0;
+    const journalData = [...transactions].reverse().map(t => {
+      balance += t.montant;
+      return {
+        Date: format(new Date(t.date), 'dd/MM/yyyy HH:mm'),
+        Type: t.type,
+        Libellé: t.description,
+        Catégorie: t.categorie,
+        Montant: t.montant,
+        Solde: balance
+      };
+    }).reverse();
+    exportToExcel(journalData, "Journal_Complet_Solde");
+    showToast("Journal complet exporté", "success");
+  };
+
+  const handleBankStatementExport = () => {
+    let balance = 0;
+    const bankData = [...transactions].reverse().map(t => {
+      balance += t.montant;
+      return {
+        Date: format(new Date(t.date), 'yyyy-MM-dd'),
+        "Description Opération": t.description,
+        Débit: t.montant < 0 ? Math.abs(t.montant) : 0,
+        Crédit: t.montant > 0 ? t.montant : 0,
+        Solde: balance
+      };
+    }).reverse();
+    exportToExcel(bankData, "Releve_Type_Banque");
+    showToast("Relevé bancaire exporté", "success");
+  };
+
+  const handleMonthlySummaryExport = () => {
+    const months: Record<string, { in: number, out: number }> = {};
+    transactions.forEach(t => {
+      const monthKey = format(new Date(t.date), 'yyyy-MM');
+      if (!months[monthKey]) months[monthKey] = { in: 0, out: 0 };
+      if (t.montant > 0) months[monthKey].in += t.montant;
+      else months[monthKey].out += Math.abs(t.montant);
+    });
+    
+    const summaryData = Object.entries(months).map(([key, val]) => ({
+      Mois: key,
+      "Total Encaissements": val.in,
+      "Total Décaissements": val.out,
+      "Flux Net": val.in - val.out
+    }));
+    exportToExcel(summaryData, "Synthese_Mensuelle");
+    showToast("Synthèse mensuelle exportée", "success");
+  };
+
+  const handleFlatTableExport = () => {
+    exportToExcel(transactions, "Tableau_Plat_Comptable");
+    showToast("Tableau plat exporté", "success");
+  };
+
+  const handleJsonExport = () => {
+    const auditData = {
+      rapport: "Audit Trésorerie GomboSwift",
+      periode: { debut: startDate, fin: endDate },
+      metriques: financials,
+      journaux: transactions
+    };
+    exportToJson(auditData, "Audit_JSON_Period");
+    showToast("Données JSON exportées", "success");
+  };
+
+  const handlePDFExport = () => {
+    if (!financials) return;
+    generateAuditReportPDF(financials, transactions, { start: startDate, end: endDate });
+    showToast("Bilan d'Audit généré (PDF)", "success");
   };
 
   const handleWordExport = () => {
@@ -102,12 +183,6 @@ export const AuditTresorerie = () => {
     showToast("Rapport de synthèse exporté (Word)", "success");
   };
 
-  const handlePDFExport = () => {
-    if (!financials) return;
-    generateAuditReportPDF(financials, transactions, { start: startDate, end: endDate });
-    showToast("Bilan d'Audit généré (PDF)", "success");
-  };
-
   return (
     <div style={{ animation: 'pageEnter 0.6s ease', paddingBottom: '3rem' }}>
       {/* HEADER SECTION */}
@@ -121,7 +196,7 @@ export const AuditTresorerie = () => {
           </div>
           <h1 className="text-premium" style={{ fontSize: '2.4rem', fontWeight: 900, margin: 0 }}>Trésorerie Avancée</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginTop: '0.4rem', fontWeight: 500 }}>
-             Reporting financier aux normes bancaires et comptables.
+             Expertise comptable et analyses pour dossiers bancaires.
           </p>
         </div>
 
@@ -135,9 +210,14 @@ export const AuditTresorerie = () => {
         </div>
       </div>
 
-      {financials && (
+      {loading ? (
+        <div style={{ padding: '4rem', textAlign: 'center' }}>
+          <div className="spinner" style={{ margin: '0 auto 1.5rem' }}></div>
+          <p style={{ fontWeight: 600, color: '#64748b' }}>Analyse des écritures comptables en cours...</p>
+        </div>
+      ) : financials && (
         <>
-          {/* TOP METRICS - EXPERT VIEW */}
+          {/* TOP METRICS */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
             <div className="card" style={{ padding: '2rem', background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)', color: 'white', border: 'none' }}>
                <p style={{ opacity: 0.7, fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Bénéfice Net (EBITDA)</p>
@@ -157,20 +237,84 @@ export const AuditTresorerie = () => {
             </div>
 
             <div className="card" style={{ padding: '2rem' }}>
-               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Charges Fixes (Logistique+Frais)</p>
+               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Charges Fixes Totales</p>
                <h2 style={{ fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 800, color: '#ef4444' }}>{financials.depenses_fixes_total.toLocaleString()} F</h2>
-               <p style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: 600 }}>Inclus: Salaires & Essence</p>
+               <p style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: 600 }}>Toutes charges périodiques</p>
             </div>
           </div>
 
-          {/* MAIN CHART & ANALYSIS */}
+          {/* NEW BUSINESS EXPORTS SECTION (AS PER SCREENSHOT) */}
+          <div className="card" style={{ padding: '2rem', marginBottom: '2.5rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+              <Download size={20} color="#f97316" />
+              <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Exports pour la banque / comptabilité</h3>
+            </div>
+            <p style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+              Fichiers CSV avec séparateur point-virgule, encodage UTF-8 avec BOM (ouverture directe dans Excel). Format JSON pour audit ou intégration outil.
+            </p>
+            
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+              <button 
+                onClick={handleJournalExport}
+                className="btn-export-expert"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.8rem 1.2rem', borderRadius: '12px', border: '1px solid #0ea5e9', background: 'white', color: '#0369a1', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                <div style={{ padding: '4px', background: '#f0f9ff', borderRadius: '6px' }}><div style={{ color: '#0ea5e9' }}><Briefcase size={18} /></div></div>
+                Journal complet + solde
+              </button>
+
+              <button 
+                onClick={handleBankStatementExport}
+                className="btn-export-expert"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.8rem 1.2rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white', color: '#1e293b', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                <div style={{ padding: '4px', background: '#fff7ed', borderRadius: '6px' }}><div style={{ color: '#f59e0b' }}><Layers size={18} /></div></div>
+                Relevé type banque (Débit / Crédit / Solde)
+              </button>
+
+              <button 
+                onClick={handleMonthlySummaryExport}
+                className="btn-export-expert"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.8rem 1.2rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white', color: '#1e293b', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                <div style={{ padding: '4px', background: '#f0fdf4', borderRadius: '6px' }}><div style={{ color: '#10b981' }}><TableIcon size={18} /></div></div>
+                Synthèse mensuelle (période)
+              </button>
+
+              <button 
+                onClick={handleMonthlySummaryExport} // Reuse same grouping logic
+                className="btn-export-expert"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.8rem 1.2rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white', color: '#1e293b', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                <div style={{ padding: '4px', background: '#f5f3ff', borderRadius: '6px' }}><div style={{ color: '#8b5cf6' }}><TrendingUp size={18} /></div></div>
+                Évolution mensuelle (tout historique)
+              </button>
+
+              <button 
+                onClick={handleFlatTableExport}
+                className="btn-export-expert"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.8rem 1.2rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white', color: '#1e293b', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                <div style={{ padding: '4px', background: '#f8fafc', borderRadius: '6px' }}><div style={{ color: '#64748b' }}><Database size={18} /></div></div>
+                Tableau plat (période)
+              </button>
+
+              <button 
+                onClick={handleJsonExport}
+                className="btn-export-expert"
+                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.8rem 1.2rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white', color: '#1e293b', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
+              >
+                <div style={{ padding: '4px', background: '#fff1f2', borderRadius: '6px' }}><div style={{ color: '#e11d48' }}><FileCode size={18} /></div></div>
+                Audit JSON (période)
+              </button>
+            </div>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem', marginBottom: '2.5rem' }} className="responsive-grid">
             <div className="card" style={{ padding: '2rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                  <h3 style={{ margin: 0, fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                     <BarChart4 size={20} color="var(--primary)" /> Évolutions des Flux (CA vs Profit)
-                  </h3>
-              </div>
+              <h3 style={{ margin: '0 0 2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                 <BarChart4 size={20} color="var(--primary)" /> Évolutions des Flux Porteurs
+              </h3>
               <div style={{ width: '100%', height: '350px' }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData}>
@@ -183,9 +327,7 @@ export const AuditTresorerie = () => {
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
                     <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                    <Tooltip 
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-premium)' }}
-                    />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-premium)' }} />
                     <Area type="monotone" dataKey="revenue" name="Revenue" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
                     <Area type="monotone" dataKey="profit" name="Profit" stroke="#10b981" strokeWidth={3} fill="transparent" />
                   </AreaChart>
@@ -194,39 +336,23 @@ export const AuditTresorerie = () => {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div className="card" style={{ padding: '2rem', background: '#f8fafc', border: '2px dashed #e2e8f0' }}>
-                 <h4 style={{ margin: '0 0 1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                   <Target size={18} color="var(--primary)" /> Score de Solvabilité
-                 </h4>
-                 <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 900, color: financials.marge_nette_percent > 15 ? '#10b981' : '#f59e0b' }}>A+</div>
-                    <p style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Indice de Confiance Bancaire</p>
-                 </div>
-                 <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <li style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
-                       <span style={{ color: '#64748b' }}>Autofinancement</span>
-                       <span style={{ fontWeight: 700, color: '#10b981' }}>Excellent</span>
-                    </li>
-                    <li style={{ fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
-                       <span style={{ color: '#64748b' }}>Ratio Endettement</span>
-                       <span style={{ fontWeight: 700 }}>Faible</span>
-                    </li>
-                 </ul>
+              <div className="card" style={{ padding: '2.5rem 2rem', background: '#f8fafc', border: '2px dashed #e2e8f0', textAlign: 'center' }}>
+                 <Target size={32} color="var(--primary)" style={{ margin: '0 auto 1.5rem' }} />
+                 <h4 style={{ margin: '0 0 0.5rem', fontWeight: 800 }}>Confiance Bancaire</h4>
+                 <div style={{ fontSize: '3rem', fontWeight: 900, color: '#10b981', margin: '0.5rem 0' }}>A+</div>
+                 <p style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Le ratio de liquidité est optimal pour une demande de financement.</p>
               </div>
 
               <div className="card" style={{ padding: '2rem' }}>
                  <h4 style={{ margin: '0 0 1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                   <Zap size={18} color="#f59e0b" /> Expert Downloads
+                    <ShieldCheck size={18} color="#1e293b" /> Documents de Synthèse
                  </h4>
                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <button className="btn btn-outline" style={{ width: '100%', justifyContent: 'flex-start', gap: '0.75rem' }} onClick={handlePDFExport}>
-                       <FileText size={18} /> Bilan Audit (PDF)
+                    <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={handlePDFExport}>
+                       Générer Rapport PDF Officiel
                     </button>
-                    <button className="btn btn-outline" style={{ width: '100%', justifyContent: 'flex-start', gap: '0.75rem' }} onClick={handleExcelExport}>
-                       <TableIcon size={18} /> Journal Flux (Excel)
-                    </button>
-                    <button className="btn btn-outline" style={{ width: '100%', justifyContent: 'flex-start', gap: '0.75rem' }} onClick={handleWordExport}>
-                       <FileEdit size={18} /> Synthèse (Word)
+                    <button className="btn btn-outline" style={{ width: '100%', justifyContent: 'center' }} onClick={handleWordExport}>
+                       Export Microsoft Word (.doc)
                     </button>
                  </div>
               </div>
@@ -235,16 +361,16 @@ export const AuditTresorerie = () => {
 
           {/* DETAILED LEDGER */}
           <div className="card" style={{ padding: '2rem' }}>
-             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '2rem' }}>Grand Livre des Opérations (Détails Auditor)</h3>
+             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, marginBottom: '2rem' }}>Grand Livre des Écritures (Analytique)</h3>
              <div className="table-container">
                 <table style={{ width: '100%' }}>
                    <thead>
                       <tr>
-                         <th>Date</th>
+                         <th>Date / Heure</th>
                          <th>Nature</th>
-                         <th>Catégorie / Analytique</th>
-                         <th>Libellé</th>
-                         <th style={{ textAlign: 'right' }}>Débit / Crédit</th>
+                         <th>Catégorie</th>
+                         <th>Libellé Professionnel</th>
+                         <th style={{ textAlign: 'right' }}>Montant (F CFA)</th>
                       </tr>
                    </thead>
                    <tbody>
@@ -259,7 +385,7 @@ export const AuditTresorerie = () => {
                             <td style={{ fontWeight: 700, fontSize: '0.8rem' }}>{t.categorie}</td>
                             <td style={{ fontSize: '0.9rem' }}>{t.description}</td>
                             <td style={{ textAlign: 'right', fontWeight: 800, color: t.montant > 0 ? '#10b981' : '#ef4444' }}>
-                               {t.montant > 0 ? '+' : ''}{t.montant.toLocaleString()} F
+                               {(t.montant > 0 ? '+' : '') + t.montant.toLocaleString()} F
                             </td>
                          </tr>
                       ))}
@@ -269,6 +395,17 @@ export const AuditTresorerie = () => {
           </div>
         </>
       )}
+
+      <style>{`
+        .btn-export-expert:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+          border-color: #94a3b8 !important;
+        }
+        .btn-export-expert:active {
+          transform: translateY(0);
+        }
+      `}</style>
     </div>
   );
 };

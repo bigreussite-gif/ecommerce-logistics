@@ -2,30 +2,59 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 /**
- * Generates a professional CSV file that Excel can open perfectly.
- * Includes detailed headers and financial data.
+ * Generates a professional CSV file with semicolon separators and UTF-8 BOM.
+ * This format is the standard for European/African accounting software and Excel.
  */
 export const exportToExcel = (data: any[], filename: string) => {
   if (!data || data.length === 0) return;
 
   const headers = Object.keys(data[0]);
+  
+  // Format rows with semicolon separator
   const csvContent = [
-    headers.join(","),
+    headers.join(";"),
     ...data.map(row => 
       headers.map(header => {
-        const val = row[header];
-        // Escape commas and wrap in quotes if needed
-        return typeof val === 'string' && val.includes(',') ? `"${val}"` : val;
-      }).join(",")
+        let val = row[header];
+        if (val === null || val === undefined) return "";
+        
+        // Format dates if they are Date objects
+        if (val instanceof Date) val = format(val, 'yyyy-MM-dd HH:mm');
+        
+        // Escape semicolons and newlines for CSV safety
+        const stringVal = String(val);
+        if (stringVal.includes(";") || stringVal.includes("\n") || stringVal.includes("\"")) {
+          return `"${stringVal.replace(/"/g, '""')}"`;
+        }
+        return stringVal;
+      }).join(";")
     )
-  ].join("\n");
+  ].join("\r\n"); // Standard Windows/Excel line ending
 
+  // Include UTF-8 BOM (\ufeff) so Excel detects encoding immediately
   const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement("a");
   const url = URL.createObjectURL(blob);
   
   link.setAttribute("href", url);
   link.setAttribute("download", `${filename}_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+/**
+ * Generates a structured JSON file for audit or external tool integration.
+ */
+export const exportToJson = (data: any, filename: string) => {
+  const jsonContent = JSON.stringify(data, null, 2);
+  const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(blob);
+  
+  link.setAttribute("href", url);
+  link.setAttribute("download", `${filename}_${format(new Date(), 'yyyy-MM-dd')}.json`);
   link.style.visibility = 'hidden';
   document.body.appendChild(link);
   link.click();
