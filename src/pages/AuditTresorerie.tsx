@@ -3,16 +3,13 @@ import { getFinancialData } from '../services/commandeService';
 import { getDepenses, calculateProfitMetrics, generateTimeSeriesData } from '../services/financialService';
 import { exportToExcel, exportToWord, exportToJson } from '../services/exportService';
 import { generateAuditReportPDF } from '../services/pdfService';
-import { format, subDays, startOfDay, endOfDay, parseISO } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { 
   ShieldCheck, 
-  FileText, 
   Table as TableIcon, 
-  FileEdit, 
   Calendar,
   Target,
   BarChart4,
-  Zap,
   Download,
   Database,
   Briefcase,
@@ -75,7 +72,7 @@ export const AuditTresorerie = () => {
           categorie: e.categorie,
           montant: -Math.abs(e.montant)
         }))
-      ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       setFinancials(metrics);
       setChartData(timeseries);
@@ -90,8 +87,6 @@ export const AuditTresorerie = () => {
   useEffect(() => {
     loadAuditData();
   }, [startDate, endDate]);
-
-  // --- SPECIALIZED EXPORT LOGIC ---
 
   const handleJournalExport = () => {
     let balance = 0;
@@ -243,7 +238,7 @@ export const AuditTresorerie = () => {
             </div>
           </div>
 
-          {/* NEW BUSINESS EXPORTS SECTION (AS PER SCREENSHOT) */}
+          {/* EXPORTS SECTION */}
           <div className="card" style={{ padding: '2rem', marginBottom: '2.5rem', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
               <Download size={20} color="#f97316" />
@@ -257,7 +252,7 @@ export const AuditTresorerie = () => {
               <button 
                 onClick={handleJournalExport}
                 className="btn-export-expert"
-                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.8rem 1.2rem', borderRadius: '12px', border: '1px solid #0ea5e9', background: 'white', color: '#0369a1', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.8rem 1.2rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white', color: '#1e293b', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
               >
                 <div style={{ padding: '4px', background: '#f0f9ff', borderRadius: '6px' }}><div style={{ color: '#0ea5e9' }}><Briefcase size={18} /></div></div>
                 Journal complet + solde
@@ -282,7 +277,7 @@ export const AuditTresorerie = () => {
               </button>
 
               <button 
-                onClick={handleMonthlySummaryExport} // Reuse same grouping logic
+                onClick={handleMonthlySummaryExport}
                 className="btn-export-expert"
                 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.8rem 1.2rem', borderRadius: '12px', border: '1px solid #e2e8f0', background: 'white', color: '#1e293b', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 0.2s' }}
               >
