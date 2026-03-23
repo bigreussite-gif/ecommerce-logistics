@@ -39,7 +39,15 @@ export const getCommandesConcernees = async (feuilleRouteId: string): Promise<Co
   return data || [];
 };
 
-export const processCaisse = async (feuilleRouteId: string, resolutions: {id: string, statut: string, mode_paiement: string}[], montantPhysique: number, ecart: number, commentaire: string): Promise<void> => {
+export const processCaisse = async (
+  feuilleRouteId: string, 
+  resolutions: {id: string, statut: string, mode_paiement: string}[], 
+  montantPhysique: number, 
+  ecart: number, 
+  commentaire: string,
+  caissiereId: string,
+  livreurId: string
+): Promise<void> => {
   // 1. Update Feuille Route status and summary financials
   const { error: frError } = await insforge.database
     .from('feuilles_route')
@@ -92,6 +100,8 @@ export const processCaisse = async (feuilleRouteId: string, resolutions: {id: st
     .insert([{ 
       date: new Date(), 
       feuille_route_id: feuilleRouteId, 
+      livreur_id: livreurId,
+      caissiere_id: caissiereId,
       montant_remis_par_livreur: montantPhysique, 
       montant_attendu: montantPhysique - ecart,
       ecart, 

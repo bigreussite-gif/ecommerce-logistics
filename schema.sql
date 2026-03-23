@@ -137,6 +137,8 @@ CREATE TABLE feuilles_route (
   communes_couvertes TEXT[],
   total_commandes INTEGER DEFAULT 0,
   total_montant_theorique NUMERIC(15, 2) DEFAULT 0,
+  montant_encaisse NUMERIC(15, 2) DEFAULT 0,
+  ecart_caisse NUMERIC(15, 2) DEFAULT 0,
   lien_pdf TEXT,
   date_traitement TIMESTAMPTZ
 );

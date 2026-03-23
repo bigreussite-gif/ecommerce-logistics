@@ -45,7 +45,11 @@ export const CentreAppel = () => {
             </div>
           ) : (
             <CommandeList 
-              commandes={commandes} 
+              commandes={[...commandes].sort((a, b) => {
+                if (a.statut_commande === 'a_rappeler' && b.statut_commande !== 'a_rappeler') return -1;
+                if (a.statut_commande !== 'a_rappeler' && b.statut_commande === 'a_rappeler') return 1;
+                return 0;
+              })} 
               onActionClick={setSelectedCommande}
               onViewClick={(c) => setViewingCommandeId(c.id)}
               actionIcon="PhoneCall"

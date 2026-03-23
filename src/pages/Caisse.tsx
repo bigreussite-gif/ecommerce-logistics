@@ -6,10 +6,14 @@ import type { User, Commande, FeuilleRoute } from '../types';
 import { Calculator, CheckCircle2, ChevronRight, Plus, Search, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
 
 export const Caisse = () => {
   const { showToast } = useToast();
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [livreurs, setLivreurs] = useState<User[]>([]);
   const [selectedLivreur, setSelectedLivreur] = useState<string>('');
   const [feuilles, setFeuilles] = useState<FeuilleRoute[]>([]);
@@ -190,16 +194,29 @@ export const Caisse = () => {
 
     setLoading(true);
     try {
-      await processCaisse(feuille.id, resArray, montantRemisParsed, ecart, commentaire);
+      if (!currentUser?.id) throw new Error("Identifiant caissière introuvable.");
+      if (!selectedLivreur) throw new Error("Identifiant livreur introuvable.");
+
+      await processCaisse(
+        feuille.id, 
+        resArray, 
+        montantRemisParsed, 
+        ecart, 
+        commentaire,
+        currentUser.id,
+        selectedLivreur
+      );
+      
       showToast("Feuille de route clôturée avec succès.", "success");
-      setFeuille(null);
-      setCommandes([]);
-      setSelectedLivreur('');
-      setFeuilles([]);
-      setMontantRemisStr('');
-    } catch (error) {
-      console.error(error);
-      showToast("Erreur lors de la clôture.", "error");
+      
+      // Redirect to history to avoid "blank" state
+      setTimeout(() => {
+        navigate('/historique');
+      }, 1000);
+    } catch (error: any) {
+      console.error("Erreur Clôture Caisse:", error);
+      const msg = error?.message || "Erreur inconnue";
+      showToast(`Échec de la clôture : ${msg}`, "error");
     } finally {
       setLoading(false);
     }
@@ -402,7 +419,7 @@ export const Caisse = () => {
             </div>
 
             {/* PANNEAU DE RECONCILIATION FINANCIERE */}
-            <div className="card glass-effect" style={{ border: '2px solid var(--primary)', padding: '2.5rem', borderRadius: '32px' }}>
+            <div className="card glass-effect" style={{ border: '2px solid var(--primary)', padding: '1.5rem', borderRadius: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
                 <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Calculator size={24} strokeWidth={2.5} />
@@ -421,19 +438,30 @@ export const Caisse = () => {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-main)' }}>Total Cash Reçu Physiquement *</label>
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label className="form-label" style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-main)', opacity: 0.9 }}>Total Cash Reçu *</label>
                 <div style={{ position: 'relative' }}>
                   <input 
                     type="number" 
                     className="form-input" 
                     min="0"
-                    placeholder="Montant compté..."
-                    style={{ fontSize: '2.2rem', fontWeight: 900, padding: '1.5rem', textAlign: 'center', height: '90px', borderRadius: '20px', border: '3px solid #e2e8f0', color: 'var(--primary)' }}
+                    placeholder="Saisir le montant..."
+                    style={{ 
+                      fontSize: '1.6rem', 
+                      fontWeight: 800, 
+                      padding: '0.75rem', 
+                      textAlign: 'center', 
+                      height: '64px', 
+                      borderRadius: '16px', 
+                      border: '2px solid #e2e8f0', 
+                      color: 'var(--primary)',
+                      background: 'rgba(255,255,255,0.6)',
+                      width: '100%'
+                    }}
                     value={montantRemisStr}
                     onChange={e => setMontantRemisStr(e.target.value)}
                   />
-                  <div style={{ position: 'absolute', right: '1.5rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 900, color: '#94a3b8' }}>CFA</div>
+                  <div style={{ position: 'absolute', right: '1.25rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#94a3b8', fontSize: '1rem' }}>CFA</div>
                 </div>
               </div>
 
