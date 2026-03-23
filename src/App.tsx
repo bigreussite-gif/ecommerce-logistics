@@ -20,6 +20,7 @@ import { Home } from './pages/Home';
 import { StaffPerformance } from './pages/StaffPerformance';
 import { NetProfit } from './pages/NetProfit';
 import { AdminTresorerie } from './pages/AdminTresorerie';
+import { AuditTresorerie } from './pages/AuditTresorerie';
 
 const ProtectedRoute = ({ children, requiredPermission }: { children: React.ReactNode, requiredPermission: string }) => {
   const { currentUser, hasPermission } = useAuth();
@@ -108,6 +109,11 @@ const AppRoutes = () => {
         {/* Admin Treasury & Private Dashboard */}
         <Route path="admin/tresorerie" element={
           <ProtectedRoute requiredPermission="TRESORERIE"><AdminTresorerie /></ProtectedRoute>
+        } />
+
+        {/* Audit & Expertise Comptable */}
+        <Route path="audit-tresorerie" element={
+          <ProtectedRoute requiredPermission="ADMIN"><AuditTresorerie /></ProtectedRoute>
         } />
 
         {/* Profil Route */}

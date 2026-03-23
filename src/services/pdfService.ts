@@ -407,3 +407,90 @@ export const generateAnalyticalReportPDF = (data: any, dateString: string) => {
     throw err;
   }
 };
+
+export const generateAuditReportPDF = (
+  metrics: any, 
+  transactions: any[], 
+  dateRange: { start: string, end: string }
+) => {
+  const doc = new jsPDF() as jsPDFWithPlugin;
+  const pageWidth = doc.internal.pageSize.width;
+
+  // --- 1. HEADER & BRANDING ---
+  doc.setFillColor(30, 41, 59); // Dark Slate
+  doc.rect(0, 0, pageWidth, 40, 'F');
+  
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(22);
+  doc.setTextColor(255, 255, 255);
+  doc.text("GomboSwift Finance", 20, 25);
+  
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text("RAPPORT D'AUDIT ET D'EXPERTISE COMPTABLE", pageWidth - 20, 25, { align: 'right' });
+  
+  // --- 2. PERIOD INFO ---
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.text(`Synthèse Financière Périodique`, 20, 55);
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Période du ${dateRange.start} au ${dateRange.end}`, 20, 62);
+
+  // --- 3. METRICS GRID ---
+  autoTable(doc, {
+    startY: 70,
+    head: [['Indicateur de Performance', 'Valeur (CFA)', 'Observation']],
+    body: [
+      ['Chiffre d\'Affaires Brut', metrics.ca_brut.toLocaleString(), 'Total des ventes enregistrées'],
+      ['Coût des Marchandises (COGS)', metrics.cogs_total.toLocaleString(), 'Prix d\'achat des produits vendus'],
+      ['Marge Brute d\'Exploitation', (metrics.ca_brut - metrics.cogs_total).toLocaleString(), `${metrics.marge_brute_percent}% du CA`],
+      ['Charges Fixes & Dépenses', metrics.depenses_fixes_total.toLocaleString(), 'Logistique et frais administratifs'],
+      ['BÉNÉFICE NET (EBITDA)', metrics.profit_net.toLocaleString(), `Marge nette: ${metrics.marge_nette_percent}%`]
+    ],
+    theme: 'grid',
+    headStyles: { fillColor: [71, 85, 105], fontSize: 10 },
+    styles: { cellPadding: 5 }
+  });
+
+  // --- 4. TRANSACTION RESUME ---
+  const finalY1 = (doc as any).lastAutoTable.finalY + 15;
+  doc.setFont("helvetica", "bold");
+  doc.text("Journal des Opérations Majeures", 20, finalY1);
+
+  const tableRows = transactions.slice(0, 20).map(t => [
+    format(new Date(t.date), 'dd/MM/yyyy'),
+    t.description.substring(0, 45),
+    t.categorie,
+    t.montant.toLocaleString()
+  ]);
+
+  autoTable(doc, {
+    startY: finalY1 + 5,
+    head: [['Date', 'Description', 'Catégorie', 'Montant']],
+    body: tableRows,
+    theme: 'striped',
+    headStyles: { fillColor: [99, 102, 255] }
+  });
+
+  // --- 5. SIGNATURES ---
+  const finalY2 = (doc as any).lastAutoTable.finalY + 30;
+  const sigY = finalY2 > 240 ? 40 : finalY2;
+  if (finalY2 > 240) doc.addPage();
+  
+  doc.setFontSize(10);
+  doc.text("Cachet et Signature de l'Auditeur", 20, sigY);
+  doc.setDrawColor(200, 200, 200);
+  doc.rect(20, sigY + 5, 60, 30);
+  
+  doc.text("Cachet de la Direction Générale", pageWidth - 80, sigY);
+  doc.rect(pageWidth - 80, sigY + 5, 60, 30);
+
+  // --- FOOTER ---
+  doc.setFontSize(8);
+  doc.setTextColor(150, 150, 150);
+  doc.text("Ce document est certifié conforme aux écritures comptables enregistrées dans le système GomboSwift.", pageWidth / 2, 285, { align: 'center' });
+
+  doc.save(`Bilan_Expertise_${dateRange.start}_${dateRange.end}.pdf`);
+};
