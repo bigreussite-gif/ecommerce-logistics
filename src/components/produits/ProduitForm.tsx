@@ -53,8 +53,9 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
         delete dataToSave.promo_debut;
         delete dataToSave.promo_fin;
       } else {
-        if (dataToSave.promo_debut) dataToSave.promo_debut = new Date(dataToSave.promo_debut).getTime();
-        if (dataToSave.promo_fin) dataToSave.promo_fin = new Date(dataToSave.promo_fin).getTime();
+        // Sanitize timestamps to avoid empty string errors in DB
+        dataToSave.promo_debut = dataToSave.promo_debut ? new Date(dataToSave.promo_debut).toISOString() : null;
+        dataToSave.promo_fin = dataToSave.promo_fin ? new Date(dataToSave.promo_fin).toISOString() : null;
       }
 
       // Ensure image is also in the images array for compatibility
