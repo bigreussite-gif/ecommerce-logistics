@@ -15,7 +15,7 @@ export const Commandes = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedCommandeId, setSelectedCommandeId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'to_process' | 'in_delivery' | 'done' | 'failed'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'to_process' | 'in_delivery' | 'done' | 'failed'>('to_process');
 
   const handleInvoice = async (commande: Commande) => {
     try {
@@ -89,11 +89,11 @@ export const Commandes = () => {
 
           <div style={{ display: 'flex', overflowX: 'auto', gap: '0.75rem', paddingBottom: '0.5rem', scrollbarWidth: 'none' }}>
             {[
-              { id: 'all', label: 'Tout', color: 'var(--primary)' },
               { id: 'to_process', label: 'À Traiter', color: '#f59e0b' },
               { id: 'in_delivery', label: 'En Livraison', color: 'var(--primary)' },
               { id: 'done', label: 'Terminées', color: '#10b981' },
-              { id: 'failed', label: 'Retours/Échecs', color: '#ef4444' }
+              { id: 'failed', label: 'Retours/Échecs', color: '#ef4444' },
+              { id: 'all', label: 'Tout', color: 'var(--primary)' }
             ].map(tab => (
               <button
                 key={tab.id}
