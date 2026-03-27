@@ -74,9 +74,16 @@ export const processCaisse = async (
     if (res.statut === 'livree') finalStatus = 'terminee';
     if (res.statut === 'retour_livreur' || res.statut === 'echouee') finalStatus = 'retour_stock';
     
+    const updateData: any = { statut_commande: finalStatus, mode_paiement: res.mode_paiement, updated_at: new Date() };
+    
+    // CRITICAL FIX: Ensure date_livraison_effective is set if the command is successful
+    if (finalStatus === 'terminee' || finalStatus === 'livree') {
+      updateData.date_livraison_effective = new Date().toISOString();
+    }
+    
     const { error: cmdUpdateError } = await insforge.database
       .from('commandes')
-      .update({ statut_commande: finalStatus, mode_paiement: res.mode_paiement })
+      .update(updateData)
       .eq('id', res.id);
 
     if (cmdUpdateError) throw cmdUpdateError;
@@ -126,12 +133,13 @@ export const getDailyFinancials = async (dateStr: string): Promise<any> => {
 
   if (retoursError) throw retoursError;
 
-  // Correct grouping: (date_livraison_effective IN range) OR (updated_at IN range)
+  // 2. Get All Commandes modified or delivered today for stats
+  // We include anything DELIVERED during this window OR UPDATED during this window
   const filterStr = `and(date_livraison_effective.gte.${startOfDayDate.toISOString()},date_livraison_effective.lte.${endOfDayDate.toISOString()}),and(updated_at.gte.${startOfDayDate.toISOString()},updated_at.lte.${endOfDayDate.toISOString()})`;
 
   const { data: commandes, error: cmdError } = await insforge.database
     .from('commandes')
-    .select('id, montant_total, statut_commande, mode_paiement, frais_livraison')
+    .select('id, montant_total, statut_commande, mode_paiement, frais_livraison, updated_at, date_livraison_effective')
     .or(filterStr);
 
   if (cmdError) throw cmdError;

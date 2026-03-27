@@ -1,15 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { getFinancialData } from '../services/commandeService';
-import { getDepenses } from '../services/financialService';
+import { getDepenses, calculateProfitMetrics } from '../services/financialService';
 import { Commande, LigneCommande, Depense } from '../types';
 import { format, startOfDay, endOfDay, subDays } from 'date-fns';
 import { 
   Download, 
   Filter, 
-  BarChart3,
-  ArrowUpRight,
-  ArrowDownRight,
-  Wallet
+  Wallet,
+  TrendingUp,
+  History
 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 
@@ -40,7 +39,7 @@ export const AdminTresorerie = () => {
       
       const [orders, expenses] = await Promise.all([
         getFinancialData(start, end),
-        getDepenses() // We'll filter expenses locally for better UX
+        getDepenses() 
       ]);
       
       const filteredExpenses = expenses.filter(d => {
@@ -60,17 +59,23 @@ export const AdminTresorerie = () => {
     loadData();
   }, [startDate, endDate]);
 
+  // Comprehensive Profit Metrics
+  const metrics = useMemo(() => calculateProfitMetrics(data.orders, data.expenses), [data]);
+
   // Calculations for Private Dashboard
   const activeOrders = data.orders || [];
-  const totalRevenue = activeOrders.reduce((acc, c) => acc + ((Number(c.montant_total) || 0) - (Number(c.frais_livraison) || 0)), 0);
+  const netRevenue = metrics.ca_brut - metrics.frais_livraison_total; // Revenue from items
   
+  // Extraction Logic
   const extractionVentes = activeOrders.length * 250;
   const extractionLogistique = activeOrders.length * 500;
   const totalExtractions = extractionVentes + extractionLogistique;
-  const caRestant = totalRevenue - totalExtractions;
+  
+  // Final Profit after COGS and Extractions
+  const realProfit = metrics.profit_net - totalExtractions;
 
   // Cash Flow Logic
-  const transactions: Transaction[] = [
+  const transactions: Transaction[] = useMemo(() => [
     ...data.orders.map(o => ({
       date: new Date(o.date_livraison_effective || o.date_creation),
       type: 'Entrée' as const,
@@ -85,16 +90,18 @@ export const AdminTresorerie = () => {
       description: e.description || 'Dépense diverse',
       montant: -Math.abs(Number(e.montant) || 0)
     }))
-  ].sort((a, b) => b.date.getTime() - a.date.getTime());
+  ].sort((a, b) => b.date.getTime() - a.date.getTime()), [data]);
 
-  const totalInflow = transactions
-    .filter(t => t.type.toLowerCase() === 'entrée' || t.type.toLowerCase() === 'entree')
-    .reduce((acc, t) => acc + t.montant, 0);
-  const totalOutflow = Math.abs(
+  const totalInflow = useMemo(() => transactions
+    .filter(t => t.type === 'Entrée')
+    .reduce((acc, t) => acc + t.montant, 0), [transactions]);
+
+  const totalOutflow = useMemo(() => Math.abs(
     transactions
-      .filter(t => t.type.toLowerCase() === 'sortie')
+      .filter(t => t.type === 'Sortie')
       .reduce((acc, t) => acc + t.montant, 0)
-  );
+  ), [transactions]);
+
   const currentBalance = totalInflow - totalOutflow;
 
   const exportToExcel = () => {
@@ -130,10 +137,10 @@ export const AdminTresorerie = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="text-premium" style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>
-            Trésorerie & Tableau de Bord Privé
+            Trésorerie & Dashboard Privé
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginTop: '0.4rem' }}>
-            Gestion confidentielle des flux et extractions de CA.
+            Analyse confidentielle des flux, COGS et rentabilité nette.
           </p>
         </div>
 
@@ -151,109 +158,122 @@ export const AdminTresorerie = () => {
       </div>
 
       {/* Stats Grid - PRIVATE DASHBOARD */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <div className="card" style={{ padding: '1.75rem', borderLeft: '5px solid var(--primary)', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ opacity: 0.1, position: 'absolute', right: '-10px', top: '-10px' }}><BarChart3 size={100} /></div>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA Produits (Net Livraison)</p>
-          <h2 style={{ fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 800 }}>{totalRevenue.toLocaleString()} F</h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 700 }}>
-            <ArrowUpRight size={16} /> {data.orders.length} ventes livrées
-          </p>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+        <div className="card" style={{ padding: '1.5rem', borderLeft: '4px solid var(--primary)' }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Ventes Nettes</p>
+          <h2 style={{ fontSize: '1.8rem', margin: 0, fontWeight: 800 }}>{netRevenue.toLocaleString()} F</h2>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Excluant {metrics.frais_livraison_total.toLocaleString()} F de livraison</p>
         </div>
 
-        <div className="card" style={{ padding: '1.75rem', borderLeft: '5px solid #ef4444' }}>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Argent Extrait</p>
-          <h2 style={{ fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 800, color: '#ef4444' }}>{totalExtractions.toLocaleString()} F</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>• Charges Internes (-250/v): <strong>{extractionVentes.toLocaleString()} F</strong></p>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>• Frais Logistique (-500/v): <strong>{extractionLogistique.toLocaleString()} F</strong></p>
+        <div className="card" style={{ padding: '1.5rem', borderLeft: '4px solid #f59e0b' }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Coût Achat (COGS)</p>
+          <h2 style={{ fontSize: '1.8rem', margin: 0, fontWeight: 800, color: '#d97706' }}>{metrics.cogs_total.toLocaleString()} F</h2>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Valeur stock vendu</p>
+        </div>
+
+        <div className="card" style={{ padding: '1.5rem', borderLeft: '4px solid #ef4444' }}>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Extractions & Frais</p>
+          <h2 style={{ fontSize: '1.8rem', margin: 0, fontWeight: 800, color: '#ef4444' }}>{(totalExtractions + metrics.depenses_fixes_total).toLocaleString()} F</h2>
+          <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.5rem' }}>Extractions: {totalExtractions.toLocaleString()} F</p>
+        </div>
+
+        <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', border: 'none' }}>
+          <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Profit Réel Net</p>
+          <h2 style={{ fontSize: '1.8rem', margin: 0, fontWeight: 800 }}>{realProfit.toLocaleString()} F</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <TrendingUp size={14} />
+            <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{metrics.marge_nette_percent}% de marge</span>
           </div>
-        </div>
-
-        <div className="card" style={{ padding: '1.75rem', borderLeft: '5px solid var(--success)', background: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)' }}>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CA Restant (GomboSwift)</p>
-          <h2 style={{ fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 800, color: 'var(--success)' }}>{caRestant.toLocaleString()} F</h2>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>
-            Après extractions automatiques
-          </p>
         </div>
       </div>
 
-      {/* Cash Flow Summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <div className="card" style={{ padding: '2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 700 }}>
-              <Wallet size={20} color="var(--primary)" /> Flux de Trésorerie
-            </h3>
-            <span className="badge badge-info">{transactions.length} Opérations</span>
-          </div>
+      {/* Main Content Sections */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) 1fr', gap: '2rem' }} className="responsive-grid">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          {/* Cash Flow Table */}
+          <div className="card" style={{ padding: '1.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 700 }}>
+                <Wallet size={20} color="var(--primary)" /> Journal des Flux
+              </h3>
+              <div style={{ display: 'flex', gap: '0.50rem' }}>
+                <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>+{totalInflow.toLocaleString()}</span>
+                <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>-{totalOutflow.toLocaleString()}</span>
+              </div>
+            </div>
 
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Type</th>
-                  <th>Description</th>
-                  <th style={{ textAlign: 'right' }}>Montant</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem' }}>Chargement des flux...</td></tr>
-                ) : transactions.length === 0 ? (
-                  <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem' }}>Aucune opération sur cette période.</td></tr>
-                ) : transactions.map((t, idx) => (
-                  <tr key={idx}>
-                    <td style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{format(t.date, 'dd/MM HH:mm')}</td>
-                    <td>
-                      <span className={`badge ${t.type.toLowerCase().includes('entr') ? 'badge-success' : 'badge-danger'}`} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', width: 'fit-content' }}>
-                        {t.type === 'Entrée' ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                        {t.type}
-                      </span>
-                    </td>
-                    <td>
-                      <p style={{ fontWeight: 600, margin: 0, fontSize: '0.9rem' }}>{t.description}</p>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.categorie}</span>
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: t.type === 'Entrée' ? 'var(--success)' : '#ef4444' }}>
-                      {t.montant > 0 ? '+' : ''}{t.montant.toLocaleString()} F
-                    </td>
+            <div className="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Description</th>
+                    <th style={{ textAlign: 'right' }}>Montant</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem' }}>Chargement...</td></tr>
+                  ) : transactions.length === 0 ? (
+                    <tr><td colSpan={4} style={{ textAlign: 'center', padding: '3rem' }}>Aucune donnée</td></tr>
+                  ) : transactions.map((t, idx) => (
+                    <tr key={idx}>
+                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{format(t.date, 'dd/MM HH:mm')}</td>
+                      <td>
+                        <span className={`badge ${t.type === 'Entrée' ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '0.7rem' }}>
+                          {t.type}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{t.description}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{t.categorie}</div>
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: t.type === 'Entrée' ? 'var(--success)' : '#ef4444' }}>
+                        {t.montant > 0 ? '+' : ''}{t.montant.toLocaleString()} F
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div className="card" style={{ padding: '1.5rem', background: '#30413b', color: 'white' }}>
-            <h4 style={{ margin: 0, fontSize: '1rem', opacity: 0.8, color: 'white' }}>Solde de la période</h4>
+          {/* Summary Card */}
+          <div className="card" style={{ padding: '1.5rem', background: '#1e293b', color: 'white' }}>
+            <h4 style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, color: 'white' }}>Balance de Période</h4>
             <h2 style={{ fontSize: '2rem', margin: '0.5rem 0', fontWeight: 800 }}>{currentBalance.toLocaleString()} F</h2>
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '1rem 0' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span style={{ opacity: 0.8, fontSize: '0.9rem' }}>Total Entrées</span>
-              <span style={{ fontWeight: 700 }}>+{totalInflow.toLocaleString()} F</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+              <span style={{ opacity: 0.7 }}>Volume Ventes</span>
+              <span style={{ fontWeight: 700 }}>{activeOrders.length}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ opacity: 0.8, fontSize: '0.9rem' }}>Total Sorties</span>
-              <span style={{ fontWeight: 700 }}>-{totalOutflow.toLocaleString()} F</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+              <span style={{ opacity: 0.7 }}>Dépenses Fixes</span>
+              <span style={{ fontWeight: 700 }}>{metrics.depenses_fixes_total.toLocaleString()} F</span>
             </div>
           </div>
 
+          {/* Business Rules Card */}
           <div className="card" style={{ padding: '1.5rem' }}>
-            <h4 style={{ margin: 0, marginBottom: '1rem', fontSize: '1rem', fontWeight: 700 }}>Notes Fiscales</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Charges Internes (Fixes)</p>
-                <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>250 F / Commande Livrée</p>
+            <h4 style={{ margin: 0, marginBottom: '1rem', fontSize: '0.9rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <History size={16} /> Barème d'Extractions
+            </h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f8fafc', borderRadius: '12px' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Frais Admin</span>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>250 F / v</span>
               </div>
-              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Logistique Additionnelle</p>
-                <p style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>500 F / Livraison Livrée</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f8fafc', borderRadius: '12px' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Frais Logistique</span>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>500 F / v</span>
               </div>
             </div>
+            <p style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+              * Les extractions sont déduites du profit net après avoir couvert le coût d'achat (COGS).
+            </p>
           </div>
         </div>
       </div>

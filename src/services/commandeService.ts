@@ -151,8 +151,8 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   // 3. Stock management state machine
   const activeStates = ['en_attente_appel', 'validee', 'en_cours_livraison', 'livree', 'terminee'];
 
-  const wasActive = activeStates.includes(prevStatus);
-  const isNowActive = activeStates.includes(nextStatus);
+  const wasActive = activeStates.includes(prevStatus?.toLowerCase());
+  const isNowActive = activeStates.includes(nextStatus?.toLowerCase());
 
   // If transition changes active status, move stock
   if (wasActive !== isNowActive) {
@@ -202,7 +202,7 @@ export const getTopSellingProducts = async (limit = 10, days?: number, start?: s
       aggregates[l.nom_produit] = { nb: 0, ca: 0, sorties: 0, livrees: 0, echecs: 0 };
     }
     
-    const status = l.commandes?.statut_commande;
+    const status = l.commandes?.statut_commande?.toLowerCase();
     const isSortie = ['en_cours_livraison', 'livree', 'terminee', 'echouee', 'retour_stock', 'retour_livreur'].includes(status);
     const isLivree = ['livree', 'terminee'].includes(status);
     const isEchec = ['echouee', 'retour_stock', 'retour_livreur'].includes(status);
