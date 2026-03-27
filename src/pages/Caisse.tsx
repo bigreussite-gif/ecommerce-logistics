@@ -189,7 +189,8 @@ export const Caisse = () => {
     const resArray = Object.keys(resolutions).map(id => ({
        id,
        statut: resolutions[id].statut,
-       mode_paiement: resolutions[id].mode_paiement
+       mode_paiement: resolutions[id].mode_paiement,
+       transaction_id: (resolutions[id] as any).transaction_id
     }));
 
     setLoading(true);
@@ -397,16 +398,28 @@ export const Caisse = () => {
                         </td>
                         <td>
                           {resolutions[c.id]?.statut === 'livree' ? (
-                            <select 
-                              className="form-select" 
-                              style={{ padding: '0.4rem 0.75rem', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700 }}
-                              value={resolutions[c.id]?.mode_paiement}
-                              onChange={(e) => updateResolution(c.id, 'mode_paiement', e.target.value)}
-                            >
-                              <option value="Cash à la livraison">CASH</option>
-                              <option value="Mobile Money">MOBILE</option>
-                              <option value="Carte">AUTRE</option>
-                            </select>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              <select 
+                                className="form-select" 
+                                style={{ padding: '0.4rem 0.75rem', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700 }}
+                                value={resolutions[c.id]?.mode_paiement}
+                                onChange={(e) => updateResolution(c.id, 'mode_paiement', e.target.value)}
+                              >
+                                <option value="Cash à la livraison">CASH</option>
+                                <option value="Mobile Money">MOBILE</option>
+                                <option value="Carte">AUTRE</option>
+                              </select>
+                              {resolutions[c.id]?.mode_paiement === 'Mobile Money' && (
+                                <input 
+                                  type="text"
+                                  placeholder="ID Transaction"
+                                  className="form-input"
+                                  style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '8px', border: '1px solid var(--primary)' }}
+                                  value={(resolutions[c.id] as any).transaction_id || ''}
+                                  onChange={(e) => updateResolution(c.id, 'transaction_id', e.target.value)}
+                                />
+                              )}
+                            </div>
                           ) : (
                             <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>N/A</span>
                           )}

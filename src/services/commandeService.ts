@@ -178,6 +178,16 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   }
 };
 
+export const bulkUpdateCommandeStatus = async (ids: string[], status: string, additionalData: any = {}): Promise<void> => {
+  for (const id of ids) {
+    try {
+      await updateCommandeStatus(id, status, additionalData);
+    } catch (e) {
+      console.error(`Error updating order ${id}:`, e);
+    }
+  }
+};
+
 export const getTopSellingProducts = async (limit = 10, days?: number, start?: string, end?: string): Promise<{ nom: string, nb_ventes: number, total_ca: number, total_sorties: number, taux_succes: number }[]> => {
   let query = insforge.database
     .from('lignes_commandes')
@@ -195,38 +205,45 @@ export const getTopSellingProducts = async (limit = 10, days?: number, start?: s
   
   if (linesError) throw linesError;
   
-  const aggregates: Record<string, { nb: number, ca: number, sorties: number, livrees: number, echecs: number }> = {};
+  const aggregates: Record<string, { nb: number, ca: number, sorties: number, livrees: number, echecs: number, name: string }> = {};
   
   (lines || []).forEach((l: any) => {
-    if (!aggregates[l.nom_produit]) {
-      aggregates[l.nom_produit] = { nb: 0, ca: 0, sorties: 0, livrees: 0, echecs: 0 };
+    const key = l.nom_produit.trim().toUpperCase();
+    
+    if (!aggregates[key]) {
+      aggregates[key] = { nb: 0, ca: 0, sorties: 0, livrees: 0, echecs: 0, name: l.nom_produit };
     }
     
-    const status = l.commandes?.statut_commande?.toLowerCase();
+    // Support both object and array return from PostgREST join
+    const cmd = Array.isArray(l.commandes) ? l.commandes[0] : l.commandes;
+    if (!cmd) return;
+
+    const status = cmd.statut_commande?.toLowerCase();
+    
     const isSortie = ['en_cours_livraison', 'livree', 'terminee', 'echouee', 'retour_stock', 'retour_livreur'].includes(status);
     const isLivree = ['livree', 'terminee'].includes(status);
     const isEchec = ['echouee', 'retour_stock', 'retour_livreur'].includes(status);
     
     if (isLivree) {
-      aggregates[l.nom_produit].nb += l.quantite;
-      aggregates[l.nom_produit].ca += l.montant_ligne;
-      aggregates[l.nom_produit].livrees += l.quantite;
+      aggregates[key].nb += Number(l.quantite || 0);
+      aggregates[key].ca += Number(l.montant_ligne || 0);
+      aggregates[key].livrees += Number(l.quantite || 0);
     }
     
     if (isEchec) {
-      aggregates[l.nom_produit].echecs += l.quantite;
+      aggregates[key].echecs += Number(l.quantite || 0);
     }
     
     if (isSortie) {
-      aggregates[l.nom_produit].sorties += l.quantite;
+      aggregates[key].sorties += Number(l.quantite || 0);
     }
   });
 
-  return Object.entries(aggregates)
-    .map(([nom, stats]) => {
+  return Object.values(aggregates)
+    .map(stats => {
       const finishedAttempts = stats.livrees + stats.echecs;
       return { 
-        nom, 
+        nom: stats.name, 
         nb_ventes: stats.livrees, 
         total_ca: stats.ca,
         total_sorties: stats.sorties,

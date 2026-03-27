@@ -13,6 +13,7 @@ export const Clients = () => {
   const [clients, setClients] = useState<(Client & ClientFidelityStats)[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [segmentFilter, setSegmentFilter] = useState('All');
   const [selectedClient, setSelectedClient] = useState<{ client: Client & ClientFidelityStats, commandes: Commande[] } | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
@@ -63,10 +64,38 @@ export const Clients = () => {
     window.open(url, '_blank');
   };
 
-  const filteredClients = clients.filter(c => 
-    c.nom_complet.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.telephone.includes(searchTerm)
-  );
+  const filteredClients = clients.filter(c => {
+    const matchesSearch = c.nom_complet.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         c.telephone.includes(searchTerm);
+    const matchesSegment = segmentFilter === 'All' || c.segment === segmentFilter;
+    return matchesSearch && matchesSegment;
+  });
+
+  const exportToCSV = () => {
+    const headers = ['Nom', 'Telephone', 'Segment', 'Commandes', 'Total Depense'];
+    const rows = filteredClients.map(c => [
+      c.nom_complet,
+      c.telephone,
+      c.segment,
+      c.total_commandes,
+      c.total_encaisse
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `crm_clients_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <>
@@ -92,8 +121,8 @@ export const Clients = () => {
           </div>
         </div>
 
-        <div className="card glass-effect" style={{ marginBottom: '2rem', padding: '1.25rem' }}>
-          <div style={{ position: 'relative' }}>
+        <div className="card glass-effect" style={{ marginBottom: '2rem', padding: '1.25rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
             <Search size={20} style={{ position: 'absolute', top: '50%', left: '1.25rem', transform: 'translateY(-50%)', color: 'var(--primary)' }} />
             <input 
               type="text" 
@@ -104,6 +133,27 @@ export const Clients = () => {
               onChange={e => setSearchTerm(e.target.value)}
             />
           </div>
+          
+          <select 
+            className="form-select" 
+            style={{ width: '200px', height: '54px', borderRadius: '14px', border: '1px solid #e2e8f0', fontWeight: 700 }}
+            value={segmentFilter}
+            onChange={e => setSegmentFilter(e.target.value)}
+          >
+            <option value="All">Tous les segments</option>
+            <option value="Diamant 💎">Diamant 💎</option>
+            <option value="Fidèle ✨">Fidèle ✨</option>
+            <option value="À relancer ⚠️">À relancer ⚠️</option>
+            <option value="Nouveau 🌱">Nouveau 🌱</option>
+          </select>
+
+          <button 
+            className="btn btn-primary" 
+            style={{ height: '54px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800 }}
+            onClick={exportToCSV}
+          >
+            Exporter CSV
+          </button>
         </div>
 
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

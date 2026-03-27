@@ -5,6 +5,8 @@ import { Eye, PhoneCall, Truck, Trash2, FileText } from 'lucide-react';
 
 interface CommandeListProps {
   commandes: Commande[];
+  selectedIds?: string[];
+  onSelectionChange?: (ids: string[]) => void;
   onActionClick?: (commande: Commande) => void;
   onViewClick?: (commande: Commande) => void;
   onDelete?: (commande: Commande) => void;
@@ -38,6 +40,8 @@ const getIconComponent = (iconName: string) => {
 
 export const CommandeList = ({ 
   commandes, 
+  selectedIds = [],
+  onSelectionChange,
   onActionClick, 
   onViewClick,
   onDelete, 
@@ -45,6 +49,24 @@ export const CommandeList = ({
   actionIcon = 'Eye', 
   actionLabel = 'Voir détails' 
 }: CommandeListProps) => {
+  const toggleSelectAll = () => {
+    if (!onSelectionChange) return;
+    if (selectedIds.length === commandes.length) {
+      onSelectionChange([]);
+    } else {
+      onSelectionChange(commandes.map(c => c.id));
+    }
+  };
+
+  const toggleSelectOne = (id: string) => {
+    if (!onSelectionChange) return;
+    if (selectedIds.includes(id)) {
+      onSelectionChange(selectedIds.filter((sid: string) => sid !== id));
+    } else {
+      onSelectionChange([...selectedIds, id]);
+    }
+  };
+
   if (commandes.length === 0) {
     return (
       <div className="card" style={{ textAlign: 'center', padding: '5rem 0', color: 'var(--text-muted)', background: 'transparent', boxShadow: 'none' }}>
@@ -60,6 +82,14 @@ export const CommandeList = ({
         <table>
           <thead>
             <tr>
+              <th style={{ width: '40px' }}>
+                <input 
+                  type="checkbox" 
+                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                  checked={commandes.length > 0 && selectedIds.length === commandes.length}
+                  onChange={toggleSelectAll}
+                />
+              </th>
               <th>Date / ID</th>
               <th>Client & Contact</th>
               <th>Zone de Livraison</th>
@@ -74,9 +104,18 @@ export const CommandeList = ({
               const dateRaw = c.date_creation?.toDate ? c.date_creation.toDate() : (c.date_creation || new Date());
               const dateStr = format(dateRaw, 'dd MMM yyyy', { locale: fr });
               const timeStr = format(dateRaw, 'HH:mm', { locale: fr });
+              const isSelected = selectedIds.includes(c.id);
               
               return (
-                <tr key={c.id}>
+                <tr key={c.id} style={{ backgroundColor: isSelected ? 'rgba(99, 102, 255, 0.03)' : 'transparent' }}>
+                  <td>
+                    <input 
+                      type="checkbox" 
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                      checked={isSelected}
+                      onChange={() => toggleSelectOne(c.id)}
+                    />
+                  </td>
                   <td data-label="Date / ID">
                     <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{dateStr}</div>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{timeStr} • #{c.id.slice(0, 8).toUpperCase()}</div>

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, CheckCircle, Download, X } from 'lucide-react';
 import { CommandeList } from '../components/commandes/CommandeList';
 import { CommandeForm } from '../components/commandes/CommandeForm';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
-import { subscribeToCommandes, deleteCommande, getCommandeWithLines } from '../services/commandeService';
+import { subscribeToCommandes, deleteCommande, getCommandeWithLines, bulkUpdateCommandeStatus } from '../services/commandeService';
 import { generateInvoicePDF } from '../services/pdfService';
 import type { Commande } from '../types';
 import { useToast } from '../contexts/ToastContext';
@@ -16,6 +16,7 @@ export const Commandes = () => {
   const [selectedCommandeId, setSelectedCommandeId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'to_process' | 'in_delivery' | 'done' | 'failed'>('to_process');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const handleInvoice = async (commande: Commande) => {
     try {
@@ -39,6 +40,52 @@ export const Commandes = () => {
     }
   };
 
+  const handleBulkValidate = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      showToast(`Validation de ${selectedIds.length} commandes...`, "info");
+      await bulkUpdateCommandeStatus(selectedIds, 'validee');
+      showToast(`${selectedIds.length} commandes validées !`, "success");
+      setSelectedIds([]);
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de la validation groupée.", "error");
+    }
+  };
+
+  const handleLogisticsExport = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      showToast("Préparation de l'export logistique...", "info");
+      const selectedCommandes = await Promise.all(selectedIds.map(id => getCommandeWithLines(id)));
+      
+      const headers = ['ID', 'Client', 'Téléphone', 'Commune', 'Adresse', 'Montant à Encaisser', 'Produits'];
+      const rows = selectedCommandes.map(c => [
+        `#${c.id.slice(0, 8).toUpperCase()}`,
+        c.nom_client || '',
+        c.telephone_client || '',
+        c.commune_livraison || '',
+        c.adresse_livraison?.replace(/,/g, ' ') || '',
+        `${c.montant_total} CFA`,
+        c.lignes.map(l => `${l.quantite}x ${l.nom_produit}`).join(' | ')
+      ]);
+
+      const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+      const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `export_logistique_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showToast("Export logistique téléchargé !", "success");
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de l'export.", "error");
+    }
+  };
+
   useEffect(() => {
     setLoading(true);
     const unsubscribe = subscribeToCommandes((data) => {
@@ -47,6 +94,24 @@ export const Commandes = () => {
     });
     return () => unsubscribe();
   }, []);
+
+  const filteredCommandes = commandes.filter(c => {
+    const matchesSearch = 
+      c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.telephone_client?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.nom_client?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.commune_livraison?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    if (!matchesSearch) return false;
+
+    if (activeTab === 'all') return true;
+    if (activeTab === 'to_process') return ['nouvelle', 'en_attente_appel', 'a_rappeler'].includes(c.statut_commande);
+    if (activeTab === 'in_delivery') return ['validee', 'en_cours_livraison'].includes(c.statut_commande);
+    if (activeTab === 'done') return ['livree', 'terminee'].includes(c.statut_commande);
+    if (activeTab === 'failed') return ['echouee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande);
+    
+    return true;
+  });
 
   return (
     <>
@@ -119,7 +184,7 @@ export const Commandes = () => {
           </div>
         </div>
 
-        <div style={{ background: 'transparent' }}>
+        <div style={{ background: 'transparent', position: 'relative' }}>
           {loading ? (
             <div className="card" style={{ textAlign: 'center', padding: '5rem', color: 'var(--text-muted)' }}>
               <div className="loading-spinner" style={{ margin: '0 auto 1.5rem' }}></div>
@@ -127,27 +192,65 @@ export const Commandes = () => {
             </div>
           ) : (
             <CommandeList 
-              commandes={commandes.filter(c => {
-                const matchesSearch = 
-                  c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  c.telephone_client?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  c.nom_client?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                  c.commune_livraison?.toLowerCase().includes(searchTerm.toLowerCase());
-                
-                if (!matchesSearch) return false;
-
-                if (activeTab === 'all') return true;
-                if (activeTab === 'to_process') return ['nouvelle', 'en_attente_appel', 'a_rappeler'].includes(c.statut_commande);
-                if (activeTab === 'in_delivery') return ['validee', 'en_cours_livraison'].includes(c.statut_commande);
-                if (activeTab === 'done') return ['livree', 'terminee'].includes(c.statut_commande);
-                if (activeTab === 'failed') return ['echouee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande);
-                
-                return true;
-              })} 
+              commandes={filteredCommandes} 
+              selectedIds={selectedIds}
+              onSelectionChange={setSelectedIds}
               onActionClick={(c) => setSelectedCommandeId(c.id)}
               onDelete={handleDelete}
               onInvoiceClick={handleInvoice}
             />
+          )}
+
+          {/* Floating Batch Action Bar */}
+          {selectedIds.length > 0 && (
+            <div 
+              style={{ 
+                position: 'fixed', 
+                bottom: '2rem', 
+                left: '50%', 
+                transform: 'translateX(-50%)', 
+                background: 'var(--bg-card)', 
+                padding: '1rem 2rem', 
+                borderRadius: '24px', 
+                boxShadow: '0 20px 40px rgba(0,0,0,0.2)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '1.5rem',
+                border: '1px solid var(--primary)',
+                zIndex: 1000,
+                transition: 'all 0.3s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderRight: '1px solid #e2e8f0', paddingRight: '1.5rem' }}>
+                <span style={{ background: 'var(--primary)', color: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 900 }}>
+                  {selectedIds.length}
+                </span>
+                <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>Sélectionnés</span>
+                <button 
+                  onClick={() => setSelectedIds([])}
+                  style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex' }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button 
+                  className="btn btn-sm btn-primary" 
+                  onClick={handleBulkValidate}
+                  style={{ borderRadius: '12px', padding: '0.6rem 1.2rem' }}
+                >
+                  <CheckCircle size={18} /> Valider Groupée
+                </button>
+                <button 
+                  className="btn btn-sm btn-outline" 
+                  onClick={handleLogisticsExport}
+                  style={{ borderRadius: '12px', padding: '0.6rem 1.2rem', border: '1px solid #e2e8f0' }}
+                >
+                  <Download size={18} /> Export Livreurs
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>

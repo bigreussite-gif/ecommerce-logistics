@@ -97,12 +97,31 @@ export const ProduitList = ({ produits, onEdit, onStock }: ProduitListProps) => 
                 </div>
               </td>
               <td>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '0.4rem 0.8rem', background: produit.stock_actuel <= (produit.stock_minimum || 5) ? '#fee2e2' : '#dcfce7', borderRadius: '10px', transition: 'all 0.2s ease' }}>
-                   <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: produit.stock_actuel <= (produit.stock_minimum || 5) ? '#ef4444' : '#10b981' }}></div>
-                   <span style={{ fontWeight: 800, fontSize: '0.85rem', color: produit.stock_actuel <= (produit.stock_minimum || 5) ? '#991b1b' : '#166534' }}>{produit.stock_actuel} PCS</span>
+                <div style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  padding: '0.4rem 0.8rem', 
+                  background: produit.stock_actuel <= (produit.stock_minimum || 5) ? '#fff1f2' : '#f0fdf4', 
+                  borderRadius: '12px', 
+                  border: `1px solid ${produit.stock_actuel <= (produit.stock_minimum || 5) ? '#fecaca' : '#bbf7d0'}`,
+                  transition: 'all 0.2s ease' 
+                }}>
+                   <div style={{ 
+                     width: '8px', 
+                     height: '8px', 
+                     borderRadius: '50%', 
+                     background: produit.stock_actuel <= (produit.stock_minimum || 5) ? '#ef4444' : '#10b981',
+                     animation: produit.stock_actuel <= (produit.stock_minimum || 5) ? 'pulse-red 2s infinite' : 'none'
+                   }}></div>
+                   <span style={{ fontWeight: 900, fontSize: '0.9rem', color: produit.stock_actuel <= (produit.stock_minimum || 5) ? '#991b1b' : '#15803d' }}>
+                     {produit.stock_actuel} {produit.stock_actuel > 1 ? 'UNITÉS' : 'UNITÉ'}
+                   </span>
                 </div>
                 {produit.stock_actuel <= (produit.stock_minimum || 5) && (
-                   <div style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 700, marginTop: '0.3rem', textTransform: 'uppercase' }}>Réappro. Urgent</div>
+                   <div style={{ fontSize: '0.65rem', color: '#dc2626', fontWeight: 800, marginTop: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                     ⚠️ STOCK CRITIQUE
+                   </div>
                 )}
               </td>
               <td>

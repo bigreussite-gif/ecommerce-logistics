@@ -4,7 +4,7 @@ import type { Commande } from '../types';
 import { Activity, Percent, DollarSign, TrendingUp, Truck, AlertCircle, ShoppingBag, BarChart2, Calendar } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
-  Tooltip
+  Tooltip, PieChart, Pie, Cell
 } from 'recharts';
 
 type Period = 'today' | '7d' | '30d' | 'all' | 'custom';
@@ -85,11 +85,66 @@ export const Dashboard = () => {
     const caPotentiel = filteredCommandes.filter(c => ['validee', 'en_cours_livraison'].includes(c.statut_commande))
                                          .reduce((acc, c) => acc + (c.montant_total - getFrais(c)), 0);
     
-    const pending = filteredCommandes.filter(c => ['en_attente_appel', 'a_rappeler'].includes(c.statut_commande));
+    const pending = filteredCommandes.filter(c => ['en_attente_appel', 'a_rappeler', 'nouvelle'].includes(c.statut_commande));
     
     const totalTentatives = succes.length + echecsLivraison.length;
     const tauxSuccesLivraison = totalTentatives > 0 ? Math.round((succes.length / totalTentatives) * 100) : 0;
     
+    // Status Distribution Data
+    const statusCounts: Record<string, number> = {};
+    filteredCommandes.forEach(c => {
+      const s = c.statut_commande || 'Inconnu';
+      statusCounts[s] = (statusCounts[s] || 0) + 1;
+    });
+    const statusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
+
+    // Zone Performance Data
+    const zonePerf: Record<string, { total: number, count: number }> = {};
+    filteredCommandes.forEach(c => {
+      const z = c.commune_livraison || 'Hors Zone';
+      if (!zonePerf[z]) zonePerf[z] = { total: 0, count: 0 };
+      zonePerf[z].count++;
+      if (c.statut_commande === 'livree' || c.statut_commande === 'terminee') {
+        zonePerf[z].total += (c.montant_encaisse || c.montant_total) - getFrais(c);
+      }
+    });
+    const zoneData = Object.entries(zonePerf)
+      .map(([name, stats]) => ({ name, ...stats }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+
+    // Comparative Analytics
+    const getPeriodDays = () => {
+      if (period === 'today') return 1;
+      if (period === '7d') return 7;
+      if (period === '30d') return 30;
+      if (period === 'custom') {
+        const diffTime = Math.abs(new Date(endDate).getTime() - new Date(startDate).getTime());
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      }
+      return 0;
+    };
+
+    const days = getPeriodDays();
+    const prevPeriodData = days > 0 ? commandes.filter(c => {
+      const d = new Date(c.date_creation);
+      const now = new Date();
+      const endPrev = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
+      const startPrev = new Date(now.getTime() - (2 * days * 24 * 60 * 60 * 1000));
+      return d >= startPrev && d < endPrev;
+    }) : [];
+
+    const succesPrev = prevPeriodData.filter(c => c.statut_commande === 'livree' || c.statut_commande === 'terminee');
+    const echecsPrev = prevPeriodData.filter(c => ['echouee', 'retour_stock', 'retour_livreur'].includes(c.statut_commande));
+    const totalEncaissePrev = succesPrev.reduce((acc, c) => acc + (c.montant_encaisse || c.montant_total), 0);
+    const totalFraisPrev = succesPrev.reduce((acc, c) => acc + getFrais(c), 0);
+    const caNetPrev = totalEncaissePrev - totalFraisPrev;
+    const totalTentativesPrev = succesPrev.length + echecsPrev.length;
+    const tauxSuccesPrev = totalTentativesPrev > 0 ? Math.round((succesPrev.length / totalTentativesPrev) * 100) : 0;
+
+    const diffCA = caNetPrev > 0 ? Math.round(((caNetProduits - caNetPrev) / caNetPrev) * 100) : 0;
+    const diffTaux = tauxSuccesPrev > 0 ? Math.round((tauxSuccesLivraison - tauxSuccesPrev)) : 0;
+
     // Prepare history data based on current period
     const dayCount = period === 'today' ? 1 : period === '7d' ? 7 : period === '30d' ? 30 : 15;
     const historyPoints = Array.from({length: dayCount}, (_, i) => {
@@ -126,13 +181,17 @@ export const Dashboard = () => {
         caNetProduits, 
         totalFraisLivraison, 
         caPotentiel, 
-        totalEncaisse 
+        totalEncaisse,
+        diffCA,
+        diffTaux
       }, 
-      historyData 
+      historyData,
+      statusData,
+      zoneData
     };
-  }, [filteredCommandes, period]);
+  }, [filteredCommandes, period, commandes, startDate, endDate]);
 
-  const { stats, historyData } = memoizedAnalytics;
+  const { stats, historyData, statusData, zoneData } = memoizedAnalytics;
 
   if (loading) return <div className="p-8 text-center">Chargement...</div>;
 
@@ -191,7 +250,14 @@ export const Dashboard = () => {
         <div className="card glass-effect" style={{ padding: '1.75rem', borderLeft: '5px solid var(--primary)', position: 'relative' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
             <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>CA Net Produits</span>
-            <DollarSign size={20} color="var(--primary)" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+               {stats.diffCA !== 0 && (
+                 <span style={{ fontSize: '0.75rem', fontWeight: 900, color: stats.diffCA > 0 ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center' }}>
+                   {stats.diffCA > 0 ? '+' : ''}{stats.diffCA}%
+                 </span>
+               )}
+               <DollarSign size={20} color="var(--primary)" />
+            </div>
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)' }}>{stats.caNetProduits.toLocaleString()} <span style={{ fontSize: '0.9rem' }}>CFA</span></div>
           <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total encaissé: {stats.totalEncaisse.toLocaleString()} CFA</p>
@@ -212,7 +278,14 @@ export const Dashboard = () => {
         <div className="card glass-effect" style={{ padding: '1.75rem', borderLeft: '5px solid #f59e0b' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
             <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Taux de Succès</span>
-            <Percent size={20} color="#f59e0b" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+               {stats.diffTaux !== 0 && (
+                 <span style={{ fontSize: '0.75rem', fontWeight: 900, color: stats.diffTaux >= 0 ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center' }}>
+                   {stats.diffTaux >= 0 ? '+' : ''}{stats.diffTaux}%
+                 </span>
+               )}
+               <Percent size={20} color="#f59e0b" />
+            </div>
           </div>
           <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)' }}>{stats.tauxSuccesLivraison}%</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.8rem' }}>
@@ -220,6 +293,7 @@ export const Dashboard = () => {
              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>{stats.succes} livrées</span>
           </div>
         </div>
+
 
         <div className="card glass-effect" style={{ padding: '1.75rem', borderLeft: '5px solid #ef4444' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
@@ -230,6 +304,83 @@ export const Dashboard = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.8rem', color: '#f59e0b' }}>
              <AlertCircle size={14} />
              <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Action requise</span>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem', marginBottom: '2.5rem' }}>
+        {/* Status Distribution (Pie Chart) */}
+        <div className="card" style={{ padding: '2rem' }}>
+          <h3 style={{ marginBottom: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Activity size={20} color="var(--primary)" /> Répartition des Flux
+          </h3>
+          <div style={{ height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={statusData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {statusData.map((_, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={[
+                        '#10b981', '#6366f1', '#f59e0b', '#ef4444', 
+                        '#8b5cf6', '#ec4899', '#06b6d4', '#475569'
+                      ][index % 8]} 
+                    />
+                  ))}
+                </Pie>
+                <Tooltip 
+                   contentStyle={{ borderRadius: '14px', border: 'none', boxShadow: 'var(--shadow-premium)' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
+            {statusData.map((s, i) => (
+               <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 700 }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: [
+                        '#10b981', '#6366f1', '#f59e0b', '#ef4444', 
+                        '#8b5cf6', '#ec4899', '#06b6d4', '#475569'
+                      ][i % 8] }}></div>
+                  <span style={{ color: 'var(--text-muted)' }}>{s.name} ({s.value})</span>
+               </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Zone Performance Table */}
+        <div className="card" style={{ padding: '2rem' }}>
+          <h3 style={{ marginBottom: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Truck size={20} color="var(--primary)" /> Top Zones (Communes)
+          </h3>
+          <div className="table-container" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+            <table style={{ width: '100%', fontSize: '0.9rem' }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: 'left', background: 'transparent', padding: '0.75rem 0' }}>Zone</th>
+                  <th style={{ textAlign: 'center', background: 'transparent', padding: '0.75rem 0' }}>Colis</th>
+                  <th style={{ textAlign: 'right', background: 'transparent', padding: '0.75rem 0' }}>Rev. Net</th>
+                </tr>
+              </thead>
+              <tbody>
+                {zoneData.length === 0 ? (
+                  <tr><td colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Aucun colis</td></tr>
+                ) : zoneData.map((z) => (
+                  <tr key={z.name}>
+                    <td style={{ fontWeight: 800, padding: '0.75rem 0' }}>{z.name}</td>
+                    <td style={{ textAlign: 'center', fontWeight: 600, padding: '0.75rem 0' }}>{z.count}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 900, color: 'var(--primary)', padding: '0.75rem 0' }}>{z.total.toLocaleString()} CFA</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

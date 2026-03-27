@@ -18,7 +18,7 @@ export const getCloturedFeuilles = async (): Promise<FeuilleRoute[]> => {
     .from('feuilles_route')
     .select('*, livreurs:livreur_id(nom_complet)')
     .in('statut_feuille', ['cloturee', 'terminee'])
-    .order('date_traitement', { ascending: false });
+    .order('date', { ascending: false });
 
   if (error) throw error;
   
@@ -41,7 +41,7 @@ export const getCommandesConcernees = async (feuilleRouteId: string): Promise<Co
 
 export const processCaisse = async (
   feuilleRouteId: string, 
-  resolutions: {id: string, statut: string, mode_paiement: string}[], 
+  resolutions: {id: string, statut: string, mode_paiement: string, transaction_id?: string}[], 
   montantPhysique: number, 
   ecart: number, 
   commentaire: string,
@@ -74,7 +74,12 @@ export const processCaisse = async (
     if (res.statut === 'livree') finalStatus = 'terminee';
     if (res.statut === 'retour_livreur' || res.statut === 'echouee') finalStatus = 'retour_stock';
     
-    const updateData: any = { statut_commande: finalStatus, mode_paiement: res.mode_paiement, updated_at: new Date() };
+    const updateData: any = { 
+      statut_commande: finalStatus, 
+      mode_paiement: res.mode_paiement, 
+      transaction_id: res.transaction_id || null,
+      updated_at: new Date() 
+    };
     
     // CRITICAL FIX: Ensure date_livraison_effective is set if the command is successful
     if (finalStatus === 'terminee' || finalStatus === 'livree') {
@@ -118,28 +123,28 @@ export const processCaisse = async (
   if (retourError) throw retourError;
 };
 
-export const getDailyFinancials = async (dateStr: string): Promise<any> => {
-  const startOfDayDate = new Date(dateStr);
-  startOfDayDate.setHours(0,0,0,0);
-  const endOfDayDate = new Date(dateStr);
-  endOfDayDate.setHours(23,59,59,999);
+export const getRangeFinancials = async (startDateStr: string, endDateStr?: string): Promise<any> => {
+  const start = new Date(startDateStr);
+  start.setHours(0,0,0,0);
+  
+  const end = endDateStr ? new Date(endDateStr) : new Date(startDateStr);
+  end.setHours(23,59,59,999);
 
-  // 1. Get Caisse Retours for the day
+  // 1. Get Caisse Retours for the range
   const { data: retours, error: retoursError } = await insforge.database
     .from('caisse_retours')
     .select('*')
-    .gte('date', startOfDayDate.toISOString())
-    .lte('date', endOfDayDate.toISOString());
+    .gte('date', start.toISOString())
+    .lte('date', end.toISOString());
 
   if (retoursError) throw retoursError;
 
-  // 2. Get All Commandes modified or delivered today for stats
-  // We include anything DELIVERED during this window OR UPDATED during this window
-  const filterStr = `and(date_livraison_effective.gte.${startOfDayDate.toISOString()},date_livraison_effective.lte.${endOfDayDate.toISOString()}),and(updated_at.gte.${startOfDayDate.toISOString()},updated_at.lte.${endOfDayDate.toISOString()})`;
+  // 2. Get All Commandes modified or delivered in range for stats
+  const filterStr = `and(date_livraison_effective.gte.${start.toISOString()},date_livraison_effective.lte.${end.toISOString()}),and(updated_at.gte.${start.toISOString()},updated_at.lte.${end.toISOString()})`;
 
   const { data: commandes, error: cmdError } = await insforge.database
     .from('commandes')
-    .select('id, montant_total, statut_commande, mode_paiement, frais_livraison, updated_at, date_livraison_effective')
+    .select('id, montant_total, statut_commande, mode_paiement, frais_livraison, updated_at, date_livraison_effective, lignes:lignes_commandes(*)')
     .or(filterStr);
 
   if (cmdError) throw cmdError;
