@@ -126,9 +126,8 @@ export const getDailyFinancials = async (dateStr: string): Promise<any> => {
 
   if (retoursError) throw retoursError;
 
-  // 2. Get All Commandes modified or delivered today for stats
-  // We use both date_livraison_effective and updated_at for robustness
-  const filterStr = `date_livraison_effective.gte.${startOfDayDate.toISOString()},date_livraison_effective.lte.${endOfDayDate.toISOString()},updated_at.gte.${startOfDayDate.toISOString()},updated_at.lte.${endOfDayDate.toISOString()}`;
+  // Correct grouping: (date_livraison_effective IN range) OR (updated_at IN range)
+  const filterStr = `and(date_livraison_effective.gte.${startOfDayDate.toISOString()},date_livraison_effective.lte.${endOfDayDate.toISOString()}),and(updated_at.gte.${startOfDayDate.toISOString()},updated_at.lte.${endOfDayDate.toISOString()})`;
 
   const { data: commandes, error: cmdError } = await insforge.database
     .from('commandes')

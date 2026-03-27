@@ -247,8 +247,8 @@ export const deleteCommande = async (id: string): Promise<void> => {
 };
 
 export const getFinancialData = async (startDate?: string, endDate?: string): Promise<(Commande & { lignes: LigneCommande[] })[]> => {
-  // Filter by delivery date OR updated_at to catch orders created before but delivered during the period
-  const filterString = `date_livraison_effective.gte.${startDate},date_livraison_effective.lte.${endDate},updated_at.gte.${startDate},updated_at.lte.${endDate}`;
+  // Correct grouping: (date_livraison_effective IN range) OR (updated_at IN range)
+  const filterString = `and(date_livraison_effective.gte.${startDate},date_livraison_effective.lte.${endDate}),and(updated_at.gte.${startDate},updated_at.lte.${endDate})`;
   
   let query = insforge.database
     .from('commandes')
