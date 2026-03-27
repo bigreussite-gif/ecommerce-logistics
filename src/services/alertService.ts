@@ -1,5 +1,5 @@
 import { insforge } from '../lib/insforge';
-import { Commande, Produit } from '../types';
+import { Commande } from '../types';
 import { differenceInHours } from 'date-fns';
 
 export interface BusinessAlert {
@@ -17,14 +17,15 @@ export const getActiveAlerts = async (): Promise<BusinessAlert[]> => {
 
   try {
     // 1. Alertes Stock (Stock < Stock Minimum)
-    const { data: lowStock } = await insforge.database
+    const { data: allActiveProducts } = await insforge.database
       .from('produits')
-      .select('*')
-      .filter('stock_actuel', 'lt', 'stock_minimum')
+      .select('id, nom, stock_actuel, stock_minimum')
       .eq('actif', true);
 
+    const lowStock = (allActiveProducts || []).filter(p => (p.stock_actuel || 0) < (p.stock_minimum || 0));
+
     if (lowStock) {
-      lowStock.forEach((p: Produit) => {
+      lowStock.forEach((p: any) => {
         alerts.push({
           id: `stock-${p.id}`,
           type: 'stock',

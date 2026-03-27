@@ -16,7 +16,7 @@ const Clients = lazy(() => import('./pages/Clients').then(m => ({ default: m.Cli
 const Admin = lazy(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
 const Profil = lazy(() => import('./pages/Profil').then(m => ({ default: m.Profil })));
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
-const FinancialReport = lazy(() => import('./pages/FinancialReport').then(m => ({ default: m.FinancialReport })));
+import { FinancialReport } from './pages/FinancialReport';
 const Home = lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
 const StaffPerformance = lazy(() => import('./pages/StaffPerformance').then(m => ({ default: m.StaffPerformance })));
 const NetProfit = lazy(() => import('./pages/NetProfit').then(m => ({ default: m.NetProfit })));

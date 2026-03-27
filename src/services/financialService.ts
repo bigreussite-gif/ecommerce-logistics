@@ -91,9 +91,16 @@ export const generateTimeSeriesData = (commandes: (Commande & { lignes?: LigneCo
   terminalCmds.forEach(c => {
     // Favor actual delivery date if available, otherwise fallback to creation date
     const date = new Date(c.date_livraison_effective || c.date_creation);
-    const key = type === 'daily' 
-      ? format(date, 'dd/MM') 
-      : format(date, 'MMM', { locale: fr });
+    let key = 'Inconnu';
+    try {
+      if (!isNaN(date.getTime())) {
+        key = type === 'daily' 
+          ? format(date, 'dd/MM') 
+          : format(date, 'MMM', { locale: fr });
+      }
+    } catch (e) {
+      console.warn("Invalid date in commande:", c.id);
+    }
 
     if (!groups[key]) {
       groups[key] = { name: key, revenue: 0, profit: 0 };
