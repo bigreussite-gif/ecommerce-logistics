@@ -72,7 +72,7 @@ export const AdminTresorerie = () => {
   // Cash Flow Logic
   const transactions: Transaction[] = [
     ...data.orders.map(o => ({
-      date: new Date(o.date_creation),
+      date: new Date(o.date_livraison_effective || o.date_creation),
       type: 'Entrée' as const,
       categorie: 'Vente',
       description: `Commande #${o.id.substring(0, 8).toUpperCase()} - ${o.nom_client}`,

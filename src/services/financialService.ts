@@ -41,7 +41,10 @@ export interface ProfitStats {
 }
 
 export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCommande[] })[], depenses: Depense[]): ProfitStats => {
-  const terminalCmds = (commandes || []).filter(c => ['livree', 'terminee'].includes(c.statut_commande));
+  const terminalCmds = (commandes || []).filter(c => {
+    const s = c.statut_commande?.toLowerCase();
+    return ['livree', 'terminee'].includes(s);
+  });
   
   const ca_brut = terminalCmds.reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
   const frais_livraison_total = terminalCmds.reduce((acc, c) => acc + (Number(c.frais_livraison) || 0), 0);
@@ -79,11 +82,15 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
 };
 
 export const generateTimeSeriesData = (commandes: (Commande & { lignes?: LigneCommande[] })[], type: 'daily' | 'monthly' = 'daily') => {
-  const terminalCmds = (commandes || []).filter(c => ['livree', 'terminee'].includes(c.statut_commande));
+  const terminalCmds = (commandes || []).filter(c => {
+    const s = c.statut_commande?.toLowerCase();
+    return ['livree', 'terminee'].includes(s);
+  });
   const groups: { [key: string]: { name: string, revenue: number, profit: number } } = {};
 
   terminalCmds.forEach(c => {
-    const date = new Date(c.date_creation);
+    // Favor actual delivery date if available, otherwise fallback to creation date
+    const date = new Date(c.date_livraison_effective || c.date_creation);
     const key = type === 'daily' 
       ? format(date, 'dd/MM') 
       : format(date, 'MMM', { locale: fr });

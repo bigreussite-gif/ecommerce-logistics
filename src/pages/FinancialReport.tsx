@@ -41,7 +41,10 @@ export const FinancialReport = () => {
   const totalEncaisseBrut = data.retours.reduce((acc, r) => acc + (r.montant_remis_par_livreur || 0), 0);
   
   // Decouplage: On calcule les frais de livraison encaissés avec fallback
-  const succesCommandes = data.commandes.filter(c => c.statut_commande === 'terminee' || c.statut_commande === 'livree');
+  const succesCommandes = data.commandes.filter(c => {
+    const s = c.statut_commande?.toLowerCase();
+    return s === 'terminee' || s === 'livree';
+  });
   const totalFraisLivraison = succesCommandes.reduce((acc, c) => acc + getFrais(c), 0);
   const totalProduitsNet = totalEncaisseBrut - totalFraisLivraison;
 
