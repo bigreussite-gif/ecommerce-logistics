@@ -140,10 +140,22 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   const prevStatus = currentCmd.statut_commande;
   const nextStatus = status;
 
+  const resetRouteSheets = ['validee', 'a_rappeler', 'en_attente_appel'];
+  const updatePayload: any = { 
+    statut_commande: nextStatus, 
+    ...additionalData, 
+    updated_at: new Date() 
+  };
+
+  if (resetRouteSheets.includes(nextStatus?.toLowerCase())) {
+    updatePayload.feuille_route_id = null;
+    updatePayload.livreur_id = null; // Also clear livreur if it's being re-queued
+  }
+
   // 2. Update status in DB
   const { error } = await insforge.database
     .from('commandes')
-    .update({ statut_commande: nextStatus, ...additionalData, updated_at: new Date() })
+    .update(updatePayload)
     .eq('id', id);
   
   if (error) throw error;

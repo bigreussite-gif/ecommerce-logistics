@@ -74,15 +74,22 @@ export const processCaisse = async (
     if (res.statut === 'livree') finalStatus = 'terminee';
     if (res.statut === 'retour_livreur' || res.statut === 'echouee') finalStatus = 'retour_stock';
     
+    const isDelivered = finalStatus === 'terminee' || finalStatus === 'livree';
+    
     const updateData: any = { 
       statut_commande: finalStatus, 
       mode_paiement: res.mode_paiement, 
       transaction_id: res.transaction_id || null,
       updated_at: new Date() 
     };
+
+    // If not delivered, clear the route sheet ID so it can be re-assigned in Logistics
+    if (!isDelivered) {
+      updateData.feuille_route_id = null;
+    }
     
     // CRITICAL FIX: Ensure date_livraison_effective is set if the command is successful
-    if (finalStatus === 'terminee' || finalStatus === 'livree') {
+    if (isDelivered) {
       updateData.date_livraison_effective = new Date().toISOString();
     }
     
