@@ -16,7 +16,7 @@ export const getProduits = async (): Promise<Produit[]> => {
 export const subscribeToProduits = (callback: (produits: Produit[]) => void) => {
   getProduits().then(callback);
   // We can implement a simple interval for now or just wait for triggers
-  const interval = setInterval(() => getProduits().then(callback), 5000);
+  const interval = setInterval(() => getProduits().then(callback), 3000);
   return () => clearInterval(interval);
 };
 

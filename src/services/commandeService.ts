@@ -43,7 +43,7 @@ export const getCommandes = async (): Promise<Commande[]> => {
 
 export const subscribeToCommandes = (callback: (commandes: Commande[]) => void) => {
   getCommandes().then(callback);
-  const interval = setInterval(() => getCommandes().then(callback), 5000);
+  const interval = setInterval(() => getCommandes().then(callback), 3000);
   return () => clearInterval(interval);
 };
 
@@ -72,7 +72,7 @@ export const getCommandesByStatus = async (statusList: string[]): Promise<(Comma
 
 export const subscribeToCommandesByStatus = (statusList: string[], callback: (commandes: Commande[]) => void) => {
   getCommandesByStatus(statusList).then(callback);
-  const interval = setInterval(() => getCommandesByStatus(statusList).then(callback), 5000);
+  const interval = setInterval(() => getCommandesByStatus(statusList).then(callback), 3000);
   return () => clearInterval(interval);
 };
 
@@ -208,9 +208,10 @@ export const getTopSellingProducts = async (limit = 10, days?: number, start?: s
   if (days && days > 0) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
-    query = query.gte('commandes.date_creation', startDate.toISOString());
+    const iso = startDate.toISOString();
+    query = query.or(`date_livraison_effective.gte.${iso},and(date_livraison_effective.is.null,date_creation.gte.${iso})`);
   } else if (start && end) {
-    query = query.gte('commandes.date_creation', start).lte('commandes.date_creation', end);
+    query = query.or(`and(date_livraison_effective.gte.${start},date_livraison_effective.lte.${end}),and(date_livraison_effective.is.null,date_creation.gte.${start},date_creation.lte.${end})`);
   }
 
   const { data: lines, error: linesError } = await query;
