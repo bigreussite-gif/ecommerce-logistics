@@ -9,13 +9,17 @@ import {
 import { TrendingUp, Award, Target, Coins } from 'lucide-react';
 import { startOfDay, subDays, isAfter } from 'date-fns';
 
+import { calculateLogisticalStats } from '../services/financialService';
+
 interface StaffStats {
   id: string;
   nom: string;
   total_cmds: number;
   livrees: number;
-  echouees: number;
-  ca_livraison: number; // Renamed from encaisse for clarity
+  retours: number;
+  annulees: number;
+  reportees: number;
+  ca_livraison: number;
   taux_succes: number;
 }
 
@@ -52,10 +56,8 @@ export const StaffPerformance = () => {
             return true;
           });
           
-          const livrees = livreurCmds.filter((c: Commande) => ['livree', 'terminee'].includes(c.statut_commande)).length;
-          const echouees = livreurCmds.filter((c: Commande) => ['echouee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande)).length;
+          const logStats = calculateLogisticalStats(livreurCmds);
           
-          // Focus exclusively on delivery fees as requested
           const ca_livraison = livreurCmds.reduce((acc: number, c: Commande) => 
             acc + (['livree', 'terminee'].includes(c.statut_commande) ? (Number(c.frais_livraison) || 0) : 0)
           , 0);
@@ -63,11 +65,13 @@ export const StaffPerformance = () => {
           return {
             id: livreur.id,
             nom: livreur.nom_complet,
-            total_cmds: livreurCmds.length,
-            livrees,
-            echouees,
+            total_cmds: logStats.total_sortis,
+            livrees: logStats.livrees,
+            retours: logStats.retours,
+            annulees: logStats.annulees,
+            reportees: logStats.reportees,
             ca_livraison,
-            taux_succes: livreurCmds.length > 0 ? Math.round((livrees / livreurCmds.length) * 100) : 0
+            taux_succes: logStats.taux_succes
           };
         }).sort((a: StaffStats, b: StaffStats) => b.taux_succes - a.taux_succes);
 
@@ -213,11 +217,12 @@ export const StaffPerformance = () => {
               <thead>
                 <tr>
                   <th>Livreur</th>
-                  <th style={{ textAlign: 'center' }}>Total</th>
+                  <th style={{ textAlign: 'center' }}>Sorties</th>
                   <th style={{ textAlign: 'center' }}>Livrés</th>
-                  <th style={{ textAlign: 'center' }}>Échecs</th>
-                  <th style={{ textAlign: 'right' }}>CA Livraison</th>
-                  <th style={{ textAlign: 'right' }}>Moy/Colis</th>
+                  <th style={{ textAlign: 'center' }}>Retours</th>
+                  <th style={{ textAlign: 'center' }}>Annulés</th>
+                  <th style={{ textAlign: 'center' }}>Reports</th>
+                  <th style={{ textAlign: 'right' }}>Gains</th>
                 </tr>
               </thead>
               <tbody>
@@ -241,13 +246,16 @@ export const StaffPerformance = () => {
                       <span className="badge badge-success" style={{ padding: '0.2rem 0.5rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>{s.livrees}</span>
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <span className="badge badge-danger" style={{ padding: '0.2rem 0.5rem', background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e' }}>{s.echouees}</span>
+                      <span className="badge badge-info" style={{ padding: '0.2rem 0.5rem', background: 'rgba(99, 102, 255, 0.1)', color: 'var(--primary)' }}>{s.retours}</span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span className="badge badge-danger" style={{ padding: '0.2rem 0.5rem', background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e' }}>{s.annulees}</span>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span className="badge badge-warning" style={{ padding: '0.2rem 0.5rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>{s.reportees}</span>
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 800 }}>
                       <div style={{ whiteSpace: 'nowrap' }}>{s.ca_livraison.toLocaleString()} <span style={{ fontSize: '0.65rem' }}>CFA</span></div>
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--text-muted)' }}>
-                      <div style={{ whiteSpace: 'nowrap' }}>{s.livrees > 0 ? Math.round(s.ca_livraison / s.livrees).toLocaleString() : 0} <span style={{ fontSize: '0.6rem' }}>CFA</span></div>
                     </td>
                   </tr>
                 ))}

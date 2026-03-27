@@ -40,6 +40,36 @@ export interface ProfitStats {
   marge_nette_percent: number;
 }
 
+export interface LogisticalStats {
+  total_sortis: number;
+  livrees: number;
+  retours: number;
+  annulees: number;
+  reportees: number;
+  taux_succes: number;
+}
+
+export const calculateLogisticalStats = (commandes: Commande[]): LogisticalStats => {
+  const filtered = (commandes || []);
+  
+  const livrees = filtered.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).length;
+  const retours = filtered.filter(c => ['retour_livreur', 'retour_stock'].includes(c.statut_commande?.toLowerCase())).length;
+  const annulees = filtered.filter(c => c.statut_commande?.toLowerCase() === 'annulee').length;
+  const reportees = filtered.filter(c => c.statut_commande?.toLowerCase() === 'echouee').length;
+  
+  const total_sortis = livrees + retours + annulees + reportees;
+  const taux_succes = total_sortis > 0 ? Math.round((livrees / total_sortis) * 100) : 0;
+  
+  return {
+    total_sortis,
+    livrees,
+    retours,
+    annulees,
+    reportees,
+    taux_succes
+  };
+};
+
 export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCommande[] })[], depenses: Depense[]): ProfitStats => {
   const terminalCmds = (commandes || []).filter(c => {
     const s = c.statut_commande?.toLowerCase();

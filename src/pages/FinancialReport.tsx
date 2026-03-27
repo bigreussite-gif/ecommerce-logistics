@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getRangeFinancials } from '../services/caisseService';
-import { generateTimeSeriesData, calculateProfitMetrics } from '../services/financialService';
+import { generateTimeSeriesData, calculateProfitMetrics, calculateLogisticalStats } from '../services/financialService';
 import { TrendingUp, TrendingDown, Compass, PieChart, Calendar, BarChart, Clock } from 'lucide-react';
 import { generateAnalyticalReportPDF } from '../services/pdfService';
 import { useToast } from '../contexts/ToastContext';
@@ -74,6 +74,11 @@ export const FinancialReport = () => {
     return Math.ceil(Math.abs(e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
   }, [startDate, endDate]);
 
+  const logStats = useMemo(() => {
+    if (!data) return null;
+    return calculateLogisticalStats(data.commandes);
+  }, [data]);
+
   if (loading || !data) {
     return <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
       <div className="spinner" style={{ margin: '0 auto 1.5rem' }}></div>
@@ -99,9 +104,7 @@ export const FinancialReport = () => {
   const totalFraisLivraison = succesCommandes.reduce((acc, c) => acc + getFrais(c), 0);
   const totalProduitsNet = totalEncaisseBrut - totalFraisLivraison;
 
-  const successRate = data.commandes.length > 0 
-    ? (succesCommandes.length / data.commandes.length) * 100 
-    : 0;
+  const successRate = logStats?.taux_succes || 0;
 
   const timeSeries = generateTimeSeriesData(data.commandes, diffDays > 31 ? 'monthly' : 'daily');
 
@@ -218,6 +221,11 @@ export const FinancialReport = () => {
         <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #6366f1' }}>
           <span style={{ color: '#4f46e5', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TAUX DE SUCCESS</span>
           <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem' }}>{successRate.toFixed(1)}%</div>
+          <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.5rem', fontSize: '0.65rem', fontWeight: 700 }}>
+            <span style={{ color: '#10b981' }}>{logStats?.livrees} Livré</span>
+            <span style={{ color: 'var(--primary)' }}>{logStats?.retours} Ret</span>
+            <span style={{ color: '#f59e0b' }}>{logStats?.reportees} Rep</span>
+          </div>
         </div>
       </div>
 
