@@ -240,7 +240,7 @@ export const FinancialReport = () => {
                     style={{ 
                       width: '100%', 
                       background: 'linear-gradient(to top, var(--primary), #818cf8)', 
-                      height: `${(d.revenue / (Math.max(...timeSeries.map(x => x.revenue)) || 1)) * 100}%`,
+                      height: `${(d.revenue / (Math.max(...timeSeries.map(x => x.revenue), 1))) * 100}%`,
                       borderRadius: '6px 6px 0 0',
                       minHeight: '4px',
                       transition: 'height 0.3s ease',
