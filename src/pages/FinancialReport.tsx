@@ -14,6 +14,16 @@ export const FinancialReport = () => {
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
+  const safeFormat = (dateStr: string, formatStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return '...';
+      return format(d, formatStr);
+    } catch (e) {
+      return '...';
+    }
+  };
+
   const setRange = (preset: 'today' | 'yesterday' | '7d' | '30d' | 'month') => {
     let s = new Date();
     let e = new Date();
@@ -36,22 +46,7 @@ export const FinancialReport = () => {
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true);
-      try {
-        const res = await getRangeFinancials(startDate, endDate);
-        setData(res);
-      } catch (e) {
-        console.error(e);
-        showToast("Erreur de chargement", "error");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [startDate, endDate]);
-
-  useEffect(() => {
-    const load = async () => {
+      if (!startDate || !endDate) return;
       setLoading(true);
       try {
         const res = await getRangeFinancials(startDate, endDate);
@@ -101,7 +96,13 @@ export const FinancialReport = () => {
     ? (succesCommandes.length / data.commandes.length) * 100 
     : 0;
 
-  const diffDays = Math.ceil(Math.abs(new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  const diffDays = useMemo(() => {
+    const s = new Date(startDate);
+    const e = new Date(endDate);
+    if (isNaN(s.getTime()) || isNaN(e.getTime())) return 1;
+    return Math.ceil(Math.abs(e.getTime() - s.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+  }, [startDate, endDate]);
+
   const timeSeries = generateTimeSeriesData(data.commandes, diffDays > 31 ? 'monthly' : 'daily');
 
   const generateInsights = () => {
@@ -141,7 +142,7 @@ export const FinancialReport = () => {
         <div>
           <h1 className="text-premium" style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>Rapport Analytique</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginTop: '0.4rem', fontWeight: 500 }}>
-             Période du {format(new Date(startDate), 'dd MMM')} au {format(new Date(endDate), 'dd MMM yyyy')}
+             Période du {safeFormat(startDate, 'dd MMM')} au {safeFormat(endDate, 'dd MMM yyyy')}
           </p>
         </div>
 
