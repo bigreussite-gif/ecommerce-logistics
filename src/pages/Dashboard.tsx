@@ -54,10 +54,18 @@ export const Dashboard = () => {
 
     if (period === 'custom') {
       const start = new Date(startDate);
-      const end = new Date(endDate + 'T23:59:59');
+      start.setHours(0,0,0,0);
+      const end = new Date(endDate);
+      end.setHours(23,59,59,999);
+      
       return commandes.filter(c => {
-        const d = new Date(c.date_creation);
-        return d >= start && d <= end;
+        const dCreated = new Date(c.date_creation);
+        const dDelivered = c.date_livraison_effective ? new Date(c.date_livraison_effective) : null;
+        
+        const createdInRange = dCreated >= start && dCreated <= end;
+        const deliveredInRange = dDelivered && dDelivered >= start && dDelivered <= end;
+        
+        return createdInRange || deliveredInRange;
       });
     }
 
@@ -66,7 +74,15 @@ export const Dashboard = () => {
     else if (period === '7d') start.setDate(now.getDate() - 7);
     else if (period === '30d') start.setDate(now.getDate() - 30);
 
-    return commandes.filter(c => new Date(c.date_creation).getTime() >= start.getTime());
+    return commandes.filter(c => {
+      const dCreated = new Date(c.date_creation);
+      const dDelivered = c.date_livraison_effective ? new Date(c.date_livraison_effective) : null;
+      
+      const createdInRange = dCreated.getTime() >= start.getTime();
+      const deliveredInRange = dDelivered && dDelivered.getTime() >= start.getTime();
+      
+      return createdInRange || deliveredInRange;
+    });
   }, [commandes, period, startDate, endDate]);
 
   const memoizedAnalytics = useMemo(() => {
@@ -152,7 +168,9 @@ export const Dashboard = () => {
     });
 
     filteredCommandes.forEach(c => {
-      const dString = new Date(c.date_creation).toISOString().split('T')[0];
+      const isSucces = c.statut_commande === 'livree' || c.statut_commande === 'terminee';
+      // Prioritize actual delivery date for history grouping
+      const dString = new Date( (isSucces && c.date_livraison_effective) ? c.date_livraison_effective : c.date_creation).toISOString().split('T')[0];
       const match = historyPoints.find(d => d.date === dString);
       if (match) {
         match.count++;

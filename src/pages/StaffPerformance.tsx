@@ -48,11 +48,16 @@ export const StaffPerformance = () => {
 
         const staffStats: StaffStats[] = livreurs.map((livreur: User) => {
           const livreurCmds = (ordersByLivreur[livreur.id] || []).filter((c: Commande) => {
-            const cmdDate = c.date_creation?.toDate ? c.date_creation.toDate() : new Date(c.date_creation);
+            const dCreated = new Date(c.date_creation);
+            const dDelivered = c.date_livraison_effective ? new Date(c.date_livraison_effective) : null;
             
-            if (timeFilter === 'today') return isAfter(cmdDate, startOfDay(now));
-            if (timeFilter === 'week') return isAfter(cmdDate, subDays(now, 7));
-            if (timeFilter === 'month') return isAfter(cmdDate, subDays(now, 30));
+            const isSucces = ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase());
+            // Use delivery date for successful orders, creation date otherwise
+            const activeDate = (isSucces && dDelivered) ? dDelivered : dCreated;
+            
+            if (timeFilter === 'today') return isAfter(activeDate, startOfDay(now));
+            if (timeFilter === 'week') return isAfter(activeDate, subDays(now, 7));
+            if (timeFilter === 'month') return isAfter(activeDate, subDays(now, 30));
             return true;
           });
           
