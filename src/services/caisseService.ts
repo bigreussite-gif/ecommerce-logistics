@@ -41,7 +41,7 @@ export const getCommandesConcernees = async (feuilleRouteId: string): Promise<Co
 
 export const processCaisse = async (
   feuilleRouteId: string, 
-  resolutions: {id: string, statut: string, mode_paiement: string, transaction_id?: string}[], 
+  resolutions: {id: string, statut: string, mode_paiement: string}[], 
   montantPhysique: number, 
   ecart: number, 
   commentaire: string,
@@ -79,7 +79,6 @@ export const processCaisse = async (
     const updateData: any = { 
       statut_commande: finalStatus, 
       mode_paiement: res.mode_paiement, 
-      transaction_id: res.transaction_id || null,
       updated_at: new Date() 
     };
 

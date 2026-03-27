@@ -189,8 +189,7 @@ export const Caisse = () => {
     const resArray = Object.keys(resolutions).map(id => ({
        id,
        statut: resolutions[id].statut,
-       mode_paiement: resolutions[id].mode_paiement,
-       transaction_id: (resolutions[id] as any).transaction_id
+       mode_paiement: resolutions[id].mode_paiement
     }));
 
     setLoading(true);
@@ -392,8 +391,9 @@ export const Caisse = () => {
                           >
                             <option value="livree">Encaissé ✅</option>
                             <option value="retour_livreur">Retour 🔙</option>
+                            <option value="echouee">Échec de livraison ❌</option>
                             <option value="a_rappeler">Reprog. 🔄</option>
-                            <option value="annulee">Annulé ❌</option>
+                            <option value="annulee">Annulé 🚫</option>
                           </select>
                         </td>
                         <td>
@@ -409,16 +409,6 @@ export const Caisse = () => {
                                 <option value="Mobile Money">MOBILE</option>
                                 <option value="Carte">AUTRE</option>
                               </select>
-                              {resolutions[c.id]?.mode_paiement === 'Mobile Money' && (
-                                <input 
-                                  type="text"
-                                  placeholder="ID Transaction"
-                                  className="form-input"
-                                  style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', borderRadius: '8px', border: '1px solid var(--primary)' }}
-                                  value={(resolutions[c.id] as any).transaction_id || ''}
-                                  onChange={(e) => updateResolution(c.id, 'transaction_id', e.target.value)}
-                                />
-                              )}
                             </div>
                           ) : (
                             <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>N/A</span>
