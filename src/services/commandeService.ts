@@ -209,9 +209,9 @@ export const getTopSellingProducts = async (limit = 10, days?: number, start?: s
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const iso = startDate.toISOString();
-    query = query.or(`date_livraison_effective.gte.${iso},and(date_livraison_effective.is.null,date_creation.gte.${iso})`);
+    query = query.or(`commandes.date_livraison_effective.gte.${iso},and(commandes.date_livraison_effective.is.null,commandes.date_creation.gte.${iso})`);
   } else if (start && end) {
-    query = query.or(`and(date_livraison_effective.gte.${start},date_livraison_effective.lte.${end}),and(date_livraison_effective.is.null,date_creation.gte.${start},date_creation.lte.${end})`);
+    query = query.or(`and(commandes.date_livraison_effective.gte.${start},commandes.date_livraison_effective.lte.${end}),and(commandes.date_livraison_effective.is.null,commandes.date_creation.gte.${start},commandes.date_creation.lte.${end})`);
   }
 
   const { data: lines, error: linesError } = await query;

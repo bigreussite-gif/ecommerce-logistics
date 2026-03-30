@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getFinancialData } from '../services/commandeService';
+import { getFinancialData, getTopSellingProducts } from '../services/commandeService';
 import { getDepenses, calculateProfitMetrics, generateTimeSeriesData } from '../services/financialService';
 import { exportToExcel, exportToWord, exportToJson } from '../services/exportService';
 import { generateAuditReportPDF } from '../services/pdfService';
@@ -37,6 +37,7 @@ export const AuditTresorerie = () => {
   const [financials, setFinancials] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [topProducts, setTopProducts] = useState<any[]>([]);
 
   const loadAuditData = async () => {
     setLoading(true);
@@ -44,9 +45,10 @@ export const AuditTresorerie = () => {
       const start = startOfDay(new Date(startDate)).toISOString();
       const end = endOfDay(new Date(endDate)).toISOString();
       
-      const [orders, allExpenses] = await Promise.all([
+      const [orders, allExpenses, top] = await Promise.all([
         getFinancialData(start, end),
-        getDepenses()
+        getDepenses(),
+        getTopSellingProducts(5, 0, start, end)
       ]);
 
       const filteredExpenses = allExpenses.filter(e => {
@@ -77,6 +79,7 @@ export const AuditTresorerie = () => {
       setFinancials(metrics);
       setChartData(timeseries);
       setTransactions(combinedTransactions);
+      setTopProducts(top);
     } catch (err) {
       showToast("Échec du chargement des données d'expertise", "error");
     } finally {
@@ -213,28 +216,34 @@ export const AuditTresorerie = () => {
       ) : financials && (
         <>
           {/* TOP METRICS */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
             <div className="card" style={{ padding: '2rem', background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)', color: 'white', border: 'none' }}>
-               <p style={{ opacity: 0.7, fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Bénéfice Net (EBITDA)</p>
-               <h2 style={{ fontSize: '2.5rem', margin: '0.5rem 0', fontWeight: 900 }}>{financials.profit_net.toLocaleString()} <span style={{ fontSize: '1rem' }}>F</span></h2>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem' }}>
-                  <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '2px' }}>
-                     <div style={{ width: `${financials.marge_nette_percent}%`, height: '100%', background: '#10b981' }} />
+               <p style={{ opacity: 0.7, fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Chiffre d'Affaires Brut</p>
+               <h2 style={{ fontSize: '2.5rem', margin: '0.5rem 0', fontWeight: 900 }}>{financials.ca_brut.toLocaleString()} <span style={{ fontSize: '1rem' }}>F</span></h2>
+               <p style={{ fontSize: '0.9rem', color: '#10b981', fontWeight: 700 }}>Total collecté (produits + livraison)</p>
+            </div>
+
+            <div className="card" style={{ padding: '2rem', borderLeft: '5px solid #10b981' }}>
+               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Bénéfice Net (EBITDA)</p>
+               <h2 style={{ fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 900, color: '#10b981' }}>{financials.profit_net.toLocaleString()} F</h2>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <div style={{ flex: 1, height: '6px', background: '#f1f5f9', borderRadius: '3px' }}>
+                     <div style={{ width: `${Math.max(0, Math.min(100, financials.marge_nette_percent))}%`, height: '100%', background: '#10b981', borderRadius: '3px' }} />
                   </div>
                   <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>{financials.marge_nette_percent}%</span>
                </div>
             </div>
 
             <div className="card" style={{ padding: '2rem' }}>
-               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Marge Brute d'Exploitation</p>
+               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Marge Brute</p>
                <h2 style={{ fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 800 }}>{(financials.ca_brut - financials.cogs_total).toLocaleString()} F</h2>
                <p style={{ fontSize: '0.9rem', color: 'var(--primary)', fontWeight: 700 }}>Ratio: {financials.marge_brute_percent}%</p>
             </div>
 
             <div className="card" style={{ padding: '2rem' }}>
-               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Charges Fixes Totales</p>
+               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Charges Fixes</p>
                <h2 style={{ fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 800, color: '#ef4444' }}>{financials.depenses_fixes_total.toLocaleString()} F</h2>
-               <p style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: 600 }}>Toutes charges périodiques</p>
+               <p style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: 600 }}>Total dépenses opérationnelles</p>
             </div>
           </div>
 
@@ -305,49 +314,122 @@ export const AuditTresorerie = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem', marginBottom: '2.5rem' }} className="responsive-grid">
-            <div className="card" style={{ padding: '2rem' }}>
-              <h3 style={{ margin: '0 0 2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                 <BarChart4 size={20} color="var(--primary)" /> Évolutions des Flux Porteurs
-              </h3>
-              <div style={{ width: '100%', height: '350px' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={chartData}>
-                    <defs>
-                      <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.1}/>
-                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-premium)' }} />
-                    <Area type="monotone" dataKey="revenue" name="Revenue" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
-                    <Area type="monotone" dataKey="profit" name="Profit" stroke="#10b981" strokeWidth={3} fill="transparent" />
-                  </AreaChart>
-                </ResponsiveContainer>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 400px', gap: '2rem', marginBottom: '2.5rem' }} className="responsive-grid">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              {/* Main Chart */}
+              <div className="card" style={{ padding: '2rem' }}>
+                <h3 style={{ margin: '0 0 2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <BarChart4 size={20} color="var(--primary)" /> Évolutions des Flux Porteurs
+                </h3>
+                <div style={{ width: '100%', height: '350px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={chartData}>
+                      <defs>
+                        <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.1}/>
+                          <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                      <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-premium)' }} />
+                      <Area type="monotone" dataKey="revenue" name="Revenue" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+                      <Area type="monotone" dataKey="profit" name="Profit" stroke="#10b981" strokeWidth={3} fill="transparent" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Recommendations Section */}
+              <div className="card" style={{ padding: '2rem', background: '#f0f9ff', border: '1px solid #bae6fd' }}>
+                <h3 style={{ margin: '0 0 1.5rem', fontWeight: 800, color: '#0369a1', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <ShieldCheck size={20} /> Recommandations de Rentabilité
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {financials.marge_brute_percent < 30 ? (
+                    <div style={{ display: 'flex', gap: '0.75rem', background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #e0f2fe' }}>
+                      <div style={{ color: '#ef4444', fontWeight: 900 }}>⚠️</div>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>Marge brute faible ({financials.marge_brute_percent}%)</p>
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>Augmentez vos prix de vente ou négociez de meilleurs tarifs avec vos fournisseurs.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', gap: '0.75rem', background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #e0f2fe' }}>
+                      <div style={{ color: '#10b981', fontWeight: 900 }}>✅</div>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>Excellente marge brute ({financials.marge_brute_percent}%)</p>
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>Votre structure de prix est optimale pour la croissance.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {financials.depenses_fixes_total > (financials.ca_brut * 0.4) && (
+                    <div style={{ display: 'flex', gap: '0.75rem', background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #e0f2fe' }}>
+                      <div style={{ color: '#f59e0b', fontWeight: 900 }}>📉</div>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>Charges fixes trop élevées</p>
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>Vos dépenses représentent plus de 40% de votre CA. Envisagez de réduire les coûts opérationnels.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {topProducts.length > 0 && topProducts[0].taux_succes < 60 && (
+                    <div style={{ display: 'flex', gap: '0.75rem', background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #e0f2fe' }}>
+                      <div style={{ color: '#ef4444', fontWeight: 900 }}>📦</div>
+                      <div>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>Problème de livraison: {topProducts[0].nom}</p>
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>Le taux de succès est de {topProducts[0].taux_succes}%. Revoyez le processus de confirmation d'appel.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {/* Best Product Card */}
+              <div className="card" style={{ padding: '2rem', borderTop: '5px solid #8b5cf6' }}>
+                  <h4 style={{ margin: '0 0 1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <TrendingUp size={18} color="#8b5cf6" /> Meilleur Produit
+                  </h4>
+                  {topProducts.length > 0 ? (
+                    <div>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-main)', marginBottom: '0.5rem' }}>{topProducts[0].nom}</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                        <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Ventes confirmées:</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#10b981' }}>{topProducts[0].nb_ventes} unités</span>
+                      </div>
+                      <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ width: `${topProducts[0].taux_succes}%`, height: '100%', background: '#8b5cf6' }} />
+                      </div>
+                      <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>Taux de succès: {topProducts[0].taux_succes}% sur cette période.</p>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: '0.85rem', color: '#64748b' }}>Aucune donnée disponible pour cette période.</p>
+                  )}
+              </div>
+
               <div className="card" style={{ padding: '2.5rem 2rem', background: '#f8fafc', border: '2px dashed #e2e8f0', textAlign: 'center' }}>
                  <Target size={32} color="var(--primary)" style={{ margin: '0 auto 1.5rem' }} />
                  <h4 style={{ margin: '0 0 0.5rem', fontWeight: 800 }}>Confiance Bancaire</h4>
-                 <div style={{ fontSize: '3rem', fontWeight: 900, color: '#10b981', margin: '0.5rem 0' }}>A+</div>
-                 <p style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Le ratio de liquidité est optimal pour une demande de financement.</p>
+                 <div style={{ fontSize: '3rem', fontWeight: 900, color: '#10b981', margin: '0.5rem 0' }}>
+                   {financials.profit_net > 0 ? (financials.marge_nette_percent > 20 ? 'A+' : 'B') : 'C'}
+                 </div>
+                 <p style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Le ratio de liquidité est évalué en fonction des flux réels.</p>
               </div>
 
               <div className="card" style={{ padding: '2rem' }}>
                  <h4 style={{ margin: '0 0 1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <ShieldCheck size={18} color="#1e293b" /> Documents de Synthèse
+                    <ShieldCheck size={18} color="#1e293b" /> Actions Audit
                  </h4>
                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={handlePDFExport}>
-                       Générer Rapport PDF Officiel
+                       Générer Rapport PDF
                     </button>
                     <button className="btn btn-outline" style={{ width: '100%', justifyContent: 'center' }} onClick={handleWordExport}>
-                       Export Microsoft Word (.doc)
+                       Export Microsoft Word
                     </button>
                  </div>
               </div>
