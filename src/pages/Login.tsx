@@ -90,14 +90,24 @@ export const Login = () => {
           finalEmail = userRecord.email;
         }
 
-        const { error } = await insforge.auth.signInWithPassword({
+        const { data: authData, error } = await insforge.auth.signInWithPassword({
           email: finalEmail,
           password,
         });
 
         if (error) {
           showToast('Identifiant ou mot de passe incorrect.', 'error');
-        } else {
+        } else if (authData?.user) {
+          // Log the connection
+          try {
+            await insforge.database.from('audit_logins').insert([{
+              user_id: authData.user.id,
+              user_agent: navigator.userAgent,
+              login_time: new Date()
+            }]);
+          } catch (logErr) {
+            console.warn("Échec du log de connexion:", logErr);
+          }
           window.location.href = '/';
         }
       }

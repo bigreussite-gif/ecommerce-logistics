@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { Award, Target, PhoneCall, ShoppingBag, Truck } from 'lucide-react';
 import { startOfDay, subDays, isAfter, differenceInWeeks } from 'date-fns';
+import { insforge } from '../lib/insforge';
 
 import { calculateLogisticalStats } from '../services/financialService';
 
@@ -32,6 +33,7 @@ interface AgentStats {
   annulees: number;
   reportees: number;
   taux_validation: number;
+  connexions: number;
 }
 
 interface ProductCreatorStats {
@@ -39,6 +41,7 @@ interface ProductCreatorStats {
   nom: string;
   total_crees: number;
   frequence_hebdo: number;
+  connexions: number;
 }
 
 export const StaffPerformance = () => {
@@ -53,11 +56,13 @@ export const StaffPerformance = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [users, allCmds, allProds] = await Promise.all([
+        const [users, allCmds, allProds, loginsRes] = await Promise.all([
           getUtilisateurs(),
           getCommandes(),
-          getProduits()
+          getProduits(),
+          insforge.database.from('audit_logins').select('*')
         ]);
+        const allLogins = loginsRes.data || [];
 
         const now = new Date();
         const startOfInterval = timeFilter === 'today' ? startOfDay(now) : 
@@ -65,9 +70,7 @@ export const StaffPerformance = () => {
                               timeFilter === 'month' ? subDays(now, 30) : 
                               new Date(0);
 
-        // --- 1. Filtered data handled inside specific map functions ---
-
-        // --- 2. Calculate Livreur Stats ---
+        // --- 1. Calculate Livreur Stats ---
         const livreurs = users.filter(u => u.role === 'LIVREUR' || u.role === 'AGENT_MIXTE');
         const ordersByLivreur: Record<string, Commande[]> = {};
         allCmds.forEach(c => {
@@ -102,7 +105,7 @@ export const StaffPerformance = () => {
           };
         }).sort((a, b) => b.taux_succes - a.taux_succes);
 
-        // --- 3. Calculate Agent Stats ---
+        // --- 2. Calculate Agent Stats ---
         const agents = users.filter(u => u.role === 'AGENT_APPEL' || u.role === 'AGENT_MIXTE' || u.role === 'GESTIONNAIRE');
         const ordersByAgent: Record<string, Commande[]> = {};
         allCmds.forEach(c => {
@@ -118,6 +121,7 @@ export const StaffPerformance = () => {
           const validees = aCmds.filter(c => ['validee', 'en_cours_livraison', 'livree', 'terminee'].includes(c.statut_commande)).length;
           const annulees = aCmds.filter(c => c.statut_commande === 'annulee').length;
           const reportees = aCmds.filter(c => c.statut_commande === 'a_rappeler' || c.statut_commande === 'echouee').length;
+          const userLogins = allLogins.filter(l => l.user_id === a.id && isAfter(new Date(l.login_time), startOfInterval)).length;
 
           return {
             id: a.id,
@@ -126,11 +130,12 @@ export const StaffPerformance = () => {
             validees,
             annulees,
             reportees,
-            taux_validation: total > 0 ? Math.round((validees / total) * 100) : 0
+            taux_validation: total > 0 ? Math.round((validees / total) * 100) : 0,
+            connexions: userLogins
           };
         }).sort((a, b) => b.taux_validation - a.taux_validation);
 
-        // --- 4. Calculate Product Creator Stats ---
+        // --- 3. Calculate Product Creator Stats ---
         const creators = users.filter(u => u.role !== 'LIVREUR' && u.role !== 'CAISSIERE');
         const prodsByCreator: Record<string, Produit[]> = {};
         allProds.forEach(p => {
@@ -142,16 +147,16 @@ export const StaffPerformance = () => {
 
         const pStats: ProductCreatorStats[] = creators.map(c => {
           const cProds = (prodsByCreator[c.id] || []).filter(p => p.created_at && isAfter(new Date(p.created_at), startOfInterval));
-          
-          // Frequency: Count / Weeks in interval
           const weeks = Math.max(1, differenceInWeeks(now, startOfInterval));
           const freq = Math.round((cProds.length / weeks) * 10) / 10;
+          const userLogins = allLogins.filter(l => l.user_id === c.id && isAfter(new Date(l.login_time), startOfInterval)).length;
 
           return {
             id: c.id,
             nom: c.nom_complet,
             total_crees: cProds.length,
-            frequence_hebdo: freq
+            frequence_hebdo: freq,
+            connexions: userLogins
           };
         }).sort((a, b) => b.total_crees - a.total_crees);
 
@@ -241,6 +246,7 @@ export const StaffPerformance = () => {
             <th style={{ textAlign: 'center' }}>Validées</th>
             <th style={{ textAlign: 'center' }}>Annulées</th>
             <th style={{ textAlign: 'center' }}>Reports/Échecs</th>
+            <th style={{ textAlign: 'center' }}>Connexions</th>
             <th style={{ textAlign: 'right' }}>Taux Validation</th>
           </tr>
         </thead>
@@ -265,6 +271,7 @@ export const StaffPerformance = () => {
               <td style={{ textAlign: 'center' }}>
                 <span className="badge" style={{ padding: '0.2rem 0.5rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', fontWeight: 700 }}>{s.reportees}</span>
               </td>
+              <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-muted)' }}>{s.connexions}</td>
               <td style={{ textAlign: 'right' }}>
                 <div style={{ fontWeight: 800, color: s.taux_validation > 70 ? '#10b981' : '#f59e0b' }}>{s.taux_validation}%</div>
               </td>
@@ -282,6 +289,7 @@ export const StaffPerformance = () => {
           <tr>
             <th>Gestionnaire / Staff</th>
             <th style={{ textAlign: 'center' }}>Produits Créés</th>
+            <th style={{ textAlign: 'center' }}>Connexions</th>
             <th style={{ textAlign: 'right' }}>Fréquence Hebdo</th>
           </tr>
         </thead>
@@ -297,6 +305,7 @@ export const StaffPerformance = () => {
                 </div>
               </td>
               <td style={{ textAlign: 'center', fontWeight: 700 }}>{s.total_crees}</td>
+              <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-muted)' }}>{s.connexions}</td>
               <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--primary)' }}>
                 {s.frequence_hebdo} items <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>/semaine</span>
               </td>

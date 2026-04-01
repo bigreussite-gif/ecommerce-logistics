@@ -7,9 +7,11 @@ import { subscribeToCommandes, deleteCommande, getCommandeWithLines, bulkUpdateC
 import { generateInvoicePDF } from '../services/pdfService';
 import type { Commande } from '../types';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export const Commandes = () => {
   const { showToast } = useToast();
+  const { currentUser } = useAuth();
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -44,7 +46,10 @@ export const Commandes = () => {
     if (selectedIds.length === 0) return;
     try {
       showToast(`Validation de ${selectedIds.length} commandes...`, "info");
-      await bulkUpdateCommandeStatus(selectedIds, 'validee');
+      await bulkUpdateCommandeStatus(selectedIds, 'validee', { 
+        agent_appel_id: currentUser?.id,
+        date_validation_appel: new Date()
+      });
       showToast(`${selectedIds.length} commandes validées !`, "success");
       setSelectedIds([]);
     } catch (error) {
