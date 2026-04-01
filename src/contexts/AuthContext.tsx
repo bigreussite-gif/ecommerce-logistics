@@ -39,41 +39,68 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserData = async (userId: string, email: string) => {
     try {
+      // 1. Try direct lookup by auth UID
       const { data, error } = await insforge.database
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error || !data) {
-        console.warn('Profile not found in users table, using fallback:', error);
-        return {
-          id: userId,
-          email,
-          role: 'ADMIN',
-          nom_complet: 'Admin (Recouvrement)',
-          telephone: '',
-          permissions: ROLE_PERMISSIONS['ADMIN'],
-          actif: true
+      if (!error && data) {
+        const processedUser = {
+          ...data,
+          email: data.email || email,
+          nom_complet: data.nom_complet || 'Utilisateur GomboSwift',
+          role: data.role || 'ADMIN',
+          permissions: data.permissions && data.permissions.length > 0 
+            ? data.permissions 
+            : (ROLE_PERMISSIONS[data.role as Role] || ROLE_PERMISSIONS['ADMIN'])
         } as User;
+        return processedUser;
       }
 
-      // Final check: Ensure name and role are never null/empty to avoid blank UI
-      const processedUser = {
-        ...data,
-        email: data.email || email,
-        nom_complet: data.nom_complet || 'Utilisateur GomboSwift',
-        role: data.role || 'ADMIN', // Default to ADMIN if role is missing in DB
-        permissions: data.permissions && data.permissions.length > 0 
-          ? data.permissions 
-          : (ROLE_PERMISSIONS[data.role as Role] || ROLE_PERMISSIONS['ADMIN'])
+      // 2. Fallback: chercher par email et synchroniser l'ID
+      const { data: emailData, error: emailError } = await insforge.database
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .single();
+
+      if (!emailError && emailData) {
+        console.log(`Synchronisation ID pour ${email}: ${emailData.id} → ${userId}`);
+        // Mettre à jour l'ID dans users pour correspondre à l'auth UID
+        await insforge.database
+          .from('users')
+          .update({ id: userId })
+          .eq('email', email);
+
+        const processedUser = {
+          ...emailData,
+          id: userId,
+          email: emailData.email || email,
+          nom_complet: emailData.nom_complet || 'Utilisateur GomboSwift',
+          role: emailData.role || 'AGENT_APPEL',
+          permissions: emailData.permissions && emailData.permissions.length > 0
+            ? emailData.permissions
+            : (ROLE_PERMISSIONS[emailData.role as Role] || ROLE_PERMISSIONS['ADMIN'])
+        } as User;
+        return processedUser;
+      }
+
+      // 3. Fallback absolu
+      console.warn('Profile not found in users table for:', email);
+      return {
+        id: userId,
+        email,
+        role: 'ADMIN',
+        nom_complet: 'Admin (Recouvrement)',
+        telephone: '',
+        permissions: ROLE_PERMISSIONS['ADMIN'],
+        actif: true
       } as User;
 
-      console.log("Processed user profile:", processedUser);
-      return processedUser;
     } catch (err) {
       console.error('Critical error in fetchUserData:', err);
-      // Absolute fallback to prevent white screen/no access page
       return {
         id: userId,
         email,
