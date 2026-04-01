@@ -31,9 +31,11 @@ interface AgentStats {
   total_traitees: number;
   validees: number;
   livrees: number;
+  retours: number;
+  echecs: number;
+  reprogrammees: number;
   annulees: number;
-  reportees: number;
-  taux_validation: number;
+  taux_conversion: number; // livrees / total (vrai taux de succès)
   connexions: number;
 }
 
@@ -119,11 +121,21 @@ export const StaffPerformance = () => {
         const aStats: AgentStats[] = agents.map(a => {
           const aCmds = (ordersByAgent[a.id] || []).filter(c => isAfter(new Date(c.date_creation), startOfInterval));
           const total = aCmds.length;
-          const validees = aCmds.filter(c => ['validee', 'en_cours_livraison', 'livree', 'terminee'].includes(c.statut_commande)).length;
+          // Validées = agent a confirmé la commande avec le client
+          const validees = aCmds.filter(c => ['validee', 'en_cours_livraison', 'livree', 'terminee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande)).length;
+          // Livrées = commande effectivement remise au client et payée
           const livrees = aCmds.filter(c => ['livree', 'terminee'].includes(c.statut_commande)).length;
+          // Retours = livreur a tenté mais n'a pas pu livrer
+          const retours = aCmds.filter(c => ['retour_livreur', 'retour_stock'].includes(c.statut_commande)).length;
+          // Echecs livraison
+          const echecs = aCmds.filter(c => c.statut_commande === 'echouee').length;
+          // Reprogrammées = à rappeler
+          const reprogrammees = aCmds.filter(c => c.statut_commande === 'a_rappeler').length;
+          // Annulées = client a refusé ou injoignable définitivement
           const annulees = aCmds.filter(c => c.statut_commande === 'annulee').length;
-          const reportees = aCmds.filter(c => c.statut_commande === 'a_rappeler' || c.statut_commande === 'echouee').length;
           const userLogins = allLogins.filter(l => l.user_id === a.id && isAfter(new Date(l.login_time), startOfInterval)).length;
+          // Taux de conversion = livrees réelles / total des dossiers traités
+          const taux_conversion = total > 0 ? Math.round((livrees / total) * 100) : 0;
 
           return {
             id: a.id,
@@ -131,12 +143,14 @@ export const StaffPerformance = () => {
             total_traitees: total,
             validees,
             livrees,
+            retours,
+            echecs,
+            reprogrammees,
             annulees,
-            reportees,
-            taux_validation: total > 0 ? Math.round((validees / total) * 100) : 0,
+            taux_conversion,
             connexions: userLogins
           };
-        }).sort((a, b) => b.taux_validation - a.taux_validation);
+        }).sort((a, b) => b.taux_conversion - a.taux_conversion);
 
         // --- 3. Calculate Product Creator Stats ---
         const creators = users.filter(u => u.role !== 'LIVREUR' && u.role !== 'CAISSIERE');
@@ -245,13 +259,15 @@ export const StaffPerformance = () => {
         <thead>
           <tr>
             <th>Agent d'Appel</th>
-            <th style={{ textAlign: 'center' }}>Traitées</th>
-            <th style={{ textAlign: 'center' }}>Validées</th>
-            <th style={{ textAlign: 'center' }}>Livrées ✅</th>
-            <th style={{ textAlign: 'center' }}>Annulées</th>
-            <th style={{ textAlign: 'center' }}>Reports/Échecs</th>
-            <th style={{ textAlign: 'center' }}>Connexions</th>
-            <th style={{ textAlign: 'right' }}>Taux Validation</th>
+            <th style={{ textAlign: 'center' }}>📋 Traitées</th>
+            <th style={{ textAlign: 'center' }}>✔️ Validées</th>
+            <th style={{ textAlign: 'center' }}>✅ Livrées</th>
+            <th style={{ textAlign: 'center' }}>📦 Retours</th>
+            <th style={{ textAlign: 'center' }}>❌ Échecs</th>
+            <th style={{ textAlign: 'center' }}>🔄 Reprog.</th>
+            <th style={{ textAlign: 'center' }}>🚫 Annulées</th>
+            <th style={{ textAlign: 'center' }}>🔌 Connexions</th>
+            <th style={{ textAlign: 'right' }}>Taux Conversion</th>
           </tr>
         </thead>
         <tbody>
@@ -259,28 +275,41 @@ export const StaffPerformance = () => {
             <tr key={s.id}>
               <td>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#6366f1', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.8rem' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#6366f1', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem' }}>
                     {s.nom.charAt(0)}
                   </div>
-                  <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>{s.nom}</p>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>{s.nom}</p>
+                    <p style={{ margin: 0, fontSize: '0.72rem', color: s.taux_conversion > 60 ? '#10b981' : '#f43f5e', fontWeight: 700 }}>
+                      {s.taux_conversion}% de conversion réelle
+                    </p>
+                  </div>
                 </div>
               </td>
-              <td style={{ textAlign: 'center', fontWeight: 700 }}>{s.total_traitees}</td>
+              <td style={{ textAlign: 'center', fontWeight: 800, fontSize: '1rem' }}>{s.total_traitees}</td>
               <td style={{ textAlign: 'center' }}>
-                <span className="badge" style={{ padding: '0.2rem 0.5rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontWeight: 700 }}>{s.validees}</span>
+                <span style={{ padding: '0.2rem 0.6rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontWeight: 700, borderRadius: '8px', fontSize: '0.85rem' }}>{s.validees}</span>
               </td>
               <td style={{ textAlign: 'center' }}>
-                <span className="badge" style={{ padding: '0.2rem 0.5rem', background: 'rgba(16, 185, 129, 0.15)', color: '#059669', fontWeight: 800, border: '1px solid rgba(16,185,129,0.3)' }}>{s.livrees}</span>
+                <span style={{ padding: '0.2rem 0.6rem', background: 'rgba(5, 150, 105, 0.15)', color: '#059669', fontWeight: 800, borderRadius: '8px', fontSize: '0.85rem', border: '1px solid rgba(5,150,105,0.3)' }}>{s.livrees}</span>
               </td>
               <td style={{ textAlign: 'center' }}>
-                <span className="badge" style={{ padding: '0.2rem 0.5rem', background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e', fontWeight: 700 }}>{s.annulees}</span>
+                <span style={{ padding: '0.2rem 0.6rem', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', fontWeight: 700, borderRadius: '8px', fontSize: '0.85rem' }}>{s.retours}</span>
               </td>
               <td style={{ textAlign: 'center' }}>
-                <span className="badge" style={{ padding: '0.2rem 0.5rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', fontWeight: 700 }}>{s.reportees}</span>
+                <span style={{ padding: '0.2rem 0.6rem', background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e', fontWeight: 700, borderRadius: '8px', fontSize: '0.85rem' }}>{s.echecs}</span>
+              </td>
+              <td style={{ textAlign: 'center' }}>
+                <span style={{ padding: '0.2rem 0.6rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', fontWeight: 700, borderRadius: '8px', fontSize: '0.85rem' }}>{s.reprogrammees}</span>
+              </td>
+              <td style={{ textAlign: 'center' }}>
+                <span style={{ padding: '0.2rem 0.6rem', background: 'rgba(244, 63, 94, 0.07)', color: '#dc2626', fontWeight: 700, borderRadius: '8px', fontSize: '0.85rem' }}>{s.annulees}</span>
               </td>
               <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-muted)' }}>{s.connexions}</td>
               <td style={{ textAlign: 'right' }}>
-                <div style={{ fontWeight: 800, color: s.taux_validation > 70 ? '#10b981' : '#f59e0b' }}>{s.taux_validation}%</div>
+                <div style={{ fontWeight: 900, fontSize: '1.1rem', color: s.taux_conversion > 60 ? '#10b981' : s.taux_conversion > 40 ? '#f59e0b' : '#f43f5e' }}>
+                  {s.taux_conversion}%
+                </div>
               </td>
             </tr>
           ))}
