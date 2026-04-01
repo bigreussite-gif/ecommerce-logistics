@@ -30,6 +30,7 @@ interface AgentStats {
   nom: string;
   total_traitees: number;
   validees: number;
+  livrees: number;
   annulees: number;
   reportees: number;
   taux_validation: number;
@@ -119,6 +120,7 @@ export const StaffPerformance = () => {
           const aCmds = (ordersByAgent[a.id] || []).filter(c => isAfter(new Date(c.date_creation), startOfInterval));
           const total = aCmds.length;
           const validees = aCmds.filter(c => ['validee', 'en_cours_livraison', 'livree', 'terminee'].includes(c.statut_commande)).length;
+          const livrees = aCmds.filter(c => ['livree', 'terminee'].includes(c.statut_commande)).length;
           const annulees = aCmds.filter(c => c.statut_commande === 'annulee').length;
           const reportees = aCmds.filter(c => c.statut_commande === 'a_rappeler' || c.statut_commande === 'echouee').length;
           const userLogins = allLogins.filter(l => l.user_id === a.id && isAfter(new Date(l.login_time), startOfInterval)).length;
@@ -128,6 +130,7 @@ export const StaffPerformance = () => {
             nom: a.nom_complet,
             total_traitees: total,
             validees,
+            livrees,
             annulees,
             reportees,
             taux_validation: total > 0 ? Math.round((validees / total) * 100) : 0,
@@ -244,6 +247,7 @@ export const StaffPerformance = () => {
             <th>Agent d'Appel</th>
             <th style={{ textAlign: 'center' }}>Traitées</th>
             <th style={{ textAlign: 'center' }}>Validées</th>
+            <th style={{ textAlign: 'center' }}>Livrées ✅</th>
             <th style={{ textAlign: 'center' }}>Annulées</th>
             <th style={{ textAlign: 'center' }}>Reports/Échecs</th>
             <th style={{ textAlign: 'center' }}>Connexions</th>
@@ -264,6 +268,9 @@ export const StaffPerformance = () => {
               <td style={{ textAlign: 'center', fontWeight: 700 }}>{s.total_traitees}</td>
               <td style={{ textAlign: 'center' }}>
                 <span className="badge" style={{ padding: '0.2rem 0.5rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', fontWeight: 700 }}>{s.validees}</span>
+              </td>
+              <td style={{ textAlign: 'center' }}>
+                <span className="badge" style={{ padding: '0.2rem 0.5rem', background: 'rgba(16, 185, 129, 0.15)', color: '#059669', fontWeight: 800, border: '1px solid rgba(16,185,129,0.3)' }}>{s.livrees}</span>
               </td>
               <td style={{ textAlign: 'center' }}>
                 <span className="badge" style={{ padding: '0.2rem 0.5rem', background: 'rgba(244, 63, 94, 0.1)', color: '#f43f5e', fontWeight: 700 }}>{s.annulees}</span>
