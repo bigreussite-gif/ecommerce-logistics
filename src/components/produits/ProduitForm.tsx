@@ -3,6 +3,7 @@ import { Produit } from '../../types';
 import { createProduit, updateProduit } from '../../services/produitService';
 import { X } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface ProduitFormProps {
   produit?: Produit | null;
@@ -29,6 +30,7 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
   const [loading, setLoading] = useState(false);
   const [hasPromo, setHasPromo] = useState(false);
   const { showToast } = useToast();
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     if (produit) {
@@ -68,7 +70,10 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
         await updateProduit(produit.id, dataToSave);
         showToast("Configuration article mise à jour avec succès !", "success");
       } else {
-        await createProduit(dataToSave as Omit<Produit, 'id'>);
+        await createProduit({
+          ...dataToSave,
+          created_by: currentUser?.id
+        } as Omit<Produit, 'id'>);
         showToast("Nouvel article référencé avec succès !", "success");
       }
       onSave();

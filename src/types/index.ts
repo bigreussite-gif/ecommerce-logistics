@@ -45,6 +45,8 @@ export interface Produit {
   actif: boolean;
   images?: string[];
   image_url?: string;
+  created_by?: string;
+  created_at?: string;
 }
 
 export interface Client {
@@ -95,6 +97,7 @@ export interface Commande {
   // Extras for Dashboard/Reporting
   nombre_produits?: number;
   lignes?: LigneCommande[];
+  created_by?: string;
 }
 
 export interface LigneCommande {

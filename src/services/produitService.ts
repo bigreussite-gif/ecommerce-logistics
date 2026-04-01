@@ -23,7 +23,10 @@ export const subscribeToProduits = (callback: (produits: Produit[]) => void) => 
 export const createProduit = async (produit: Omit<Produit, 'id'>): Promise<string> => {
   const { data, error } = await insforge.database
     .from('produits')
-    .insert([produit])
+    .insert([{
+      ...produit,
+      created_at: new Date().toISOString()
+    }])
     .select();
   
   if (error) throw error;

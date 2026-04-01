@@ -33,7 +33,7 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
     { path: '/centre-appel', label: 'Centre d\'Appel', icon: Headset, permission: 'CENTRE_APPEL' },
     { path: '/clients', label: 'CRM & Clients', icon: Users, permission: 'CLIENTS' },
     { path: '/logistique', label: 'Logistique', icon: Truck, permission: 'LOGISTIQUE' },
-    { path: '/performance-staff', label: 'Performance Livreurs', icon: Activity, permission: 'GESTION_LIVREURS' },
+    { path: '/performance-staff', label: 'Performance Équipe', icon: Activity, permission: 'GESTION_LIVREURS' },
     { path: '/livraison', label: 'Mes Livraisons', icon: UserIcon, permission: 'LIVREUR' },
     { path: '/caisse', icon: Calculator, label: 'Caisse / Retour', permission: 'CAISSE' },
     { path: '/rapport-financier', icon: TrendingUp, label: 'Rapport Journalier', permission: 'FINANCE' },

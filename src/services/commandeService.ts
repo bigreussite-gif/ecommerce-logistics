@@ -203,15 +203,15 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
 export const getTopSellingProducts = async (limit = 10, days?: number, start?: string, end?: string): Promise<{ nom: string, nb_ventes: number, total_ca: number, total_sorties: number, taux_succes: number }[]> => {
   let query = insforge.database
     .from('lignes_commandes')
-    .select('*, commandes!inner(statut_commande, date_creation)');
+    .select('*, commandes!inner(statut_commande, date_creation, date_livraison_effective)');
 
   if (days && days > 0) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     const iso = startDate.toISOString();
-    query = query.or(`commandes.date_livraison_effective.gte.${iso},and(commandes.date_livraison_effective.is.null,commandes.date_creation.gte.${iso})`);
+    query = query.or(`date_livraison_effective.gte.${iso},and(date_livraison_effective.is.null,date_creation.gte.${iso})`, { foreignTable: 'commandes' });
   } else if (start && end) {
-    query = query.or(`and(commandes.date_livraison_effective.gte.${start},commandes.date_livraison_effective.lte.${end}),and(commandes.date_livraison_effective.is.null,commandes.date_creation.gte.${start},commandes.date_creation.lte.${end})`);
+    query = query.or(`and(date_livraison_effective.gte.${start},date_livraison_effective.lte.${end}),and(date_livraison_effective.is.null,date_creation.gte.${start},date_creation.lte.${end})`, { foreignTable: 'commandes' });
   }
 
   const { data: lines, error: linesError } = await query;

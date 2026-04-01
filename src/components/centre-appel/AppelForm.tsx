@@ -59,7 +59,10 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
         'injoignable': 'a_rappeler' // if unreachable, needs callback
       };
       
-      const payload: any = { statut_commande: nextStatusMap[resultat] };
+      const payload: any = { 
+        statut_commande: nextStatusMap[resultat],
+        agent_appel_id: currentUser.id 
+      };
       if (resultat === 'validee') {
         payload.date_validation_appel = new Date();
         payload.commune_livraison = communeLocal;
