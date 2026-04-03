@@ -308,3 +308,81 @@ export const getFinancialData = async (startDate?: string, endDate?: string): Pr
     lignes: (lines || []).filter((l: any) => l.commande_id === o.id)
   }));
 };
+
+export const updateCommandeLignesAndStock = async (commandeId: string, oldLines: LigneCommande[], newLines: any[]): Promise<void> => {
+  // Identify added, updated, and removed lines
+  const oldMap = new Map(oldLines.map(l => [l.id, l]));
+  
+  // 1. Remove lines not in newLines
+  for (const oldLine of oldLines) {
+    if (!newLines.find(l => l.id === oldLine.id)) {
+      // Re-add stock
+      await addMouvementStock({
+        produit_id: oldLine.produit_id,
+        type_mouvement: 'retour',
+        quantite: oldLine.quantite,
+        reference: `RETOUR Suppr Ligne Cmd #${commandeId.substring(0, 8)}`
+      } as any);
+
+      await insforge.database
+        .from('lignes_commandes')
+        .delete()
+        .eq('id', oldLine.id);
+    }
+  }
+
+  // 2. Add or update new lines
+  for (const newLine of newLines) {
+    if (!newLine.id) {
+      // It's a new line - fetch cost price first
+      const { data: prodData } = await insforge.database
+        .from('produits')
+        .select('prix_achat')
+        .eq('id', newLine.produit_id)
+        .single();
+
+      await insforge.database
+        .from('lignes_commandes')
+        .insert([{
+          ...newLine,
+          commande_id: commandeId,
+          prix_achat_unitaire: prodData?.prix_achat || 0
+        }])
+        .select()
+        .single();
+
+      // Subtract stock
+      await addMouvementStock({
+        produit_id: newLine.produit_id,
+        type_mouvement: 'sortie',
+        quantite: newLine.quantite,
+        reference: `Sortie Nouvel Article Cmd #${commandeId.substring(0, 8)}`
+      } as any);
+    } else {
+      // It's an update
+      const oldLine = oldMap.get(newLine.id);
+      if (oldLine) {
+        const diff = newLine.quantite - oldLine.quantite;
+        
+        if (diff !== 0) {
+          // Update quantity and amounts
+          await insforge.database
+            .from('lignes_commandes')
+            .update({
+              quantite: newLine.quantite,
+              montant_ligne: newLine.montant_ligne,
+            })
+            .eq('id', newLine.id);
+
+          // Update stock: if qty increased, sortie diff. If decreased, retour |diff|
+          await addMouvementStock({
+            produit_id: newLine.produit_id,
+            type_mouvement: diff > 0 ? 'sortie' : 'retour',
+            quantite: Math.abs(diff),
+            reference: `Modif Qté Ligne Cmd #${commandeId.substring(0, 8)}`
+          } as any);
+        }
+      }
+    }
+  }
+};
