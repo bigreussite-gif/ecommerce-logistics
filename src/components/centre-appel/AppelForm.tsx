@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { X, CheckCircle, Clock, XCircle, MessageCircle } from 'lucide-react';
 import { updateCommandeStatus } from '../../services/commandeService';
 import { insforge } from '../../lib/insforge';
 import { useAuth } from '../../contexts/AuthContext';
@@ -87,6 +87,36 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
 
   const currentSubtotal = Number(commande.montant_total) - (Number(commande.frais_livraison) || 0);
 
+  const generateWhatsAppLink = () => {
+    const nom = `*${commande.nom_client || 'Client'}*`;
+    const ref = `*#${commande.id.slice(0, 8).toUpperCase()}*`;
+    const articlesList = (commande.lignes || []).map(l => ` - *${l.quantite}x ${l.nom_produit}*`).join('\n');
+    const subtotal = Number(commande.montant_total) - (Number(commande.frais_livraison) || 0);
+    const delivery = Number(fraisLivraison) || Number(commande.frais_livraison) || 0;
+    const total = subtotal + delivery;
+
+    const bSubtotal = `*${subtotal.toLocaleString()} CFA*`;
+    const bDelivery = `*${delivery > 0 ? delivery.toLocaleString() + " CFA" : "À définir"}*`;
+    const bTotal = `*${total.toLocaleString()} CFA*`;
+
+    let missingInfo = "";
+    if (!commande.commune_livraison && !communeLocal) missingInfo += "- *Votre commune de livraison*\n";
+    if (!commande.adresse_livraison && !adresseLocal) missingInfo += "- *Votre adresse exacte (lieu de livraison)*\n";
+
+    let text = `Bonjour ${nom},\n\nVotre commande est bien enregistrée chez nous sous le numéro ${ref}.\nSouhaitez-vous confirmer la livraison ?\n\nDétails de votre commande :\n${articlesList}\n\n- Prix des articles : ${bSubtotal}\n- Frais de livraison : ${bDelivery}\nTotal à payer : ${bTotal}\n\n`;
+
+    if (missingInfo) {
+      text += `Pour finaliser l'expédition, merci de nous confirmer :\n${missingInfo}\n`;
+    }
+
+    text += "Merci de nous répondre pour confirmer la livraison.";
+    
+    let phone = (commande.telephone_client || '').replace(/\D/g, '');
+    if (phone.length === 10) phone = '225' + phone;
+    
+    return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+  };
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-content card" style={{ maxWidth: '550px', padding: '2.5rem' }} onClick={e => e.stopPropagation()}>
@@ -112,18 +142,45 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
           <X size={18} strokeWidth={2.5} />
         </button>
         
-        <div style={{ marginBottom: '2rem' }}>
+        <div style={{ marginBottom: '2.5rem' }}>
           <h2 className="text-premium" style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0 }}>Traitement d'Appel</h2>
-          <div style={{ marginTop: '1rem', padding: '1.25rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+          <div style={{ marginTop: '1.25rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Référence Commande</span>
-              <strong style={{ fontSize: '1rem', color: 'var(--text-main)' }}>#{commande.id.slice(0, 8).toUpperCase()}</strong>
+              <strong style={{ fontSize: '0.9rem', color: 'var(--text-main)', background: '#eaedff', padding: '0.2rem 0.6rem', borderRadius: '8px' }}>#{commande.id.slice(0, 8).toUpperCase()}</strong>
             </div>
-            <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>
+            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.5rem' }}>
               {commande.nom_client || 'Client Anonyme'}
             </div>
-            <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-              📞 {commande.telephone_client}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span style={{ opacity: 0.7 }}>📞</span> {commande.telephone_client}
+              </div>
+              <a 
+                href={generateWhatsAppLink()} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                title="Envoyer un message WhatsApp"
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.5rem',
+                  padding: '0.4rem 0.8rem', 
+                  background: '#25D366', 
+                  color: 'white', 
+                  borderRadius: '10px',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  transition: 'all 0.2s ease',
+                  boxShadow: '0 4px 10px rgba(37, 211, 102, 0.3)'
+                }}
+                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+              >
+                <MessageCircle size={14} fill="currentColor" />
+                WhatsApp
+              </a>
             </div>
           </div>
         </div>
