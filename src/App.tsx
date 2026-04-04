@@ -23,6 +23,7 @@ import { StaffPerformance } from './pages/StaffPerformance';
 import { NetProfit } from './pages/NetProfit';
 import { AdminTresorerie } from './pages/AdminTresorerie';
 import { AuditTresorerie } from './pages/AuditTresorerie';
+import { Retours } from './pages/Retours';
 
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '5rem' }}>
@@ -102,6 +103,10 @@ const AppRoutes = () => {
         {/* Module 4: Logistique */}
         <Route path="logistique" element={
           <ProtectedRoute requiredPermission="LOGISTIQUE"><Logistique /></ProtectedRoute>
+        } />
+
+        <Route path="retours-rma" element={
+          <ProtectedRoute requiredPermission="LOGISTIQUE"><Retours /></ProtectedRoute>
         } />
         
         {/* Module 5: Livraison */}

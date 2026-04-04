@@ -113,20 +113,28 @@ export const Dashboard = () => {
     });
     const statusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
 
-    // Zone Performance Data
-    const zonePerf: Record<string, { total: number, count: number }> = {};
+    // Zone Performance Data (Heatmap)
+    const zoneMetrics: Record<string, { total: number, delivered: number, failed: number, cancelled: number, risk: number }> = {};
     filteredCommandes.forEach(c => {
       const z = c.commune_livraison || 'Hors Zone';
-      if (!zonePerf[z]) zonePerf[z] = { total: 0, count: 0 };
-      zonePerf[z].count++;
-      if (c.statut_commande === 'livree' || c.statut_commande === 'terminee') {
-        zonePerf[z].total += (c.montant_encaisse || c.montant_total) - getFrais(c);
-      }
+      if (!zoneMetrics[z]) zoneMetrics[z] = { total: 0, delivered: 0, failed: 0, cancelled: 0, risk: 0 };
+      
+      zoneMetrics[z].total++;
+      if (['livree', 'terminee'].includes(c.statut_commande)) zoneMetrics[z].delivered++;
+      else if (['echouee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande)) zoneMetrics[z].failed++;
+      else if (c.statut_commande === 'annulee') zoneMetrics[z].cancelled++;
     });
-    const zoneData = Object.entries(zonePerf)
-      .map(([name, stats]) => ({ name, ...stats }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
+
+    const heatmapData = Object.entries(zoneMetrics).map(([name, m]) => {
+      const attempts = m.delivered + m.failed;
+      const risk = attempts > 0 ? (m.failed / attempts) * 100 : 0;
+      return { 
+        name, 
+        volume: m.total, 
+        risk: Math.round(risk),
+        color: risk > 40 ? '#ef4444' : risk > 20 ? '#f59e0b' : '#10b981'
+      };
+    }).sort((a, b) => b.risk - a.risk);
 
     // Comparative Analytics
     const getPeriodDays = () => {
@@ -169,12 +177,11 @@ export const Dashboard = () => {
 
     filteredCommandes.forEach(c => {
       const isSucces = c.statut_commande === 'livree' || c.statut_commande === 'terminee';
-      // Prioritize actual delivery date for history grouping
-      const dString = new Date( (isSucces && c.date_livraison_effective) ? c.date_livraison_effective : c.date_creation).toISOString().split('T')[0];
+      const dString = new Date((isSucces && c.date_livraison_effective) ? c.date_livraison_effective : c.date_creation).toISOString().split('T')[0];
       const match = historyPoints.find(d => d.date === dString);
       if (match) {
         match.count++;
-        if(c.statut_commande === 'livree' || c.statut_commande === 'terminee') {
+        if(isSucces) {
           const montant = c.montant_encaisse || c.montant_total;
           const frais = getFrais(c);
           match.revenue += (montant - frais);
@@ -204,11 +211,12 @@ export const Dashboard = () => {
       }, 
       historyData,
       statusData,
-      zoneData
+      zoneData: [], // Replaced by heatmap below
+      heatmapData
     };
   }, [filteredCommandes, period, commandes, startDate, endDate]);
 
-  const { stats, historyData, statusData, zoneData } = memoizedAnalytics;
+  const { stats, historyData, statusData, heatmapData } = memoizedAnalytics;
   const { logStats, tauxSuccesLivraison } = stats;
 
   if (loading) return <div className="p-8 text-center">Chargement...</div>;
@@ -374,33 +382,43 @@ export const Dashboard = () => {
           </div>
         </div>
 
-        {/* Zone Performance Table */}
+        {/* Zone Risk Heatmap */}
         <div className="card" style={{ padding: '2rem' }}>
           <h3 style={{ marginBottom: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Truck size={20} color="var(--primary)" /> Top Zones (Communes)
+            <AlertCircle size={20} color="#ef4444" /> Heatmap de Risque Logistique
           </h3>
-          <div className="table-container" style={{ maxHeight: '300px', overflowY: 'auto' }}>
-            <table style={{ width: '100%', fontSize: '0.9rem' }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: 'left', background: 'transparent', padding: '0.75rem 0' }}>Zone</th>
-                  <th style={{ textAlign: 'center', background: 'transparent', padding: '0.75rem 0' }}>Colis</th>
-                  <th style={{ textAlign: 'right', background: 'transparent', padding: '0.75rem 0' }}>Rev. Net</th>
-                </tr>
-              </thead>
-              <tbody>
-                {zoneData.length === 0 ? (
-                  <tr><td colSpan={3} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Aucun colis</td></tr>
-                ) : zoneData.map((z) => (
-                  <tr key={z.name}>
-                    <td style={{ fontWeight: 800, padding: '0.75rem 0' }}>{z.name}</td>
-                    <td style={{ textAlign: 'center', fontWeight: 600, padding: '0.75rem 0' }}>{z.count}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 900, color: 'var(--primary)', padding: '0.75rem 0' }}>{z.total.toLocaleString()} CFA</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+            {heatmapData.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Aucune donnée</div>
+            ) : heatmapData.slice(0, 6).map((z) => (
+              <div key={z.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{z.name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Vol: {z.volume}</span>
+                    <span style={{ fontWeight: 900, color: z.color, fontSize: '0.9rem' }}>{z.risk}% Risque</span>
+                  </div>
+                </div>
+                <div style={{ height: '10px', background: '#f1f5f9', borderRadius: '5px', overflow: 'hidden', position: 'relative' }}>
+                  <div 
+                    style={{ 
+                      width: `${z.risk}%`, 
+                      height: '100%', 
+                      background: z.color, 
+                      borderRadius: '5px',
+                      transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)'
+                    }}
+                  />
+                  {z.risk > 15 && (
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent)`, animation: 'shimmer 2s infinite' }} />
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
+          <p style={{ marginTop: '1.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center', fontStyle: 'italic' }}>
+            Analyse IA des zones à taux d'échec élevé nécessitant une attention logistique.
+          </p>
         </div>
       </div>
 
