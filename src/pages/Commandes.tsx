@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, CheckCircle, Download, X, ShoppingBag, Clock, Truck, AlertCircle, Calendar, TrendingUp, RotateCcw, XCircle } from 'lucide-react';
+import { Plus, Search, CheckCircle, Download, X, ShoppingBag, Clock, Truck, AlertCircle, Calendar, RotateCcw } from 'lucide-react';
 import { CommandeList } from '../components/commandes/CommandeList';
 import { CommandeForm } from '../components/commandes/CommandeForm';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
@@ -144,30 +144,29 @@ export const Commandes = () => {
 
   const stats = useMemo(() => {
     const total = filteredByDateCommandes.length;
-    const processing = filteredByDateCommandes.filter(c => ['nouvelle', 'en_attente_appel', 'a_rappeler'].includes(c.statut_commande)).length;
-    const inDelivery = filteredByDateCommandes.filter(c => ['validee', 'en_cours_livraison'].includes(c.statut_commande)).length;
-    const delivered = filteredByDateCommandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande)).length;
-    const failed = filteredByDateCommandes.filter(c => ['echouee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande?.toLowerCase())).length;
-    const cancelled = filteredByDateCommandes.filter(c => ['annulee'].includes(c.statut_commande?.toLowerCase())).length;
-    const retours = filteredByDateCommandes.filter(c => c.statut_commande === 'retour_client').length;
+    const processing = filteredByDateCommandes.filter((c: Commande) => ['nouvelle', 'a_rappeler', 'en_attente_appel'].includes(c.statut_commande)).length;
+    const inDelivery = filteredByDateCommandes.filter((c: Commande) => c.statut_commande === 'en_cours_livraison').length;
+    const delivered = filteredByDateCommandes.filter((c: Commande) => ['livree', 'terminee'].includes(c.statut_commande)).length;
+    const failed = filteredByDateCommandes.filter((c: Commande) => ['echouee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande?.toLowerCase())).length;
+    const cancelled = filteredByDateCommandes.filter((c: Commande) => ['annulee'].includes(c.statut_commande?.toLowerCase())).length;
+    const retours = filteredByDateCommandes.filter((c: Commande) => c.statut_commande === 'retour_client').length;
     
     const successRate = total > 0 ? Math.round((delivered / (delivered + failed)) * 100) || 0 : 0;
 
     return { total, processing, inDelivery, delivered, failed, cancelled, retours, successRate };
   }, [filteredByDateCommandes]);
 
-  const filteredCommandes = filteredByDateCommandes.filter(c => {
+  const filteredCommandes = filteredByDateCommandes.filter((c: Commande) => {
+    const searchLower = searchTerm.toLowerCase();
     const matchesSearch = 
-      c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.telephone_client?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.nom_client?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.commune_livraison?.toLowerCase().includes(searchTerm.toLowerCase());
+      (c.nom_client || '').toLowerCase().includes(searchLower) || 
+      (c.telephone_client || '').toLowerCase().includes(searchLower) ||
+      (c.id || '').toLowerCase().includes(searchLower);
     
     if (!matchesSearch) return false;
-
     if (activeTab === 'all') return true;
-    if (activeTab === 'to_process') return ['nouvelle', 'en_attente_appel', 'a_rappeler'].includes(c.statut_commande);
-    if (activeTab === 'in_delivery') return ['validee', 'en_cours_livraison'].includes(c.statut_commande);
+    if (activeTab === 'to_process') return ['nouvelle', 'a_rappeler', 'en_attente_appel'].includes(c.statut_commande);
+    if (activeTab === 'in_delivery') return c.statut_commande === 'en_cours_livraison';
     if (activeTab === 'done') return ['livree', 'terminee'].includes(c.statut_commande);
     if (activeTab === 'failed') return ['echouee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande?.toLowerCase());
     if (activeTab === 'annulee') return ['annulee'].includes(c.statut_commande?.toLowerCase());
