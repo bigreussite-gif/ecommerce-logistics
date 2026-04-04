@@ -5,7 +5,7 @@ import { addMouvementStock } from './produitService';
 export const getFeuillesEnCours = async (livreurId?: string): Promise<FeuilleRoute[]> => {
   let query = insforge.database
     .from('feuilles_route')
-    .select('*, livreurs:livreur_id(nom_complet)') // Join with users/livreurs table
+    .select('*, users:livreur_id(nom_complet)') // Correct relation to users table
     .in('statut_feuille', ['en_cours', 'cloturee']);
 
   if (livreurId) {
@@ -18,7 +18,7 @@ export const getFeuillesEnCours = async (livreurId?: string): Promise<FeuilleRou
   // Transform to include nom_livreur directly
   return (data || []).map((f: any) => ({
     ...f,
-    nom_livreur: f.livreurs?.nom_complet
+    nom_livreur: f.users?.nom_complet
   }));
 };
 
