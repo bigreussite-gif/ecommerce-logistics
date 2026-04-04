@@ -224,9 +224,9 @@ export const Livraison = () => {
                         <User size={20} />
                       </div>
                       <div>
-                        <h4 style={{ margin: 0, fontWeight: 900, fontSize: '1.2rem' }}>{f.nom_livreur || `Livreur #${f.livreur_id.slice(0,5)}`}</h4>
+                        <h4 style={{ margin: 0, fontWeight: 900, fontSize: '1.2rem' }}>{f.nom_livreur || `Livreur #${f.livreur_id?.slice(0,5) || '...'}`}</h4>
                         <div style={{ fontSize: '0.8rem', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '0.50rem', marginTop: '0.2rem', fontWeight: 600 }}>
-                           <Clock size={12} /> Route #{f.id.slice(-4).toUpperCase()} • {new Date(f.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                           <Clock size={12} /> Route #{f.id?.slice(-4).toUpperCase() || '...'} • {new Date(f.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
                         </div>
                       </div>
                     </div>
@@ -283,7 +283,7 @@ export const Livraison = () => {
                       <div>
                         <h2 style={{ margin: 0, fontWeight: 950, fontSize: '1.6rem', color: 'var(--text-main)' }}>Tournée de {feuille.nom_livreur}</h2>
                         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                           <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)' }}>#{feuille.id.slice(0, 8).toUpperCase()}</span>
+                           <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)' }}>#{feuille.id?.slice(0, 8).toUpperCase() || '...'}</span>
                            <span className="badge badge-primary">{commandes.length} commandes</span>
                         </div>
                       </div>
@@ -426,7 +426,7 @@ export const Livraison = () => {
                 <div>
                    <div style={{ fontSize: '1.6rem', fontWeight: 950, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>{Number(c.montant_total).toLocaleString()} <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>CFA</span></div>
                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', marginTop: '0.3rem' }}>
-                     <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)' }}>CMD-#{c.id.slice(-6).toUpperCase()}</span>
+                     <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)' }}>CMD-#{c.id?.slice(-6).toUpperCase() || '...'}</span>
                      <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#cbd5e1' }} />
                      <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--primary)' }}>{itemCount} article{itemCount > 1 ? 's' : ''}</span>
                    </div>
