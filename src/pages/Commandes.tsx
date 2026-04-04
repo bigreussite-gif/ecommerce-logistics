@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Plus, Search, CheckCircle, Download, X } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Plus, Search, CheckCircle, Download, X, ShoppingBag, Clock, Truck, AlertCircle, Calendar, TrendingUp } from 'lucide-react';
 import { CommandeList } from '../components/commandes/CommandeList';
 import { CommandeForm } from '../components/commandes/CommandeForm';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
@@ -8,6 +8,8 @@ import { generateInvoicePDF } from '../services/pdfService';
 import type { Commande } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
+
+type Period = 'today' | '7d' | '30d' | 'all' | 'custom';
 
 export const Commandes = () => {
   const { showToast } = useToast();
@@ -19,6 +21,11 @@ export const Commandes = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'to_process' | 'in_delivery' | 'done' | 'failed'>('to_process');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  
+  // Stats & Periods
+  const [period, setPeriod] = useState<Period>('all');
+  const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   const handleInvoice = async (commande: Commande) => {
     try {
@@ -100,7 +107,55 @@ export const Commandes = () => {
     return () => unsubscribe();
   }, []);
 
-  const filteredCommandes = commandes.filter(c => {
+  const filteredByDateCommandes = useMemo(() => {
+    if (period === 'all') return commandes;
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    const now = new Date();
+    let effectiveStart = start;
+    let effectiveEnd = end;
+
+    if (period === 'today') {
+      effectiveStart = new Date(now);
+      effectiveStart.setHours(0, 0, 0, 0);
+      effectiveEnd = new Date(now);
+      effectiveEnd.setHours(23, 59, 59, 999);
+    } else if (period === '7d') {
+      effectiveStart = new Date(now);
+      effectiveStart.setDate(now.getDate() - 7);
+      effectiveStart.setHours(0, 0, 0, 0);
+      effectiveEnd = new Date(now);
+    } else if (period === '30d') {
+      effectiveStart = new Date(now);
+      effectiveStart.setDate(now.getDate() - 30);
+      effectiveStart.setHours(0, 0, 0, 0);
+      effectiveEnd = new Date(now);
+    }
+
+    return commandes.filter(c => {
+      const d = new Date(c.date_creation);
+      return d >= effectiveStart && d <= effectiveEnd;
+    });
+  }, [commandes, period, startDate, endDate]);
+
+  const stats = useMemo(() => {
+    const total = filteredByDateCommandes.length;
+    const processing = filteredByDateCommandes.filter(c => ['nouvelle', 'en_attente_appel', 'a_rappeler'].includes(c.statut_commande)).length;
+    const inDelivery = filteredByDateCommandes.filter(c => ['validee', 'en_cours_livraison'].includes(c.statut_commande)).length;
+    const delivered = filteredByDateCommandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande)).length;
+    const failed = filteredByDateCommandes.filter(c => ['echouee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande)).length;
+    const cancelled = filteredByDateCommandes.filter(c => c.statut_commande === 'annulee').length;
+    
+    const successRate = total > 0 ? Math.round((delivered / (delivered + failed)) * 100) || 0 : 0;
+
+    return { total, processing, inDelivery, delivered, failed, cancelled, successRate };
+  }, [filteredByDateCommandes]);
+
+  const filteredCommandes = filteredByDateCommandes.filter(c => {
     const matchesSearch = 
       c.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.telephone_client?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -124,12 +179,116 @@ export const Commandes = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
           <div className="mobile-stack">
             <h1 className="text-premium" style={{ fontSize: 'clamp(1.8rem, 5vw, 2.2rem)', fontWeight: 800, margin: 0 }}>Gestion des Commandes</h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.4rem', fontWeight: 500 }}>Saisissez de nouvelles commandes et suivez leur cycle de vie.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.4rem', fontWeight: 500 }}>Suivi temps réel et pilotage de vos flux logistiques.</p>
           </div>
-          <button className="btn btn-primary" onClick={() => setIsFormOpen(true)} style={{ padding: '0.8rem 1.5rem', borderRadius: '14px', fontSize: '0.95rem', fontWeight: 700 }}>
-            <Plus size={20} />
-            Nouvelle Commande
-          </button>
+          
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            {/* Period Filter Dropdown replacement or simple buttons */}
+            <div style={{ display: 'flex', background: 'white', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '0.3rem', boxShadow: 'var(--shadow-premium)', position: 'relative' }}>
+               {(['today', '7d', '30d', 'all'] as Period[]).map((p) => (
+                 <button
+                   key={p}
+                   onClick={() => setPeriod(p)}
+                   style={{
+                     padding: '0.4rem 0.8rem',
+                     borderRadius: '10px',
+                     fontSize: '0.75rem',
+                     fontWeight: 800,
+                     border: 'none',
+                     background: period === p ? 'var(--primary)' : 'transparent',
+                     color: period === p ? 'white' : '#64748b',
+                     cursor: 'pointer',
+                     transition: 'all 0.2s'
+                   }}
+                 >
+                   {p === 'today' ? "Aujourd'hui" : p === '7d' ? '7j' : p === '30d' ? '30j' : 'Tout'}
+                 </button>
+               ))}
+               <button 
+                 onClick={() => setPeriod('custom')}
+                 style={{
+                   padding: '0.4rem 0.8rem',
+                   borderRadius: '10px',
+                   fontSize: '0.75rem',
+                   fontWeight: 800,
+                   border: 'none',
+                   background: period === 'custom' ? 'var(--primary)' : 'transparent',
+                   color: period === 'custom' ? 'white' : '#64748b',
+                   cursor: 'pointer',
+                   display: 'flex',
+                   alignItems: 'center',
+                   gap: '0.3rem'
+                 }}
+               >
+                 <Calendar size={12} />
+                 Perso.
+               </button>
+            </div>
+
+            <button className="btn btn-primary" onClick={() => setIsFormOpen(true)} style={{ padding: '0.8rem 1.5rem', borderRadius: '14px', fontSize: '0.95rem', fontWeight: 700 }}>
+              <Plus size={20} />
+              Nouvelle Commande
+            </button>
+          </div>
+        </div>
+
+        {period === 'custom' && (
+          <div className="card" style={{ marginBottom: '2rem', padding: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center', animation: 'slideDown 0.3s ease' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Du</span>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="form-input" style={{ width: 'auto', padding: '0.4rem' }} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Au</span>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="form-input" style={{ width: 'auto', padding: '0.4rem' }} />
+            </div>
+          </div>
+        )}
+
+        {/* DASHBOARD STATS */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
+          gap: '1.25rem', 
+          marginBottom: '2.5rem' 
+        }}>
+          {[
+            { label: 'Total Commandes', value: stats.total, color: 'var(--primary)', icon: <ShoppingBag size={24} />, shadow: 'var(--shadow-premium)' },
+            { label: 'En Traitement', value: stats.processing, color: '#f59e0b', icon: <Clock size={24} />, shadow: '0 10px 20px rgba(245, 158, 11, 0.15)' },
+            { label: 'En Livraison', value: stats.inDelivery, color: '#6366f1', icon: <Truck size={24} />, shadow: '0 10px 20px rgba(99, 102, 241, 0.15)' },
+            { label: 'Livrées', value: stats.delivered, color: '#10b981', icon: <CheckCircle size={24} />, shadow: '0 10px 20px rgba(16, 185, 129, 0.15)' },
+            { label: 'Échecs / Retours', value: stats.failed, color: '#ef4444', icon: <AlertCircle size={24} />, shadow: '0 10px 20px rgba(239, 68, 68, 0.15)' },
+            { label: 'Taux de Succès', value: `${stats.successRate}%`, color: '#8b5cf6', icon: <TrendingUp size={24} />, shadow: '0 10px 20px rgba(139, 92, 246, 0.15)', subLabel: `${stats.delivered}/${stats.delivered+stats.failed} colis` }
+          ].map((item, idx) => (
+            <div 
+              key={idx} 
+              className="card glass-effect" 
+              style={{ 
+                padding: '1.5rem', 
+                borderRadius: '24px', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '0.75rem',
+                border: '1px solid rgba(255,255,255,0.8)',
+                boxShadow: item.shadow,
+                transition: 'transform 0.3s ease',
+                cursor: 'default'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ padding: '0.6rem', borderRadius: '14px', background: `${item.color}15`, color: item.color }}>
+                  {item.icon}
+                </div>
+                {item.subLabel && <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)' }}>{item.subLabel}</span>}
+              </div>
+              <div>
+                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--text-main)', marginBottom: '0.1rem' }}>{item.value}</div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</div>
+              </div>
+            </div>
+          ))}
         </div>
 
         {/* BARRE DE RECHERCHE ET TABS */}
