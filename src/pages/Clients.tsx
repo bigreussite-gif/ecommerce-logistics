@@ -3,19 +3,23 @@ import {
   Users, Search, 
   X, TrendingUp, Eye
 } from 'lucide-react';
-import { getClientsWithIntelligence, getClientCommandes, ClientFidelityStats } from '../services/clientService';
+import { getClientsWithIntelligence, getClientCommandes, ClientFidelityStats, updateClient } from '../services/clientService';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
 import type { Client, Commande } from '../types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useToast } from '../contexts/ToastContext';
 
 export const Clients = () => {
+  const { showToast } = useToast();
   const [clients, setClients] = useState<(Client & ClientFidelityStats & { identities: string[], locations: string[] })[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [segmentFilter, setSegmentFilter] = useState('All');
   const [selectedClient, setSelectedClient] = useState<{ client: Client & ClientFidelityStats & { identities: string[], locations: string[] }, commandes: Commande[] } | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Client>>({});
 
   useEffect(() => {
     fetchClients();
@@ -35,11 +39,35 @@ export const Clients = () => {
 
   const openClientDetails = async (client: Client & ClientFidelityStats & { identities: string[], locations: string[] }) => {
     try {
+      setIsEditing(false);
+      setEditForm({
+        nom_complet: client.nom_complet,
+        telephone: client.telephone,
+        commune: client.commune,
+        adresse: client.adresse
+      });
       const cmds = await getClientCommandes(client.id);
       cmds.sort((a, b) => new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime());
       setSelectedClient({ client, commandes: cmds });
     } catch(e) {
       console.error(e);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (!selectedClient) return;
+    try {
+      await updateClient(selectedClient.client.id, editForm);
+      showToast("Client mis à jour avec succès !", "success");
+      setIsEditing(false);
+      fetchClients();
+      // Update selected client local state for immediate feedback
+      setSelectedClient({
+        ...selectedClient,
+        client: { ...selectedClient.client, ...editForm as any }
+      });
+    } catch (e) {
+      showToast("Erreur lors de la mise à jour.", "error");
     }
   };
 
@@ -235,30 +263,68 @@ export const Clients = () => {
                     {selectedClient.client.nom_complet.charAt(0).toUpperCase()}
                  </div>
                   <div>
-                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900, margin: 0 }}>{selectedClient.client.nom_complet}</h2>
-                    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                       <span className="badge badge-success">{selectedClient.client.segment}</span>
-                       <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>ID Unique: {selectedClient.client.telephone}</span>
-                       {selectedClient.client.identities.length > 1 && (
-                         <span style={{ fontSize: '0.75rem', color: '#3b82f6', background: '#eff6ff', padding: '0.2rem 0.6rem', borderRadius: '8px', fontWeight: 800 }}>
-                           Aliases: {selectedClient.client.identities.filter(id => id !== selectedClient.client.nom_complet).join(', ')}
-                         </span>
-                       )}
-                    </div>
+                    {isEditing ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <input 
+                           className="form-input" 
+                           value={editForm.nom_complet} 
+                           onChange={e => setEditForm({...editForm, nom_complet: e.target.value})}
+                           placeholder="Nom complet"
+                        />
+                         <input 
+                           className="form-input" 
+                           value={editForm.telephone} 
+                           onChange={e => setEditForm({...editForm, telephone: e.target.value})}
+                           placeholder="Téléphone"
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <h2 style={{ fontSize: '1.75rem', fontWeight: 900, margin: 0 }}>{selectedClient.client.nom_complet}</h2>
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                          <span className="badge badge-success">{selectedClient.client.segment}</span>
+                          <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>ID Unique: {selectedClient.client.telephone}</span>
+                          {selectedClient.client.identities.length > 1 && (
+                            <span style={{ fontSize: '0.75rem', color: '#3b82f6', background: '#eff6ff', padding: '0.2rem 0.6rem', borderRadius: '8px', fontWeight: 800 }}>
+                              Aliases: {selectedClient.client.identities.filter(id => id !== selectedClient.client.nom_complet).join(', ')}
+                            </span>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                </div>
             </div>
 
             {/* Modal Body */}
             <div style={{ padding: '2rem', maxHeight: '60vh', overflowY: 'auto' }}>
-               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.25rem', marginBottom: '2.5rem' }}>
                   <div style={{ padding: '1.25rem', borderRadius: '16px', background: '#f1f5f9' }}>
                     <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Volume Total</div>
                     <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{selectedClient.client.total_encaisse.toLocaleString()} CFA</div>
                   </div>
                   <div style={{ padding: '1.25rem', borderRadius: '16px', background: '#f1f5f9' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Panier Moyen</div>
-                    <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{selectedClient.client.panier_moyen.toLocaleString()} CFA</div>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Commune / Quartier</div>
+                    {isEditing ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <input 
+                           className="form-input" 
+                           style={{ fontSize: '0.8rem', height: '36px' }}
+                           value={editForm.commune} 
+                           onChange={e => setEditForm({...editForm, commune: e.target.value})}
+                           placeholder="Commune"
+                        />
+                        <input 
+                           className="form-input" 
+                           style={{ fontSize: '0.8rem', height: '36px' }}
+                           value={editForm.adresse} 
+                           onChange={e => setEditForm({...editForm, adresse: e.target.value})}
+                           placeholder="Adresse"
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>{selectedClient.client.commune || 'N/A'}<br/><span style={{ fontSize: '0.65rem', opacity: 0.7 }}>{selectedClient.client.adresse}</span></div>
+                    )}
                   </div>
                   <div style={{ padding: '1.25rem', borderRadius: '16px', background: '#f1f5f9' }}>
                     <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Dernier Achat</div>
@@ -303,7 +369,14 @@ export const Clients = () => {
                 </div>
             </div>
 
-            <div style={{ padding: '1.5rem 2rem', borderTop: '1px solid #f1f5f9', textAlign: 'right' }}>
+            <div style={{ padding: '1.5rem 2rem', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between' }}>
+               <div>
+                  {isEditing ? (
+                    <button className="btn btn-primary" onClick={handleUpdate}>Enregistrer les modifications</button>
+                  ) : (
+                    <button className="btn btn-outline" onClick={() => setIsEditing(true)}>Modifier les infos</button>
+                  )}
+               </div>
                <button className="btn btn-primary" onClick={() => setSelectedClient(null)}>Fermer l'Analyse</button>
             </div>
           </div>

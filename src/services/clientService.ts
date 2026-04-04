@@ -51,6 +51,24 @@ export const createClient = async (client: Omit<Client, 'id'>): Promise<string> 
   return data?.[0]?.id;
 };
 
+export const updateClient = async (id: string, updates: Partial<Client>): Promise<void> => {
+  const { error } = await insforge.database
+    .from('clients')
+    .update(updates)
+    .eq('id', id);
+
+  if (error) throw error;
+};
+
+export const deleteClient = async (id: string): Promise<void> => {
+  const { error } = await insforge.database
+    .from('clients')
+    .delete()
+    .eq('id', id);
+
+  if (error) throw error;
+};
+
 export interface ClientFidelityStats {
   total_commandes: number;
   total_brut: number;      // All orders
