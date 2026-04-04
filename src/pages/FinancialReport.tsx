@@ -265,6 +265,26 @@ export const FinancialReport = () => {
             </div>
           </div>
 
+          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #0ea5e9' }}>
+            <span style={{ color: '#0284c7', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>COÛT DES PRODUITS</span>
+            <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+              {(stats?.cogs_total || 0).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
+            </div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+              Prix d'achat (COGS)
+            </div>
+          </div>
+
+          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981', backgroundColor: '#f0fdf4' }}>
+            <span style={{ color: '#166534', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>MARGE NETTE RESTANTE</span>
+            <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px', color: '#15803d' }}>
+              {((stats?.profit_net || 0) - ((logStats?.livrees || 0) * 750)).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
+            </div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+              Bénéfice après extractions
+            </div>
+          </div>
+
         </div>
       </div>
 
