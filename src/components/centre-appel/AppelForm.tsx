@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, CheckCircle, Clock, XCircle, MessageCircle, Plus, Minus, Trash2, Search } from 'lucide-react';
-import { updateCommandeStatus, updateCommandeLignesAndStock } from '../../services/commandeService';
+import { X, CheckCircle, Clock, XCircle, MessageCircle, AlertCircle, Plus, Minus, Trash2, Search } from 'lucide-react';
+import { updateCommandeStatus, updateCommandeLignesAndStock, logWhatsAppMessage } from '../../services/commandeService';
 import { insforge } from '../../lib/insforge';
 import { useAuth } from '../../contexts/AuthContext';
 import { getCommunes } from '../../services/adminService';
@@ -27,6 +27,7 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
   const [lignesLocal, setLignesLocal] = useState<Partial<LigneCommande>[]>(commande.lignes || []);
   const [catalogue, setCatalogue] = useState<Produit[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [waSentLocal, setWaSentLocal] = useState<{ type: string, date: string }[]>(commande.wa_sent || []);
 
   useEffect(() => {
     getCommunes().then(setCommunesDb);
@@ -123,7 +124,8 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
         'validee': 'validee',
         'a_rappeler': 'a_rappeler',
         'annulee': 'annulee',
-        'injoignable': 'a_rappeler'
+        'injoignable': 'a_rappeler',
+        'echouee': 'a_rappeler'
       };
       
       const payload: any = { 
@@ -141,6 +143,10 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
 
       if (resultat === 'annulee') {
         payload.notes = `[ANNULATION APPEL] Motif: ${commentaire}${commande.notes ? "\n--- Notes Précédentes ---\n" + commande.notes : ""}`;
+      }
+
+      if (resultat === 'echouee') {
+        payload.notes = `[ECHEC LIVRAISON - RELANCE] Agent: ${commentaire}${commande.notes ? "\n--- Notes ---\n" + commande.notes : ""}`;
       }
 
       await updateCommandeStatus(commande.id, nextStatusMap[resultat], payload);
@@ -164,22 +170,55 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
     const bDelivery = `*${delivery > 0 ? delivery.toLocaleString() + " CFA" : "À définir"}*`;
     const bTotal = `*${total.toLocaleString()} CFA*`;
 
-    let missingInfo = "";
-    if (!commande.commune_livraison && !communeLocal) missingInfo += "- *Votre commune de livraison*\n";
-    if (!commande.adresse_livraison && !adresseLocal) missingInfo += "- *Votre adresse exacte (lieu de livraison)*\n";
+    const summary = `\n\n*Résumé de votre commande :*\n${articlesList}\n\n- Articles : ${bSubtotal}\n- Livraison : ${bDelivery}\n*Total à payer : ${bTotal}*`;
 
-    let text = `Bonjour ${nom},\n\nVotre commande est bien enregistrée chez nous sous le numéro ${ref}.\nSouhaitez-vous confirmer la livraison ?\n\nDétails de votre commande :\n${articlesList}\n\n- Prix des articles : ${bSubtotal}\n- Frais de livraison : ${bDelivery}\nTotal à payer : ${bTotal}\n\n`;
+    let text = "";
 
-    if (missingInfo) {
-      text += `Pour finaliser l'expédition, merci de nous confirmer :\n${missingInfo}\n`;
+    if (resultat === 'a_rappeler' || resultat === 'injoignable') {
+      text = `Bonjour ${nom},\n\nNous n'avons pas pu effectuer votre livraison car nous n'avons pas pu vous joindre (soit par défaut du livreur ou votre contretemps).\n\nPouvons-nous s'il vous plaît relancer votre commande ${ref} pour le jour suivant ?${summary}`;
+    } else if (resultat === 'annulee') {
+      text = `Bonjour ${nom},\n\nNous avons pris note de l'annulation de votre commande ${ref}.\n\nPourriez-vous nous indiquer les motifs de cette annulation s'il vous plaît ? Souhaitez-vous vraiment maintenir l'annulation ?${summary}`;
+    } else if (resultat === 'echouee') {
+      text = `Bonjour ${nom},\n\nNous avons constaté un souci lors de la livraison de votre commande ${ref}.\n\nSouhaitez-vous que nous la reprogrammions pour demain ? Nous aimerions savoir si vous êtes toujours intéressé par vos articles :${summary}`;
+    } else {
+      // Default: Validation template
+      let missingInfo = "";
+      if (!commande.commune_livraison && !communeLocal) missingInfo += "- *Votre commune de livraison*\n";
+      if (!commande.adresse_livraison && !adresseLocal) missingInfo += "- *Votre adresse exacte (lieu de livraison)*\n";
+
+      text = `Bonjour ${nom},\n\nVotre commande ${ref} est bien enregistrée chez nous.\nSouhaitez-vous confirmer la livraison ?${summary}\n\n`;
+
+      if (missingInfo) {
+        text += `Pour finaliser l'expédition, merci de nous confirmer :\n${missingInfo}\n`;
+      }
+      text += "Merci de nous répondre pour confirmer la livraison.";
     }
-
-    text += "Merci de nous répondre pour confirmer la livraison.";
+    
+    const signature = "\n\n*L'équipe Jachete Côte d'Ivoire*\nwww.jachete.ci\n+225 01 72 57 13 52 ,";
+    text += signature;
     
     let phone = (commande.telephone_client || '').replace(/\D/g, '');
     if (phone.length === 10) phone = '225' + phone;
     
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+  };
+
+  const handleWhatsAppClick = async (type: string) => {
+    try {
+      await logWhatsAppMessage(commande.id, type);
+      setWaSentLocal(prev => [...prev, { type, date: new Date().toISOString() }]);
+    } catch (err) {
+      console.error("Erreur log WA:", err);
+    }
+  };
+
+  const isWASent = (type: string) => waSentLocal.some(s => s.type === type);
+
+  const getWAType = () => {
+    if (resultat === 'a_rappeler' || resultat === 'injoignable') return 'relance';
+    if (resultat === 'annulee') return 'annulation';
+    if (resultat === 'echouee') return 'echec';
+    return 'validation';
   };
 
   const filteredCatalogue = searchTerm.length > 0 
@@ -221,9 +260,35 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
             <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)' }}>{commande.nom_client || 'Client Anonyme'}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
               <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-muted)' }}>📞 {commande.telephone_client}</div>
-              <a href={generateWhatsAppLink()} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.3rem 0.7rem', background: '#25D366', color: 'white', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 700, textDecoration: 'none' }}>
-                <MessageCircle size={14} fill="currentColor" /> WhatsApp
-              </a>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <a 
+                  href={generateWhatsAppLink()} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  onClick={() => handleWhatsAppClick(getWAType())}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '0.4rem', 
+                    padding: '0.3rem 0.7rem', 
+                    background: '#25D366', 
+                    color: 'white', 
+                    borderRadius: '8px', 
+                    fontSize: '0.75rem', 
+                    fontWeight: 700, 
+                    textDecoration: 'none',
+                    opacity: isWASent(getWAType()) ? 0.7 : 1
+                  }}
+                >
+                  <MessageCircle size={14} fill="currentColor" /> 
+                  {isWASent(getWAType()) ? 'Déjà envoyé' : 'WhatsApp'}
+                </a>
+                {isWASent(getWAType()) && (
+                  <span style={{ fontSize: '0.65rem', color: '#059669', fontWeight: 700 }}>
+                    Envoyé le {new Date(waSentLocal.find(s => s.type === getWAType())?.date || '').toLocaleDateString()}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -294,7 +359,7 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
 
           <div>
             <label className="form-label" style={{ fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.75rem', display: 'block' }}>Résultat de l'échange</label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
               <label style={{ 
                 border: `2px solid ${resultat === 'validee' ? 'var(--primary)' : '#e2e8f0'}`, 
                 borderRadius: '16px', padding: '0.75rem', cursor: 'pointer', transition: 'all 0.2s',
@@ -303,8 +368,8 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
                 boxShadow: resultat === 'validee' ? '0 4px 6px -1px rgba(99, 102, 255, 0.1)' : 'none'
               }}>
                 <input type="radio" checked={resultat === 'validee'} onChange={() => setResultat('validee')} style={{ display: 'none' }} />
-                <CheckCircle size={24} color={resultat === 'validee' ? 'var(--primary)' : '#94a3b8'} strokeWidth={2.5} />
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: resultat === 'validee' ? 'var(--primary)' : '#64748b' }}>Valider</span>
+                <CheckCircle size={20} color={resultat === 'validee' ? 'var(--primary)' : '#94a3b8'} strokeWidth={2.5} />
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: resultat === 'validee' ? 'var(--primary)' : '#64748b' }}>Valider</span>
               </label>
               
               <label style={{ 
@@ -314,8 +379,30 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem'
               }}>
                 <input type="radio" checked={resultat === 'a_rappeler'} onChange={() => setResultat('a_rappeler')} style={{ display: 'none' }} />
-                <Clock size={24} color={resultat === 'a_rappeler' ? '#f59e0b' : '#94a3b8'} strokeWidth={2.5} />
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: resultat === 'a_rappeler' ? '#d97706' : '#64748b' }}>À rappeler</span>
+                <Clock size={20} color={resultat === 'a_rappeler' ? '#f59e0b' : '#94a3b8'} strokeWidth={2.5} />
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: resultat === 'a_rappeler' ? '#d97706' : '#64748b' }}>À rappeler</span>
+              </label>
+
+              <label style={{ 
+                border: `2px solid ${resultat === 'injoignable' ? '#6366f1' : '#e2e8f0'}`, 
+                borderRadius: '16px', padding: '0.75rem', cursor: 'pointer', transition: 'all 0.2s',
+                background: resultat === 'injoignable' ? 'rgba(99, 102, 241, 0.05)' : 'white',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem'
+              }}>
+                <input type="radio" checked={resultat === 'injoignable'} onChange={() => setResultat('injoignable')} style={{ display: 'none' }} />
+                <MessageCircle size={20} color={resultat === 'injoignable' ? '#6366f1' : '#94a3b8'} strokeWidth={2.5} />
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: resultat === 'injoignable' ? '#4f46e5' : '#64748b' }}>Injoignable</span>
+              </label>
+
+              <label style={{ 
+                border: `2px solid ${resultat === 'echouee' ? '#ea580c' : '#e2e8f0'}`, 
+                borderRadius: '16px', padding: '0.75rem', cursor: 'pointer', transition: 'all 0.2s',
+                background: resultat === 'echouee' ? 'rgba(234, 88, 12, 0.05)' : 'white',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem'
+              }}>
+                <input type="radio" checked={resultat === 'echouee'} onChange={() => setResultat('echouee')} style={{ display: 'none' }} />
+                <AlertCircle size={20} color={resultat === 'echouee' ? '#ea580c' : '#94a3b8'} strokeWidth={2.5} />
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: resultat === 'echouee' ? '#c2410c' : '#64748b' }}>Échec Liv.</span>
               </label>
               
               <label style={{ 
@@ -326,8 +413,8 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
                 gridColumn: 'span 2'
               }}>
                 <input type="radio" checked={resultat === 'annulee'} onChange={() => setResultat('annulee')} style={{ display: 'none' }} />
-                <XCircle size={24} color={resultat === 'annulee' ? '#ef4444' : '#94a3b8'} strokeWidth={2.5} />
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: resultat === 'annulee' ? '#dc2626' : '#64748b' }}>Annuler la commande</span>
+                <XCircle size={20} color={resultat === 'annulee' ? '#ef4444' : '#94a3b8'} strokeWidth={2.5} />
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: resultat === 'annulee' ? '#dc2626' : '#64748b' }}>Annuler la commande</span>
               </label>
             </div>
           </div>

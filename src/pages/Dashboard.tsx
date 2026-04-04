@@ -353,7 +353,7 @@ export const Dashboard = () => {
                   paddingAngle={5}
                   dataKey="value"
                 >
-                  {statusData.map((_, index) => (
+                  {(statusData || []).map((_, index) => (
                     <Cell 
                       key={`cell-${index}`} 
                       fill={[
@@ -370,8 +370,8 @@ export const Dashboard = () => {
             </ResponsiveContainer>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
-            {statusData.map((s, i) => (
-               <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 700 }}>
+            {(statusData || []).map((s, i) => (
+               <div key={s?.name || i} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 700 }}>
                   <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: [
                         '#10b981', '#6366f1', '#f59e0b', '#ef4444', 
                         '#8b5cf6', '#ec4899', '#06b6d4', '#475569'
@@ -466,8 +466,8 @@ export const Dashboard = () => {
                   <ShoppingBag size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
                   <p>Aucune donnée sur cette période.</p>
                 </div>
-              ) : topProducts.map((p, i) => (
-                <div key={p.nom} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              ) : (topProducts || []).map((p, i) => (
+                <div key={p?.nom || i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                       <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-muted)', width: '20px' }}>{i+1}.</span>

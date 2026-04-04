@@ -89,6 +89,7 @@ export interface Commande {
   nombre_produits?: number;
   lignes?: LigneCommande[];
   created_by?: string;
+  wa_sent?: { type: string, date: string }[];
 }
 
 export interface LigneCommande {
@@ -107,7 +108,7 @@ export interface AppelCommande {
   commande_id: string;
   agent_appel_id: string;
   date_appel: Date | any;
-  resultat_appel: 'validee' | 'a_rappeler' | 'annulee' | 'injoignable';
+  resultat_appel: 'validee' | 'a_rappeler' | 'annulee' | 'injoignable' | 'echouee';
   commentaire_agent?: string;
 }
 

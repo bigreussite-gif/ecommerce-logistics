@@ -164,7 +164,7 @@ export const Logistique = () => {
                       </div>
                     </td>
                     <td>
-                      <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{c.nom_client || `Client #${c.client_id.slice(0,5)}`}</div>
+                      <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{c.nom_client || `Client #${(c.client_id || '').slice(0,5)}`}</div>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500 }}>{c.telephone_client}</div>
                     </td>
                     <td>
@@ -260,7 +260,7 @@ export const Logistique = () => {
                   <div key={f.id} style={{ padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '16px', background: 'white' }}>
                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                         <div>
-                           <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-main)' }}>#{f.id.slice(0, 8).toUpperCase()}</div>
+                           <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-main)' }}>#{(f.id || '').slice(0, 8).toUpperCase()}</div>
                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{f.nom_livreur}</div>
                         </div>
                         <button 

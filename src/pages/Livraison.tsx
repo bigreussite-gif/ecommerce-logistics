@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { insforge } from '../lib/insforge';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentFeuilleRoute, getCommandesForFeuille, markCommandeLivre, markCommandeEchouee } from '../services/livraisonService';
 import type { Commande, FeuilleRoute } from '../types';
@@ -37,20 +38,21 @@ export const Livraison = () => {
   const fetchData = useCallback(async (forcedId?: string) => {
     if (!currentUserId || !currentUserRole || isFetchingRef.current) return;
     
-    const targetId = forcedId || selectedFeuilleId;
+    const targetId = forcedId || selectedFeuilleId || 'NONE';
     
     // Prevent redundant fetching if nothing changed
-    if (targetId && targetId === lastFetchedIdRef.current && !forcedId) return;
+    if (targetId === lastFetchedIdRef.current && !forcedId) return;
 
     isFetchingRef.current = true;
     setLoading(true);
     try {
+      lastFetchedIdRef.current = targetId;
+      
       if (currentUserRole === 'ADMIN' || currentUserRole === 'LOGISTIQUE') {
-        // Now calling with NO arguments to get ALL active routes for supervision
         const active = await getFeuillesEnCours(); 
         setAllActiveFeuilles(active);
         
-        let currentId = targetId;
+        let currentId = forcedId || selectedFeuilleId;
         if (active.length > 0 && !currentId) {
           currentId = active[0].id;
           setSelectedFeuilleId(currentId);
@@ -62,15 +64,21 @@ export const Livraison = () => {
             getCommandesForFeuille(currentId),
             Promise.resolve(active.find(f => f.id === currentId))
           ]);
-          setCommandes(cmds);
+          setCommandes(cmds || []);
           if (found) setFeuille(found);
+        } else {
+          setCommandes([]);
+          setFeuille(null);
         }
       } else {
         const currentLog = await getCurrentFeuilleRoute(currentUserId);
         setFeuille(currentLog);
         if (currentLog) {
+          lastFetchedIdRef.current = currentLog.id;
           const cmds = await getCommandesForFeuille(currentLog.id);
-          setCommandes(cmds);
+          setCommandes(cmds || []);
+        } else {
+          setCommandes([]);
         }
       }
     } catch (error) {
@@ -83,20 +91,31 @@ export const Livraison = () => {
 
   useEffect(() => {
     fetchData();
-  }, [currentUserId, currentUserRole, selectedFeuilleId, fetchData]); 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUserId, currentUserRole, selectedFeuilleId]); 
 
-  const handleUpdate = async () => {
-    if (!selectedCommande) return;
+  const handleUpdate = async (manualId?: string, manualStatus?: string) => {
+    const targetId = manualId || selectedCommande?.id;
+    if (!targetId) return;
+
     try {
       setLoading(true);
-      if (statusAction === 'livree') {
-        const montant = Number(selectedCommande.montant_total);
-        await markCommandeLivre(selectedCommande.id, montant, noteForm);
-      } else {
-        await markCommandeEchouee(selectedCommande.id, noteForm);
+      
+      if (manualStatus) {
+        await insforge.database
+          .from('commandes')
+          .update({ statut_commande: manualStatus })
+          .eq('id', targetId);
+      } else if (selectedCommande) {
+        if (statusAction === 'livree') {
+          await markCommandeLivre(selectedCommande.id, Number(selectedCommande.montant_total), noteForm);
+        } else {
+          await markCommandeEchouee(selectedCommande.id, noteForm);
+        }
       }
+      
       setSelectedCommande(null);
-      await fetchData(); // Refresh current state after update
+      await fetchData(manualId); 
     } catch (error) {
       console.error(error);
     } finally {
@@ -104,17 +123,15 @@ export const Livraison = () => {
     }
   };
 
-  if (loading && !selectedCommande) return <div style={{ padding: '2rem' }}>Chargement...</div>;
-
   const adminStats = useMemo(() => {
-    if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'LOGISTIQUE') return null;
+    if (currentUserRole !== 'ADMIN' && currentUserRole !== 'LOGISTIQUE') return null;
     const totalObjectif = allActiveFeuilles.reduce((acc, f) => acc + (f.total_montant_theorique || 0), 0);
     const totalCommandes = allActiveFeuilles.reduce((acc, f) => acc + (f.total_commandes || 0), 0);
     const inProgress = allActiveFeuilles.filter(f => f.statut_feuille === 'en_cours').length;
     const waitingCaisse = allActiveFeuilles.filter(f => f.statut_feuille === 'cloturee').length;
     
     return { totalObjectif, totalCommandes, inProgress, waitingCaisse };
-  }, [allActiveFeuilles, currentUser]);
+  }, [allActiveFeuilles, currentUserRole]);
 
   const filteredFeuilles = useMemo(() => {
     return allActiveFeuilles.filter(f => 
@@ -129,7 +146,7 @@ export const Livraison = () => {
     </div>
   );
 
-  if (!feuille && (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'LOGISTIQUE')) {
+  if (!feuille && (currentUserRole !== 'ADMIN' && currentUserRole !== 'LOGISTIQUE')) {
     return (
       <div style={{ textAlign: 'center', padding: '8rem 2rem', animation: 'pageEnter 0.6s ease' }}>
         <div style={{ background: '#f8fafc', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', color: '#cbd5e1' }}>
@@ -143,11 +160,12 @@ export const Livraison = () => {
     );
   }
 
-  const totalEncaiss = commandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).reduce((acc, c) => acc + (Number(c.montant_encaisse) || 0), 0);
-  const totalObjectif = Number(feuille?.total_montant_theorique) || 0;
-  const progressPercent = commandes.length > 0 ? Math.round((commandes.filter(c => ['livree', 'retour_livreur', 'terminee'].includes(c.statut_commande?.toLowerCase())).length / commandes.length) * 100) : 0;
+  const currentCommandes = commandes || [];
+  const totalEncaiss = currentCommandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).reduce((acc, c) => acc + (Number(c.montant_encaisse) || 0), 0);
+  const currentFeuilleTotal = Number(feuille?.total_montant_theorique) || 0;
+  const progressPercent = currentCommandes.length > 0 ? Math.round((currentCommandes.filter(c => ['livree', 'retour_livreur', 'terminee'].includes(c.statut_commande?.toLowerCase())).length / currentCommandes.length) * 100) : 0;
 
-  if (currentUser?.role === 'ADMIN' || currentUser?.role === 'LOGISTIQUE') {
+  if (currentUserRole === 'ADMIN' || currentUserRole === 'LOGISTIQUE') {
     return (
       <div style={{ animation: 'pageEnter 0.6s ease', paddingBottom: '4rem' }}>
         <div style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
@@ -192,12 +210,6 @@ export const Livraison = () => {
           ))}
         </div>
 
-        <div style={{ marginBottom: '2rem' }}>
-           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-              <button className="badge" style={{ background: 'var(--primary)', color: 'white', padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 800, border: 'none' }}>Toutes les tournées ({filteredFeuilles.length})</button>
-           </div>
-        </div>
-
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '2rem' }}>
           {filteredFeuilles.length === 0 ? (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '5rem', background: '#f8fafc', borderRadius: '32px', color: '#94a3b8' }}>
@@ -209,12 +221,8 @@ export const Livraison = () => {
                 key={f.id} 
                 className="card glass-effect" 
                 style={{ padding: '0', overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.2s', border: '1px solid #e2e8f0' }}
-                onClick={async () => {
-                  setLoading(true);
-                  setFeuille(f);
-                  const cmds = await getCommandesForFeuille(f.id);
-                  setCommandes(cmds);
-                  setLoading(false);
+                onClick={() => {
+                  setSelectedFeuilleId(f.id);
                 }}
               >
                 <div style={{ padding: '1.5rem', background: f.statut_feuille === 'en_cours' ? 'var(--primary)' : '#1e293b', color: 'white' }}>
@@ -224,9 +232,9 @@ export const Livraison = () => {
                         <User size={20} />
                       </div>
                       <div>
-                        <h4 style={{ margin: 0, fontWeight: 900, fontSize: '1.2rem' }}>{f.nom_livreur || `Livreur #${f.livreur_id?.slice(0,5) || '...'}`}</h4>
+                        <h4 style={{ margin: 0, fontWeight: 900, fontSize: '1.2rem' }}>{f.nom_livreur || `Livreur #${(f.livreur_id || '').slice(0,5)}`}</h4>
                         <div style={{ fontSize: '0.8rem', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '0.50rem', marginTop: '0.2rem', fontWeight: 600 }}>
-                           <Clock size={12} /> Route #{f.id?.slice(-4).toUpperCase() || '...'} • {new Date(f.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                           <Clock size={12} /> Route #{(f.id || '').slice(-4).toUpperCase()} • {new Date(f.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
                         </div>
                       </div>
                     </div>
@@ -238,22 +246,23 @@ export const Livraison = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 950, fontSize: '1.3rem' }}>
                     <div style={{ display: 'flex', flexDirection: 'column' }}>
                        <span style={{ fontSize: '0.7rem', opacity: 0.8, textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Objectif</span>
-                       <span>{f.total_montant_theorique.toLocaleString()} F</span>
+                       <span>{(f.total_montant_theorique || 0).toLocaleString()} F</span>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                        <span style={{ fontSize: '0.7rem', opacity: 0.8, textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Volume</span>
-                       <span>{f.total_commandes} Colis</span>
+                       <span>{f.total_commandes || 0} Colis</span>
                     </div>
                   </div>
                 </div>
 
                 <div style={{ padding: '1.5rem' }}>
-                   <div style={{ marginBottom: f.communes_couvertes?.length > 0 ? '1.5rem' : '0.5rem' }}>
+                   <div style={{ marginBottom: (f.communes_couvertes || []).length > 0 ? '1.5rem' : '0.5rem' }}>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Zones d'activité</div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        {f.communes_couvertes?.map(c => (
-                          <span key={c} style={{ background: '#f1f5f9', color: '#1e293b', fontSize: '0.75rem', padding: '0.4rem 0.75rem', borderRadius: '10px', fontWeight: 800 }}>{c}</span>
-                        )) || <span style={{ color: '#cbd5e1', fontStyle: 'italic', fontSize: '0.8rem' }}>Aucune zone spécifiée</span>}
+                        {(f.communes_couvertes || []).map(commune => (
+                          <span key={commune} style={{ background: '#f1f5f9', color: '#1e293b', fontSize: '0.75rem', padding: '0.4rem 0.75rem', borderRadius: '10px', fontWeight: 800 }}>{commune}</span>
+                        ))}
+                        {(!f.communes_couvertes || f.communes_couvertes.length === 0) && <span style={{ color: '#cbd5e1', fontStyle: 'italic', fontSize: '0.8rem' }}>Aucune zone spécifiée</span>}
                       </div>
                    </div>
                    
@@ -271,7 +280,7 @@ export const Livraison = () => {
           ))}
         </div>
 
-        {/* Floating Detail View for Admin - OVERHAULED */}
+        {/* Detail View Overlay */}
         {feuille && (
            <div style={{ 
              position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)', zIndex: 1000, padding: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(12px)', animation: 'fadeIn 0.3s ease'
@@ -283,8 +292,8 @@ export const Livraison = () => {
                       <div>
                         <h2 style={{ margin: 0, fontWeight: 950, fontSize: '1.6rem', color: 'var(--text-main)' }}>Tournée de {feuille.nom_livreur}</h2>
                         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                           <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)' }}>#{feuille.id?.slice(0, 8).toUpperCase() || '...'}</span>
-                           <span className="badge badge-primary">{commandes.length} commandes</span>
+                           <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)' }}>#{(feuille.id || '').toUpperCase().slice(0,8)}</span>
+                           <span className="badge badge-primary">{(commandes || []).length} commandes</span>
                         </div>
                       </div>
                       <button 
@@ -298,14 +307,14 @@ export const Livraison = () => {
                    {/* Modal Body */}
                    <div style={{ padding: '2rem', overflowY: 'auto', flex: 1 }}>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
-                        {commandes.map(c => {
+                        {(commandes || []).map(c => {
                           const status = c.statut_commande?.toLowerCase();
                           const isDone = ['livree', 'terminee', 'echouee', 'retour_livreur', 'retour_stock'].includes(status);
                           const isSuccess = ['livree', 'terminee'].includes(status);
                           
                           return (
                             <div 
-                              key={c.id} 
+                              key={c.id || Math.random()} 
                               className="card" 
                               style={{ 
                                 padding: '1.5rem', 
@@ -316,11 +325,18 @@ export const Livraison = () => {
                                 position: 'relative'
                               }}
                               onClick={() => setSelectedViewOrderId(c.id)}
-                              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
                             >
                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
                                   <div style={{ fontWeight: 900, color: 'var(--text-main)', fontSize: '1.05rem' }}>{c.nom_client}</div>
+                                  {c.statut_commande === 'annulee' && (
+                                    <button 
+                                       onClick={(e) => { e.stopPropagation(); handleUpdate(c.id, 'en_attente'); }}
+                                       className="btn btn-primary"
+                                       style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#ec4899', height: 'auto', minHeight: 'auto' }}
+                                    >
+                                       Réactiver
+                                    </button>
+                                  )}
                                   <span className={`badge ${isSuccess ? 'badge-success' : isDone ? 'badge-danger' : 'badge-warning'}`} style={{ fontSize: '0.7rem', fontWeight: 800 }}>
                                     {status === 'livree' || status === 'terminee' ? 'LIVRÉE' : status?.replace(/_/g, ' ')?.toUpperCase()}
                                   </span>
@@ -331,7 +347,7 @@ export const Livraison = () => {
                                </div>
 
                                <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                  <div style={{ fontSize: '1.1rem', fontWeight: 950, color: 'var(--primary)' }}>{Number(c.montant_total).toLocaleString()} F</div>
+                                  <div style={{ fontSize: '1.1rem', fontWeight: 950, color: 'var(--primary)' }}>{(Number(c.montant_total) || 0).toLocaleString()} F</div>
                                   {isDone && (
                                     <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)' }}>
                                        {isSuccess ? '✅ ENCAISSÉ' : '❌ ÉCHEC'}
@@ -349,16 +365,16 @@ export const Livraison = () => {
                       <div style={{ display: 'flex', gap: '2rem' }}>
                          <div>
                             <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Collecté</div>
-                            <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#10b981' }}>{commandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).reduce((acc, c) => acc + (c.montant_encaisse || c.montant_total), 0).toLocaleString()} F</div>
+                            <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#10b981' }}>{(commandes || []).filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).reduce((acc, c) => acc + (Number(c.montant_encaisse) || Number(c.montant_total)), 0).toLocaleString()} F</div>
                          </div>
                          <div>
                             <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Taux Succès</div>
                             <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--primary)' }}>
-                              {commandes.length > 0 ? Math.round((commandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).length / commandes.length) * 100) : 0}%
+                              {(commandes || []).length > 0 ? Math.round(((commandes || []).filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).length / (commandes || []).length) * 100) : 0}%
                             </div>
                          </div>
                       </div>
-                      <button className="btn btn-primary" onClick={() => setFeuille(null)} style={{ padding: '0 2rem', borderRadius: '14px', height: '48px', fontWeight: 800 }}>Terminer l'Audit</button>
+                      <button className="btn btn-primary" onClick={() => setFeuille(null)} style={{ padding: '0 2rem', borderRadius: '14px', height: '48px', fontWeight: 800 }}>Fermer</button>
                    </div>
                 </div>
               </div>
@@ -368,7 +384,7 @@ export const Livraison = () => {
     );
   }
 
-  // REGULAR COURIER VIEW (Refactored)
+  // REGULAR COURIER VIEW
   return (
     <div style={{ animation: 'pageEnter 0.6s ease', paddingBottom: '4rem' }}>
       <div style={{ marginBottom: '2.5rem' }}>
@@ -392,7 +408,7 @@ export const Livraison = () => {
         <div style={{ display: 'grid', gap: '1.25rem', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
           <div className="card glass-effect" style={{ padding: '1.5rem', border: 'none', background: 'white', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>À Collecter</div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 950, color: 'var(--text-main)' }}>{totalObjectif.toLocaleString()} <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>F</span></div>
+            <div style={{ fontSize: '1.6rem', fontWeight: 950, color: 'var(--text-main)' }}>{currentFeuilleTotal.toLocaleString()} <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>F</span></div>
           </div>
           <div className="card glass-effect" style={{ padding: '1.5rem', border: 'none', background: '#10b981', color: 'white', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 800, opacity: 0.9, textTransform: 'uppercase' }}>Déjà Encaissé</div>
@@ -402,7 +418,7 @@ export const Livraison = () => {
       </div>
 
       <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: '1fr' }}>
-        {commandes.map(c => {
+        {(commandes || []).map(c => {
           const isDone = ['livree', 'retour_livreur', 'terminee'].includes(c.statut_commande);
           const itemCount = (c.lignes || []).reduce((acc: number, l: any) => acc + l.quantite, 0);
 
@@ -424,15 +440,15 @@ export const Livraison = () => {
               
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
                 <div>
-                   <div style={{ fontSize: '1.6rem', fontWeight: 950, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>{Number(c.montant_total).toLocaleString()} <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>CFA</span></div>
+                   <div style={{ fontSize: '1.6rem', fontWeight: 950, color: 'var(--text-main)', letterSpacing: '-0.02em' }}>{(Number(c.montant_total) || 0).toLocaleString()} <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>CFA</span></div>
                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', marginTop: '0.3rem' }}>
-                     <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)' }}>CMD-#{c.id?.slice(-6).toUpperCase() || '...'}</span>
+                     <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)' }}>CMD-#{(c.id || '').toUpperCase().slice(-6)}</span>
                      <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: '#cbd5e1' }} />
                      <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--primary)' }}>{itemCount} article{itemCount > 1 ? 's' : ''}</span>
                    </div>
                 </div>
                 <button 
-                  className="btn btn-outline" 
+                   className="btn btn-outline" 
                    style={{ width: '48px', height: '48px', borderRadius: '16px', border: '1px solid #f1f5f9', padding: 0, justifyContent: 'center' }}
                    onClick={() => setSelectedViewOrderId(c.id)}
                 >
@@ -447,7 +463,7 @@ export const Livraison = () => {
                       <Phone size={20} /> Appeler
                     </a>
                     <a 
-                      href={`https://wa.me/${c.telephone_client?.replace(/\s/g, '')}?text=${encodeURIComponent(`Bonjour ${c.nom_client}, c'est votre livreur GomboSwift 🛵. Je suis en route pour votre livraison de ${c.montant_total} CFA. Serez-vous disponible d'ici 15 minutes ?`)}`}
+                      href={`https://wa.me/${c.telephone_client?.replace(/\s/g, '')}?text=${encodeURIComponent(`Bonjour ${c.nom_client}, c'est votre livreur GomboSwift 🛵. Je suis en route pour votre livraison de ${c.montant_total} CFA. Serez-vous disponible d'ici 15 minutes ?\n\n*L'équipe Jachete Côte d'Ivoire*\nwww.jachete.ci\n+225 01 72 57 13 52 ,`)}`}
                       target="_blank" 
                       rel="noopener noreferrer" 
                       className="btn" 
@@ -461,7 +477,7 @@ export const Livraison = () => {
               <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '20px', marginBottom: '2rem', border: '1px solid #f1f5f9' }}>
                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ display: 'flex', gap: '0.75rem' }}>
-                    <div style={{ background: 'white', padding: '0.5rem', height: '32px', width: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+                      <div style={{ background: 'white', padding: '0.5rem', height: '32px', width: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
                         <MapPin size={18} color="var(--primary)" />
                       </div>
                       <div>
@@ -476,7 +492,7 @@ export const Livraison = () => {
                       className="btn" 
                       style={{ height: '40px', padding: '0 1rem', borderRadius: '10px', background: 'white', border: '1px solid #e2e8f0', fontWeight: 700, fontSize: '0.8rem', gap: '0.5rem' }}
                     >
-                      Waze/Maps
+                      Maps
                     </a>
                  </div>
               </div>
@@ -512,19 +528,10 @@ export const Livraison = () => {
         })}
       </div>
 
-      {/* Modal Premium Mise à jour Statut */}
+      {/* Modal Statut */}
       {selectedCommande && (
         <div style={{ 
-          position: 'fixed', 
-          inset: 0, 
-          backgroundColor: 'rgba(15, 23, 42, 0.7)', 
-          backdropFilter: 'blur(8px)',
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          zIndex: 1000,
-          padding: '1.5rem',
-          animation: 'pageEnter 0.3s ease-out'
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1.5rem'
         }}>
           <div className="card" style={{ width: '100%', maxWidth: '420px', padding: '2.5rem', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.1)' }}>
             <h3 style={{ marginBottom: '2rem', fontSize: '1.4rem', fontWeight: 800, textAlign: 'center', color: statusAction === 'livree' ? '#10b981' : '#ef4444' }}>
@@ -557,23 +564,12 @@ export const Livraison = () => {
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '2.5rem' }}>
               <button className="btn btn-outline" onClick={() => setSelectedCommande(null)} style={{ flex: 1, height: '52px', borderRadius: '14px', fontWeight: 700 }}>Annuler</button>
-              <button 
-                className="btn btn-primary" 
-                onClick={handleUpdate} 
-                style={{ flex: 2, height: '52px', borderRadius: '14px', fontWeight: 800, background: statusAction === 'livree' ? '#10b981' : '#ef4444', boxShadow: statusAction === 'livree' ? '0 10px 15px -3px rgba(16, 185, 129, 0.4)' : '0 10px 15px -3px rgba(239, 68, 68, 0.4)' }}
-              >
-                Confirmer l'état
-              </button>
+              <button className="btn btn-primary" onClick={() => handleUpdate()} style={{ flex: 2, height: '52px', borderRadius: '14px', fontWeight: 800, background: statusAction === 'livree' ? '#10b981' : '#ef4444' }}>Confirmer</button>
             </div>
           </div>
         </div>
       )}
-      {selectedViewOrderId && (
-        <CommandeDetails 
-          commandeId={selectedViewOrderId} 
-          onClose={() => setSelectedViewOrderId(null)} 
-        />
-      )}
+      {selectedViewOrderId && <CommandeDetails commandeId={selectedViewOrderId} onClose={() => setSelectedViewOrderId(null)} />}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useMemo } from 'react';
 import { User, Role } from '../types';
 import { useToast } from './ToastContext';
 import { insforge } from '../lib/insforge';
@@ -169,8 +169,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return roles.includes(currentUser.role);
   };
 
+  const value = useMemo(() => ({
+    currentUser,
+    loading,
+    logout,
+    hasRole,
+    hasPermission
+  }), [currentUser, loading]);
+
   return (
-    <AuthContext.Provider value={{ currentUser, loading, logout, hasRole, hasPermission }}>
+    <AuthContext.Provider value={value}>
       {!loading && children}
     </AuthContext.Provider>
   );

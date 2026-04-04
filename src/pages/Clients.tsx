@@ -75,14 +75,16 @@ export const Clients = () => {
     let message = '';
     const nom = client.nom_complet.split(' ')[0] || 'Cher client';
     
+    const signature = "\n\n*L'équipe Jachete Côte d'Ivoire*\nwww.jachete.ci\n+225 01 72 57 13 52 ,";
+
     if (templateName === 'friendly') {
-      message = `Bonjour ${nom} ! 🌟\nComment allez-vous ? J'espère que vous êtes satisfait de nos services. Si vous avez besoin de quoi que ce soit, nous sommes à votre disposition !\n- GomboSwift`;
+      message = `Bonjour ${nom} ! 🌟\nComment allez-vous ? J'espère que vous êtes satisfait de nos services. Si vous avez besoin de quoi que ce soit, nous sommes à votre disposition !\n${signature}`;
     } 
     else if (templateName === 'promo') {
-      message = `Coucou ${nom} ! 🎉\nEn tant que client fidèle, nous vous offrons une remise spéciale sur votre prochaine commande chez nous ! Utilisez ce code PROMO VIP.\nDécouvrez nos nouveautés dès maintenant !`;
+      message = `Coucou ${nom} ! 🎉\nEn tant que client fidèle, nous vous offrons une remise spéciale sur votre prochaine commande chez nous ! Utilisez ce code PROMO VIP.\nDécouvrez nos nouveautés dès maintenant !\n${signature}`;
     } 
     else if (templateName === 'reminder') {
-      message = `Bonjour ${nom} ! 😊\nOn ne vous a pas vu depuis un moment ! On espère que tout va bien. Nous avons rentré de nouveaux articles qui pourraient vous intéresser. À très vite !`;
+      message = `Bonjour ${nom} ! 😊\nOn ne vous a pas vu depuis un moment ! On espère que tout va bien. Nous avons rentré de nouveaux articles qui pourraient vous intéresser. À très vite !\n${signature}`;
     }
 
     let phone = client.telephone.replace(/\D/g, '');

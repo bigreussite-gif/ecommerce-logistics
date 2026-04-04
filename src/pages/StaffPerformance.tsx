@@ -59,13 +59,16 @@ export const StaffPerformance = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [users, allCmds, allProds, loginsRes] = await Promise.all([
+        const [users, allCmds, allProds, loginsRes] = await Promise.allSettled([
           getUtilisateurs(),
           getCommandes(),
           getProduits(),
           insforge.database.from('audit_logins').select('*')
         ]);
-        const allLogins = loginsRes.data || [];
+        const allLogins = loginsRes.status === 'fulfilled' ? (loginsRes.value.data || []) : [];
+        const users_data = users.status === 'fulfilled' ? users.value : [];
+        const cmds_data = allCmds.status === 'fulfilled' ? allCmds.value : [];
+        const prods_data = allProds.status === 'fulfilled' ? allProds.value : [];
 
         const now = new Date();
         const startOfInterval = timeFilter === 'today' ? startOfDay(now) : 
@@ -74,9 +77,9 @@ export const StaffPerformance = () => {
                               new Date(0);
 
         // --- 1. Calculate Livreur Stats ---
-        const livreurs = users.filter(u => u.role === 'LIVREUR' || u.role === 'AGENT_MIXTE');
+        const livreurs = users_data.filter(u => u.role === 'LIVREUR' || u.role === 'AGENT_MIXTE');
         const ordersByLivreur: Record<string, Commande[]> = {};
-        allCmds.forEach(c => {
+        cmds_data.forEach(c => {
           if (c.livreur_id) {
             if (!ordersByLivreur[c.livreur_id]) ordersByLivreur[c.livreur_id] = [];
             ordersByLivreur[c.livreur_id].push(c);
@@ -109,9 +112,9 @@ export const StaffPerformance = () => {
         }).sort((a, b) => b.taux_succes - a.taux_succes);
 
         // --- 2. Calculate Agent Stats ---
-        const agents = users.filter(u => u.role === 'AGENT_APPEL' || u.role === 'AGENT_MIXTE' || u.role === 'GESTIONNAIRE');
+        const agents = users_data.filter(u => u.role === 'AGENT_APPEL' || u.role === 'AGENT_MIXTE' || u.role === 'GESTIONNAIRE');
         const ordersByAgent: Record<string, Commande[]> = {};
-        allCmds.forEach(c => {
+        cmds_data.forEach(c => {
           if (c.agent_appel_id) {
             if (!ordersByAgent[c.agent_appel_id]) ordersByAgent[c.agent_appel_id] = [];
             ordersByAgent[c.agent_appel_id].push(c);
@@ -153,9 +156,9 @@ export const StaffPerformance = () => {
         }).sort((a, b) => b.taux_conversion - a.taux_conversion);
 
         // --- 3. Calculate Product Creator Stats ---
-        const creators = users.filter(u => u.role !== 'LIVREUR' && u.role !== 'CAISSIERE');
+        const creators = users_data.filter(u => u.role !== 'LIVREUR' && u.role !== 'CAISSIERE');
         const prodsByCreator: Record<string, Produit[]> = {};
-        allProds.forEach(p => {
+        prods_data.forEach(p => {
           if (p.created_by) {
             if (!prodsByCreator[p.created_by]) prodsByCreator[p.created_by] = [];
             prodsByCreator[p.created_by].push(p);

@@ -452,3 +452,19 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
     }
   }
 };
+
+export const logWhatsAppMessage = async (commandeId: string, type: string): Promise<void> => {
+  const { data: cmd } = await insforge.database
+    .from('commandes')
+    .select('wa_sent')
+    .eq('id', commandeId)
+    .single();
+
+  const newLog = { type, date: new Date().toISOString() };
+  const waSent = Array.isArray(cmd?.wa_sent) ? [...(cmd.wa_sent as any), newLog] : [newLog];
+
+  await insforge.database
+    .from('commandes')
+    .update({ wa_sent: waSent } as any)
+    .eq('id', commandeId);
+};

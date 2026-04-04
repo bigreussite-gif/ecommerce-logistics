@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, ShoppingBag, User, MapPin, Receipt, Phone, RefreshCw, RotateCcw, PackageX } from 'lucide-react';
-import { getCommandeWithLines, updateCommandeStatus, reactivateFailedCommande, registerReturn } from '../../services/commandeService';
+import { X, ShoppingBag, User, MapPin, Receipt, Phone, RefreshCw, RotateCcw, PackageX, MessageCircle } from 'lucide-react';
+import { getCommandeWithLines, updateCommandeStatus, reactivateFailedCommande, registerReturn, logWhatsAppMessage } from '../../services/commandeService';
 import { useToast } from '../../contexts/ToastContext';
 import type { Commande, LigneCommande } from '../../types';
 
@@ -14,10 +14,14 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
   const [commande, setCommande] = useState<(Commande & { lignes: LigneCommande[] }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [waSentLocal, setWaSentLocal] = useState<{ type: string, date: string }[]>([]);
 
   useEffect(() => {
     getCommandeWithLines(commandeId)
-      .then(setCommande)
+      .then(cmd => {
+        setCommande(cmd);
+        setWaSentLocal(cmd.wa_sent || []);
+      })
       .finally(() => setLoading(false));
   }, [commandeId]);
 
@@ -58,6 +62,22 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
     }
   };
 
+  const handleReactivateFailed = async () => {
+    if (!commande) return;
+    if (!window.confirm("Voulez-vous vraiment réactiver cette commande échouée ?")) return;
+    setIsUpdating(true);
+    try {
+      await reactivateFailedCommande(commande.id);
+      showToast("Commande réactivée (renvoyée en attente appel).", "success");
+      onClose();
+    } catch (error) {
+       console.error(error);
+       showToast("Erreur lors de la réactivation.", "error");
+    } finally {
+       setIsUpdating(false);
+    }
+  };
+
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [returnMotif, setReturnMotif] = useState('');
   const [returnSolution, setReturnSolution] = useState('RETOUR DIRECT STOCK');
@@ -80,20 +100,65 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
     }
   };
 
-  const handleReactivateFailed = async () => {
-    if (!commande) return;
-    if (!window.confirm("Voulez-vous vraiment réactiver cette commande échouée ?")) return;
-    setIsUpdating(true);
-    try {
-      await reactivateFailedCommande(commande.id);
-      showToast("Commande réactivée (renvoyée en attente appel).", "success");
-      onClose();
-    } catch (error) {
-       console.error(error);
-       showToast("Erreur lors de la réactivation.", "error");
-    } finally {
-       setIsUpdating(false);
+  const generateWhatsAppLink = () => {
+    if (!commande) return "";
+    const nom = `*${commande.nom_client || 'Client'}*`;
+    const ref = `*#${commande.id.slice(0, 8).toUpperCase()}*`;
+    const articlesList = (commande.lignes || []).map((l: LigneCommande) => ` - *${l.quantite}x ${l.nom_produit}*`).join('\n');
+    const subtotal = (commande.lignes || []).reduce((acc: number, l: LigneCommande) => acc + (l.montant_ligne || 0), 0);
+    const delivery = Number(commande.frais_livraison) || 0;
+    const total = subtotal + delivery;
+
+    const bSubtotal = `*${subtotal.toLocaleString()} CFA*`;
+    const bDelivery = `*${delivery > 0 ? delivery.toLocaleString() + " CFA" : "À définir"}*`;
+    const bTotal = `*${total.toLocaleString()} CFA*`;
+
+    const summary = `\n\n*Résumé de votre commande :*\n${articlesList}\n\n- Articles : ${bSubtotal}\n- Livraison : ${bDelivery}\n*Total à payer : ${bTotal}*`;
+
+    let text = "";
+    const status = commande.statut_commande.toLowerCase();
+
+    if (['a_rappeler', 'absent', 'injoignable'].includes(status)) {
+      text = `Bonjour ${nom},\n\nNous n'avons pas pu effectuer votre livraison car nous n'avons pas pu vous joindre (soit par défaut du livreur ou votre contretemps).\n\nPouvons-nous s'il vous plaît relancer votre commande ${ref} pour le jour suivant ?${summary}`;
+    } else if (status === 'annulee') {
+      text = `Bonjour ${nom},\n\nNous avons pris note de l'annulation de votre commande ${ref}.\n\nPourriez-vous nous indiquer les motifs de cette annulation s'il vous plaît ? Souhaitez-vous vraiment maintenir l'annulation ?${summary}`;
+    } else if (['echouee', 'retour_livreur'].includes(status)) {
+      text = `Bonjour ${nom},\n\nNous avons constaté un souci lors de la livraison de votre commande ${ref}.\n\nSouhaitez-vous que nous la reprogrammions pour demain ? Nous aimerions savoir si vous êtes toujours intéressé par vos articles :${summary}`;
+    } else if (['livree', 'terminee'].includes(status)) {
+      text = `Bonjour ${nom},\n\nVotre commande ${ref} a bien été livrée. Nous vous remercions de votre confiance !${summary}\n\nÀ très bientôt pour vos prochains achats.`;
+    } else {
+      text = `Bonjour ${nom},\n\nVotre commande ${ref} est bien enregistrée chez nous.\nSouhaitez-vous confirmer la livraison ?${summary}\n\nMerci de nous répondre pour confirmer la livraison.`;
     }
+    
+    const signature = "\n\n*L'équipe Jachete Côte d'Ivoire*\nwww.jachete.ci\n+225 01 72 57 13 52 ,";
+    text += signature;
+    
+    let phone = (commande.telephone_client || '').replace(/\D/g, '');
+    if (phone.length === 10) phone = '225' + phone;
+    
+    return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+  };
+
+  const handleWhatsAppClick = async (type: string) => {
+    if (!commande) return;
+    try {
+      await logWhatsAppMessage(commande.id, type);
+      setWaSentLocal(prev => [...prev, { type, date: new Date().toISOString() }]);
+    } catch (err) {
+      console.error("Erreur log WA:", err);
+    }
+  };
+
+  const isWASent = (type: string) => waSentLocal.some(s => s.type === type);
+
+  const getWAType = () => {
+    if (!commande) return 'validation';
+    const status = commande.statut_commande.toLowerCase();
+    if (['a_rappeler', 'absent', 'injoignable'].includes(status)) return 'relance';
+    if (status === 'annulee') return 'annulation';
+    if (['echouee', 'retour_livreur'].includes(status)) return 'echec';
+    if (['livree', 'terminee'].includes(status)) return 'cloture';
+    return 'validation';
   };
 
   if (loading) {
@@ -109,12 +174,11 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
 
   if (!commande) return null;
 
-  const subtotal = (commande.lignes || []).reduce((acc, l) => acc + (l.montant_ligne || 0), 0);
+  const subtotal = (commande.lignes || []).reduce((acc: number, l: LigneCommande) => acc + (l.montant_ligne || 0), 0);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-content card" style={{ maxWidth: '750px', padding: '0', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-        {/* Header Section */}
         <div style={{ padding: '2rem', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', color: 'white', position: 'relative' }}>
           <button 
             onClick={onClose} 
@@ -128,23 +192,52 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
               <Receipt size={24} color="#818cf8" />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Commande #{commande.id.slice(0, 8).toUpperCase()}</h2>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Commande #{(commande.id || '').slice(0, 8).toUpperCase()}</h2>
               <p style={{ margin: 0, opacity: 0.7, fontSize: '0.9rem', fontWeight: 500 }}>Statut actuel: <span style={{ color: '#818cf8', fontWeight: 700 }}>{commande.statut_commande.replace(/_/g, ' ')}</span></p>
             </div>
           </div>
         </div>
 
         <div style={{ padding: '2rem', display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
-          {/* Top Info Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-             {/* Client Info */}
              <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
                 <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0', fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>
                   <User size={16} /> Client
                 </h4>
                 <div style={{ fontWeight: 800, fontSize: '1.2rem', marginBottom: '0.5rem' }}>{commande.nom_client}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>
-                   <Phone size={14} /> {commande.telephone_client}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                      <Phone size={14} /> {commande.telephone_client}
+                   </div>
+                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                    <a 
+                      href={generateWhatsAppLink()} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      onClick={() => handleWhatsAppClick(getWAType())}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.4rem', 
+                        padding: '0.3rem 0.7rem', 
+                        background: '#25D366', 
+                        color: 'white', 
+                        borderRadius: '8px', 
+                        fontSize: '0.75rem', 
+                        fontWeight: 700, 
+                        textDecoration: 'none',
+                        opacity: isWASent(getWAType()) ? 0.7 : 1
+                      }}
+                    >
+                      <MessageCircle size={14} fill="currentColor" /> 
+                      {isWASent(getWAType()) ? 'Déjà envoyé' : 'WhatsApp'}
+                    </a>
+                    {isWASent(getWAType()) && (
+                      <span style={{ fontSize: '0.6rem', color: '#059669', fontWeight: 700 }}>
+                        {new Date(waSentLocal.find(s => s.type === getWAType())?.date || '').toLocaleDateString()}
+                      </span>
+                    )}
+                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'start', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
                    <MapPin size={16} style={{ marginTop: '0.1rem' }} /> 
@@ -152,7 +245,6 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
                 </div>
              </div>
 
-             {/* Logistic Info */}
              <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
                 <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0', fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>
                   <ShoppingBag size={16} /> Logistique
@@ -170,13 +262,12 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
              </div>
           </div>
 
-          {/* Items Table-like Section */}
           <div>
             <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>
               <Receipt size={18} /> Détails de la facture
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
-              {commande.lignes.map((l, idx) => (
+              {(commande.lignes || []).map((l: LigneCommande, idx: number) => (
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'white', border: '1px solid #f1f5f9', borderRadius: '12px' }}>
                   <div style={{ fontWeight: 700 }}>{l.nom_produit} <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>x{l.quantite}</span></div>
                   <div style={{ fontWeight: 800 }}>{l.montant_ligne?.toLocaleString()} F</div>
@@ -184,7 +275,6 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
               ))}
             </div>
 
-            {/* Financial Summary */}
             <div style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
               <div>
                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Sous-total</div>
@@ -202,7 +292,6 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
           </div>
         </div>
 
-        {/* Footer actions */}
         <div style={{ padding: '1.5rem 2rem', background: '#f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', gap: '10px' }}>
             {!['livree', 'terminee', 'annulee', 'retour_client'].includes(commande.statut_commande?.toLowerCase()) && (
