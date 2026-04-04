@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getFinancialData, getTopSellingProducts } from '../services/commandeService';
-import { getDepenses, calculateProfitMetrics, generateTimeSeriesData } from '../services/financialService';
+import { getDepenses, calculateProfitMetrics, generateTimeSeriesData, getHourlyDistribution } from '../services/financialService';
 import { exportToExcel, exportToWord, exportToJson } from '../services/exportService';
 import { generateAuditReportPDF } from '../services/pdfService';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
@@ -15,7 +15,8 @@ import {
   Briefcase,
   Layers,
   TrendingUp,
-  FileCode
+  FileCode,
+  Clock
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -36,6 +37,7 @@ export const AuditTresorerie = () => {
   
   const [financials, setFinancials] = useState<any>(null);
   const [chartData, setChartData] = useState<any[]>([]);
+  const [hourlyData, setHourlyData] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
 
@@ -78,6 +80,7 @@ export const AuditTresorerie = () => {
 
       setFinancials(metrics);
       setChartData(timeseries);
+      setHourlyData(getHourlyDistribution(orders));
       setTransactions(combinedTransactions);
       setTopProducts(top);
     } catch (err) {
@@ -339,6 +342,26 @@ export const AuditTresorerie = () => {
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
+              </div>
+
+              {/* NEW: HOURLY DISTRIBUTION (LA STORY DU JOUR) */}
+              <div className="card" style={{ padding: '2rem' }}>
+                <h3 style={{ margin: '0 0 1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                   <Clock size={20} color="var(--primary)" /> Analyse de "L'Heure d'Or" (Pics de Vente)
+                </h3>
+                <div style={{ width: '100%', height: '200px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={hourlyData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="hour" axisLine={false} tickLine={false} tick={{ fontSize: 10 }} />
+                      <Tooltip />
+                      <Area type="stepAfter" dataKey="count" stroke="var(--primary)" fill="var(--primary-light)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '1rem', fontWeight: 600 }}>
+                  💡 Astuce : Concentrez vos appels de confirmation 1h avant les pics de vente pour maximiser le taux de succès.
+                </p>
               </div>
 
               {/* Recommendations Section */}

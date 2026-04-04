@@ -36,6 +36,7 @@ export interface ProfitStats {
   frais_livraison_total: number;
   depenses_fixes_total: number;
   profit_net: number;
+  taux_succes: number;
   marge_brute_percent: number;
   marge_nette_percent: number;
 }
@@ -112,12 +113,17 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
   const marge_brute_percent = ca_produits > 0 ? Math.round((marge_brute / ca_produits) * 100) : 0;
   const marge_nette_percent = ca_produits > 0 ? Math.round((profit_net / ca_produits) * 100) : 0;
 
+  // Global success rate for the orders in this period
+  const totalRelevant = (commandes || []).filter(c => ['livree', 'terminee', 'retour_livreur', 'retour_stock', 'echouee'].includes(c.statut_commande?.toLowerCase())).length;
+  const taux_succes = totalRelevant > 0 ? Math.round((terminalCmds.length / totalRelevant) * 100) : 0;
+
   return {
     ca_brut,
     cogs_total,
     frais_livraison_total,
     depenses_fixes_total,
     profit_net,
+    taux_succes,
     marge_brute_percent,
     marge_nette_percent
   };
@@ -205,4 +211,15 @@ export const calculateProductROI = (commandes: (Commande & { lignes?: LigneComma
     p.roi_percent = p.cogs > 0 ? Math.round((p.profit_net / p.cogs) * 100) : 0;
     return p;
   }).sort((a, b) => b.profit_net - a.profit_net);
+};
+
+export const getHourlyDistribution = (commandes: Commande[]) => {
+  const hours = Array(24).fill(0);
+  (commandes || []).forEach(c => {
+    const date = new Date(c.date_creation);
+    if (!isNaN(date.getTime())) {
+      hours[date.getHours()]++;
+    }
+  });
+  return hours.map((count, hr) => ({ hour: hr, count }));
 };

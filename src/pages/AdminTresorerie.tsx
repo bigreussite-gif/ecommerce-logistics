@@ -14,7 +14,8 @@ import {
   Package,
   AlertCircle,
   CheckCircle,
-  BarChart2
+  BarChart2,
+  Zap
 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 
@@ -96,6 +97,19 @@ export const AdminTresorerie = () => {
     const totalAttendu = data.retours.reduce((acc, r) => acc + (r.montant_attendu || 0), 0);
     return { totalEcart, totalRemis, totalAttendu };
   }, [data.retours]);
+
+  // AI Health Score Calculation
+  const healthScore = useMemo(() => {
+    if (!metrics.ca_brut) return 0;
+    
+    // Components (0-100 each)
+    const marginScore = Math.min(100, (metrics.marge_nette_percent / 25) * 100); // 25% is goal
+    const successScore = metrics.taux_succes * 1.25; // 80% is 100
+    const liquidityScore = cashStats.totalEcart >= 0 ? 100 : Math.max(0, 100 - (Math.abs(cashStats.totalEcart) / (metrics.profit_net || 1) * 100));
+
+    const total = (marginScore * 0.4) + (successScore * 0.4) + (liquidityScore * 0.2);
+    return Math.round(Math.min(100, Math.max(0, total)));
+  }, [metrics, cashStats]);
 
   // Cash Flow Logic
   const transactions: Transaction[] = useMemo(() => [
@@ -333,6 +347,55 @@ export const AdminTresorerie = () => {
             <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', marginTop: '1rem', overflow: 'hidden' }}>
               <div style={{ width: `${Math.min(100, (cashStats.totalRemis / (cashStats.totalAttendu || 1)) * 100)}%`, height: '100%', background: '#6366f1' }}></div>
             </div>
+          </div>
+        </div>
+
+        {/* AI HEALTH SCORE BANNER */}
+        <div className="card glass-effect" style={{ 
+          background: 'linear-gradient(90deg, #1e293b 0%, #334155 100%)', 
+          border: 'none', 
+          padding: '1.5rem 2.5rem', 
+          marginBottom: '2.5rem',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          color: 'white',
+          borderRadius: '24px',
+          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+        }}>
+          <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+            <div style={{ 
+              width: '80px', height: '80px', borderRadius: '50%', border: '6px solid rgba(255,255,255,0.1)', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative'
+            }}>
+              <div style={{ 
+                position: 'absolute', inset: '-6px', borderRadius: '50%', 
+                border: '6px solid #10b981', 
+                clipPath: `inset(0 ${100 - healthScore}% 0 0)`,
+                transition: 'clip-path 1.5s ease-out'
+              }} />
+              <span style={{ fontSize: '1.8rem', fontWeight: 950 }}>{healthScore}</span>
+            </div>
+            <div>
+               <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                 Score de Santé Financière <Zap size={20} color="#fbbf24" fill="#fbbf24" />
+               </h3>
+               <p style={{ margin: '0.2rem 0 0', opacity: 0.7, fontWeight: 600 }}>
+                 {healthScore > 80 ? "🚀 Performance excellente. Capacité d'investissement élevée." : 
+                  healthScore > 50 ? "📈 Santé stable. Surveillez vos marges opérationnelles." : 
+                  "⚠️ Vigilance requise. Vérifiez vos écarts de caisse et frais logistiques."}
+               </p>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '3rem' }}>
+             <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#10b981' }}>{metrics.taux_succes}%</div>
+                <div style={{ fontSize: '0.7rem', opacity: 0.6, fontWeight: 800, textTransform: 'uppercase' }}>Efficacité</div>
+             </div>
+             <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fbbf24' }}>{metrics.marge_nette_percent}%</div>
+                <div style={{ fontSize: '0.7rem', opacity: 0.6, fontWeight: 800, textTransform: 'uppercase' }}>Rentabilité</div>
+             </div>
           </div>
         </div>
 
