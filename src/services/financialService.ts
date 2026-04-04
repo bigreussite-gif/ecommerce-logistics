@@ -49,6 +49,18 @@ export interface LogisticalStats {
   taux_succes: number;
 }
 
+export interface ProductROI {
+  id: string;
+  nom: string;
+  ventes_reussies: number;
+  echecs: number;
+  ca_produits: number;
+  cogs: number;
+  frais_perte_livraison: number;
+  profit_net: number;
+  roi_percent: number;
+}
+
 export const calculateLogisticalStats = (commandes: Commande[]): LogisticalStats => {
   const filtered = (commandes || []);
   
@@ -147,4 +159,50 @@ export const generateTimeSeriesData = (commandes: (Commande & { lignes?: LigneCo
   });
 
   return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
+};
+
+export const calculateProductROI = (commandes: (Commande & { lignes?: LigneCommande[] })[]): ProductROI[] => {
+  const productMap: { [id: string]: ProductROI } = {};
+
+  (commandes || []).forEach(c => {
+    const s = c.statut_commande?.toLowerCase();
+    const isSuccess = ['livree', 'terminee'].includes(s);
+    const isFailure = ['echouee', 'retour_livreur', 'retour_stock'].includes(s);
+
+    if (c.lignes) {
+      c.lignes.forEach(l => {
+        if (!productMap[l.produit_id]) {
+          productMap[l.produit_id] = {
+            id: l.produit_id,
+            nom: l.nom_produit,
+            ventes_reussies: 0,
+            echecs: 0,
+            ca_produits: 0,
+            cogs: 0,
+            frais_perte_livraison: 0,
+            profit_net: 0,
+            roi_percent: 0
+          };
+        }
+
+        const p = productMap[l.produit_id];
+        if (isSuccess) {
+          p.ventes_reussies += l.quantite;
+          p.ca_produits += (l.quantite * l.prix_unitaire);
+          p.cogs += (l.quantite * (l.prix_achat_unitaire || 0));
+        } else if (isFailure) {
+          p.echecs += l.quantite;
+          // Loss estimate: if it failed, we likely paid delivery estimated at 1000 CFA or the order's delivery fee
+          const shareOfFrais = (Number(c.frais_livraison) || 1000) / (c.lignes?.length || 1);
+          p.frais_perte_livraison += Math.round(shareOfFrais);
+        }
+      });
+    }
+  });
+
+  return Object.values(productMap).map(p => {
+    p.profit_net = p.ca_produits - p.cogs - p.frais_perte_livraison;
+    p.roi_percent = p.cogs > 0 ? Math.round((p.profit_net / p.cogs) * 100) : 0;
+    return p;
+  }).sort((a, b) => b.profit_net - a.profit_net);
 };
