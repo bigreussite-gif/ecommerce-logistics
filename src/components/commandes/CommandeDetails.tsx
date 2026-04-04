@@ -60,13 +60,16 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
 
   const [showReturnForm, setShowReturnForm] = useState(false);
   const [returnMotif, setReturnMotif] = useState('');
+  const [returnSolution, setReturnSolution] = useState('RETOUR DIRECT STOCK');
+  const [returnNotes, setReturnNotes] = useState('');
   const [isDefective, setIsDefective] = useState(false);
 
   const handleReturnOrder = async () => {
     if (!commande || !returnMotif) return;
     setIsUpdating(true);
     try {
-      await registerReturn(commande.id, returnMotif, isDefective);
+      const etat = isDefective ? 'DEFAILLANT' : 'REUTILISABLE';
+      await registerReturn(commande.id, returnMotif, returnSolution, returnNotes, etat);
       showToast("Retour enregistré avec succès.", "success");
       onClose();
     } catch (error) {
@@ -258,23 +261,47 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
               <label className="form-label" style={{ fontWeight: 800 }}>Motif du retour</label>
               <textarea 
                 className="form-input" 
-                rows={3} 
+                rows={2} 
                 value={returnMotif} 
                 onChange={e => setReturnMotif(e.target.value)}
-                placeholder="Ex: Client pas satisfait, ne correspond pas..."
+                placeholder="Ex: Client pas satisfait..."
                 style={{ borderRadius: '16px', background: '#f8fafc', padding: '1rem' }}
                 required
               />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem', background: '#fef2f2', borderRadius: '16px', border: '1px solid #fee2e2' }}>
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label className="form-label" style={{ fontWeight: 800 }}>Solution appliquée</label>
+              <select 
+                className="form-select" 
+                value={returnSolution} 
+                onChange={e => setReturnSolution(e.target.value)}
+                style={{ borderRadius: '16px', background: '#f8fafc', padding: '0.75rem 1rem' }}
+              >
+                <option value="RETOUR DIRECT STOCK">Retour Direct Stock</option>
+                <option value="ECHANGE ARTICLE">Échange Article</option>
+                <option value="REMBOURSEMENT">Remboursement</option>
+                <option value="AVOIR CLIENT">Avoir Client</option>
+              </select>
+            </div>
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label className="form-label" style={{ fontWeight: 800 }}>Notes additionnelles</label>
+              <input 
+                className="form-input" 
+                value={returnNotes} 
+                onChange={e => setReturnNotes(e.target.value)}
+                placeholder="..."
+                style={{ borderRadius: '16px', background: '#f8fafc', padding: '1rem' }}
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.2rem', padding: '1rem', background: '#fef2f2', borderRadius: '16px', border: '1px solid #fee2e2' }}>
               <input 
                 type="checkbox" 
                 id="isDefective" 
                 checked={isDefective} 
                 onChange={e => setIsDefective(e.target.checked)}
-                style={{ width: '24px', height: '24px', cursor: 'pointer' }}
+                style={{ width: '22px', height: '22px', cursor: 'pointer' }}
               />
-              <label htmlFor="isDefective" style={{ fontWeight: 800, color: '#ef4444', cursor: 'pointer', fontSize: '0.9rem' }}>
+              <label htmlFor="isDefective" style={{ fontWeight: 800, color: '#ef4444', cursor: 'pointer', fontSize: '0.85rem' }}>
                 PRODUIT DÉFAILLANT (Pertes)<br/>
                 <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.8 }}>Sera retiré du stock actif</span>
               </label>
