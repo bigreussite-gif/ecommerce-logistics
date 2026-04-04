@@ -139,6 +139,10 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
         payload.date_validation_appel = new Date();
       }
 
+      if (resultat === 'annulee') {
+        payload.notes = `[ANNULATION APPEL] Motif: ${commentaire}${commande.notes ? "\n--- Notes Précédentes ---\n" + commande.notes : ""}`;
+      }
+
       await updateCommandeStatus(commande.id, nextStatusMap[resultat], payload);
       onSave();
     } catch (error) {
@@ -352,13 +356,15 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
           </div>
 
           <div className="form-group">
-            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem' }}>Note d'appel</label>
+            <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem' }}>
+              {resultat === 'annulee' ? "Motif de l'annulation" : "Note d'appel"}
+            </label>
             <textarea 
               className="form-input" 
               rows={2}
               required
-              style={{ background: '#f8fafc', borderRadius: '12px', padding: '0.75rem' }}
-              placeholder="Ex: Client confirmé, livraison OK pour demain matin..."
+              style={{ background: resultat === 'annulee' ? '#fff1f2' : '#f8fafc', borderRadius: '12px', padding: '0.75rem', border: resultat === 'annulee' ? '1px solid #fecaca' : '1px solid #e2e8f0' }}
+              placeholder={resultat === 'annulee' ? "Indiquez clairement pourquoi le client annule..." : "Ex: Client confirmé, livraison OK pour demain matin..."}
               value={commentaire}
               onChange={e => setCommentaire(e.target.value)}
             />

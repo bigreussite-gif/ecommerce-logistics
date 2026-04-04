@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, ShoppingBag, User, MapPin, Receipt, Phone } from 'lucide-react';
-import { getCommandeWithLines } from '../../services/commandeService';
+import { getCommandeWithLines, updateCommandeStatus } from '../../services/commandeService';
+import { useToast } from '../../contexts/ToastContext';
 import type { Commande, LigneCommande } from '../../types';
 
 interface CommandeDetailsProps {
@@ -9,14 +10,35 @@ interface CommandeDetailsProps {
 }
 
 export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) => {
+  const { showToast } = useToast();
   const [commande, setCommande] = useState<(Commande & { lignes: LigneCommande[] }) | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     getCommandeWithLines(commandeId)
       .then(setCommande)
       .finally(() => setLoading(false));
   }, [commandeId]);
+
+  const handleCancelOrder = async () => {
+    if (!commande) return;
+    const motif = window.prompt("Veuillez saisir le motif de l'annulation :");
+    if (!motif) return;
+
+    setIsUpdating(true);
+    try {
+      const updatedNotes = `[ANNULATION] Motif: ${motif}${commande.notes ? "\n--- Notes Précédentes ---\n" + commande.notes : ""}`;
+      await updateCommandeStatus(commande.id, 'annulee', { notes: updatedNotes });
+      showToast("Commande annulée avec motif enregistré.", "success");
+      onClose();
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de l'annulation.", "error");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -131,8 +153,22 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
         </div>
 
         {/* Footer actions */}
-        <div style={{ padding: '1.5rem 2rem', background: '#f1f5f9', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-          <button className="btn btn-outline" onClick={onClose} style={{ borderRadius: '12px', fontWeight: 700 }}>Fermer</button>
+        <div style={{ padding: '1.5rem 2rem', background: '#f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            {!['livree', 'terminee', 'annulee'].includes(commande.statut_commande?.toLowerCase()) && (
+              <button 
+                className="btn btn-danger" 
+                onClick={handleCancelOrder} 
+                disabled={isUpdating}
+                style={{ borderRadius: '12px', fontWeight: 700, background: '#fee2e2', color: '#991b1b', border: 'none' }}
+              >
+                {isUpdating ? 'Traitement...' : 'Annuler la Commande'}
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="btn btn-outline" onClick={onClose} style={{ borderRadius: '12px', fontWeight: 700 }}>Fermer</button>
+          </div>
         </div>
       </div>
     </div>
