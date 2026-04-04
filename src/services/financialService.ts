@@ -92,8 +92,15 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     return ['livree', 'terminee'].includes(s);
   });
   
+  // Failed orders cost us delivery fees (perte logistique)
+  const failedCmds = (commandes || []).filter(c => {
+    const s = c.statut_commande?.toLowerCase();
+    return ['echouee', 'retour_livreur'].includes(s);
+  });
+  
   const ca_brut = terminalCmds.reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
-  const frais_livraison_total = terminalCmds.reduce((acc, c) => acc + (Number(c.frais_livraison) || 0), 0);
+  const frais_livraison_reussis = terminalCmds.reduce((acc, c) => acc + (Number(c.frais_livraison) || 0), 0);
+  const pertes_livraison = failedCmds.reduce((acc, c) => acc + (Number(c.frais_livraison) || 1000), 0); // Defaut 1000 CFA if missing
   
   // Calculate COGS (Cost of Goods Sold)
   let cogs_total = 0;
@@ -107,23 +114,22 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
 
   const depenses_fixes_total = (depenses || []).reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
   
-  // Profit Net = (Revenue total - Frais Livraison) - COGS - Dépenses fixes
-  // Note: On soustrait les frais de livraison car ils sont reversés aux livreurs ou couvrent l'essence
-  const ca_produits = ca_brut - frais_livraison_total;
+  // Profit Net = (Revenue total - Frais Livraison) - COGS - Dépenses fixes - Pertes Logistiques
+  const ca_produits = ca_brut - frais_livraison_reussis;
   const marge_brute = ca_produits - cogs_total;
-  const profit_net = marge_brute - depenses_fixes_total;
+  const profit_net = marge_brute - depenses_fixes_total - pertes_livraison;
   
   const marge_brute_percent = ca_produits > 0 ? Math.round((marge_brute / ca_produits) * 100) : 0;
   const marge_nette_percent = ca_produits > 0 ? Math.round((profit_net / ca_produits) * 100) : 0;
 
-  // Global success rate for the orders in this period
+  // Global success rate
   const totalRelevant = (commandes || []).filter(c => ['livree', 'terminee', 'retour_livreur', 'retour_stock', 'echouee'].includes(c.statut_commande?.toLowerCase())).length;
   const taux_succes = totalRelevant > 0 ? Math.round((terminalCmds.length / totalRelevant) * 100) : 0;
 
   return {
     ca_brut,
     cogs_total,
-    frais_livraison_total,
+    frais_livraison_total: frais_livraison_reussis + pertes_livraison,
     depenses_fixes_total,
     profit_net,
     taux_succes,

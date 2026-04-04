@@ -24,6 +24,7 @@ const NetProfit = React.lazy(() => import('./pages/NetProfit').then(m => ({ defa
 const AdminTresorerie = React.lazy(() => import('./pages/AdminTresorerie').then(m => ({ default: m.AdminTresorerie })));
 const AuditTresorerie = React.lazy(() => import('./pages/AuditTresorerie').then(m => ({ default: m.AuditTresorerie })));
 const Retours = React.lazy(() => import('./pages/Retours').then(m => ({ default: m.Retours })));
+const Defaillants = React.lazy(() => import('./pages/Defaillants').then(m => ({ default: m.Defaillants })));
 
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '5rem' }}>
@@ -107,6 +108,10 @@ const AppRoutes = () => {
 
         <Route path="retours-rma" element={
           <ProtectedRoute requiredPermission="LOGISTIQUE"><Retours /></ProtectedRoute>
+        } />
+
+        <Route path="defaillants" element={
+          <ProtectedRoute requiredPermission="LOGISTIQUE"><Defaillants /></ProtectedRoute>
         } />
         
         {/* Module 5: Livraison */}

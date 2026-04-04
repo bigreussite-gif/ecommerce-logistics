@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentFeuilleRoute, getCommandesForFeuille, markCommandeLivre, markCommandeEchouee } from '../services/livraisonService';
 import type { Commande, FeuilleRoute } from '../types';
@@ -26,19 +26,24 @@ export const Livraison = () => {
   // Admin view
   const [allActiveFeuilles, setAllActiveFeuilles] = useState<FeuilleRoute[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedFeuilleId, setSelectedFeuilleId] = useState<string | null>(null);
 
-  const fetchData = async () => {
+  const fetchInitialData = useCallback(async () => {
     if (!currentUser) return;
     setLoading(true);
     try {
       if (currentUser.role === 'ADMIN' || currentUser.role === 'LOGISTIQUE') {
-        const active = await getFeuillesEnCours(''); // Empty string for all
+        const active = await getFeuillesEnCours(''); 
         setAllActiveFeuilles(active);
+        // Only set default if nothing selected yet
+        if (active.length > 0 && !selectedFeuilleId) {
+           setSelectedFeuilleId(active[0].id);
+        }
       } else {
-        const route = await getCurrentFeuilleRoute(currentUser.id);
-        if (route) {
-          setFeuille(route);
-          const cmds = await getCommandesForFeuille(route.id);
+        const currentLog = await getCurrentFeuilleRoute(currentUser.id);
+        setFeuille(currentLog);
+        if (currentLog) {
+          const cmds = await getCommandesForFeuille(currentLog.id);
           setCommandes(cmds);
         }
       }
@@ -47,11 +52,24 @@ export const Livraison = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]); // Note: DO NOT include selectedFeuilleId here to avoid loop
 
+  // Effect for initial loading
   useEffect(() => {
-    fetchData();
-  }, [currentUser]);
+    fetchInitialData();
+  }, [fetchInitialData]);
+
+  // Effect specifically for when selectedFeuilleId changes (Admin view)
+  useEffect(() => {
+    if (selectedFeuilleId && (currentUser?.role === 'ADMIN' || currentUser?.role === 'LOGISTIQUE')) {
+      getCommandesForFeuille(selectedFeuilleId)
+        .then(setCommandes)
+        .catch(console.error);
+      
+      const found = allActiveFeuilles.find(f => f.id === selectedFeuilleId);
+      if (found) setFeuille(found);
+    }
+  }, [selectedFeuilleId, currentUser, allActiveFeuilles]);
 
   const handleUpdate = async () => {
     if (!selectedCommande) return;
@@ -64,7 +82,7 @@ export const Livraison = () => {
         await markCommandeEchouee(selectedCommande.id, noteForm);
       }
       setSelectedCommande(null);
-      fetchData();
+      fetchInitialData();
     } catch (error) {
       console.error(error);
     } finally {

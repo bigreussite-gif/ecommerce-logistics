@@ -198,68 +198,58 @@ export const reactivateFailedCommande = async (id: string, notes?: string): Prom
   });
 };
 
-export const registerReturn = async (commandeId: string, motif: string, isDefective: boolean, notes?: string): Promise<void> => {
-  // 1. Get order details
-  const { data: cmd } = await insforge.database
+export const registerReturn = async (id: string, motif: string, solution: string, notes: string, etat_produit: string): Promise<void> => {
+  const { data: cmd, error: fetchErr } = await insforge.database
     .from('commandes')
-    .select('*, lines:lignes_commandes(*)')
-    .eq('id', commandeId)
+    .select('*, lignes:lignes_commandes(*)')
+    .eq('id', id)
     .single();
 
-  if (!cmd) throw new Error("Commande introuvable");
+  if (fetchErr || !cmd) throw new Error("Commande non trouvée");
 
-  // 2. Insert into retours table
-  const { error: returnErr } = await insforge.database
+  const productLine = cmd.lignes?.[0];
+  await insforge.database
     .from('retours')
     .insert([{
-      commande_id: commandeId,
+      commande_id: id,
       motif,
-      notes: isDefective ? `[DÉFAILLANT] ${notes || ''}` : notes,
-      statut: 'traite'
+      solution,
+      notes,
+      etat_produit,
+      produit_id: productLine?.produit_id,
+      quantite: productLine?.quantite || 1
     }]);
 
-  if (returnErr) throw returnErr;
-
-  // 3. Update order status
-  const finalNotes = `[RETOUR CLIENT] ${isDefective ? 'DÉFAILLANT' : 'NORMAL'} - Motif: ${motif}${cmd.notes ? "\n--- Notes Précédentes ---\n" + cmd.notes : ""}`;
-  
-  // Custom update to reverse financials if it was delivered
   const wasDelivered = ['livree', 'terminee'].includes(cmd.statut_commande?.toLowerCase());
-  const updateData: any = { 
-    statut_commande: 'retour_client', 
-    notes: finalNotes,
-    updated_at: new Date()
-  };
-
-  if (wasDelivered) {
-    updateData.montant_encaisse = 0; // Reverse revenue
-  }
-
+  const finalNotes = `[RETOUR CLIENT] ${etat_produit} - Motif: ${motif}. ${notes}${cmd.notes ? "\n---\n" + cmd.notes : ""}`;
+  
   const { error: updateErr } = await insforge.database
     .from('commandes')
-    .update(updateData)
-    .eq('id', commandeId);
+    .update({
+      statut_commande: 'retour_client',
+      notes: finalNotes,
+      montant_encaisse: wasDelivered ? 0 : cmd.montant_encaisse,
+      updated_at: new Date().toISOString()
+    } as any)
+    .eq('id', id);
 
   if (updateErr) throw updateErr;
 
-  // 4. Handle stock
-  if (cmd.lines && cmd.lines.length > 0) {
-    for (const l of cmd.lines) {
-      if (isDefective) {
-        // Log as loss or move to defective pool (just a special movement for now)
-        await addMouvementStock({
-          produit_id: l.produit_id,
-          type_mouvement: 'sortie', // Out of active stock even if returned
-          quantite: 0, // No net change to active stock but we log it
-          reference: `Article DÉFAILLANT (Cmd #${commandeId.slice(0,8)})`
-        } as any);
-      } else {
-        // Standard return to stock
+  if (cmd.lignes && cmd.lignes.length > 0) {
+    for (const l of cmd.lignes) {
+      if (etat_produit === 'REUTILISABLE') {
         await addMouvementStock({
           produit_id: l.produit_id,
           type_mouvement: 'entree',
           quantite: l.quantite,
-          reference: `Retour Client (Cmd #${commandeId.slice(0,8)})`
+          reference: `Retour au Stock Client (Cmd #${id.slice(0,8)})`
+        } as any);
+      } else {
+        await addMouvementStock({
+          produit_id: l.produit_id,
+          type_mouvement: 'sortie',
+          quantite: 0,
+          reference: `Article ${etat_produit} (Cmd #${id.slice(0,8)})`
         } as any);
       }
     }

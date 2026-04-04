@@ -52,12 +52,16 @@ export const createClient = async (client: Omit<Client, 'id'>): Promise<string> 
 };
 
 export const updateClient = async (id: string, updates: Partial<Client>): Promise<void> => {
-  // If we are changing the phone, we must check for collisions (UNIQUE constraint)
+  // If we are changing the phone, we must check for collisions (UNIQUE constraint) using normalization
   if (updates.telephone) {
-    const existing = await searchClientByPhone(updates.telephone);
+    const targetNorm = normalizePhone(updates.telephone);
+    
+    // We fetch all and find the collision manually to be sure about normalization consistency
+    const all = await getAllClients();
+    const existing = all.find(c => c.id !== id && normalizePhone(c.telephone) === targetNorm);
     
     // If a DIFFERENT client already has this phone number, we perform a STRATEGIC MERGE
-    if (existing && existing.id !== id) {
+    if (existing) {
       console.log(`🚀 Strategic Merge: Moving data from ${id} to ${existing.id} (colliding phone: ${updates.telephone})`);
       
       // 1. Relink all orders to the existing client
@@ -66,10 +70,7 @@ export const updateClient = async (id: string, updates: Partial<Client>): Promis
         .update({ client_id: existing.id })
         .eq('client_id', id);
         
-      // 2. Clear out redundant client
-      await deleteClient(id);
-      
-      // 3. Update the existing client with any other new info (nom, adresse, etc.)
+      // 2. Update the existing client with any other new info (nom, adresse, etc.)
       const { telephone, ...otherUpdates } = updates;
       if (Object.keys(otherUpdates).length > 0) {
         await insforge.database
@@ -77,6 +78,9 @@ export const updateClient = async (id: string, updates: Partial<Client>): Promis
           .update(otherUpdates)
           .eq('id', existing.id);
       }
+
+      // 3. Clear out redundant client
+      await deleteClient(id);
       return;
     }
   }
