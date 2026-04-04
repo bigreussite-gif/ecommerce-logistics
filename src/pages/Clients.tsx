@@ -10,11 +10,11 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 export const Clients = () => {
-  const [clients, setClients] = useState<(Client & ClientFidelityStats)[]>([]);
+  const [clients, setClients] = useState<(Client & ClientFidelityStats & { identities: string[], locations: string[] })[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [segmentFilter, setSegmentFilter] = useState('All');
-  const [selectedClient, setSelectedClient] = useState<{ client: Client & ClientFidelityStats, commandes: Commande[] } | null>(null);
+  const [selectedClient, setSelectedClient] = useState<{ client: Client & ClientFidelityStats & { identities: string[], locations: string[] }, commandes: Commande[] } | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export const Clients = () => {
     }
   };
 
-  const openClientDetails = async (client: Client & ClientFidelityStats) => {
+  const openClientDetails = async (client: Client & ClientFidelityStats & { identities: string[], locations: string[] }) => {
     try {
       const cmds = await getClientCommandes(client.id);
       cmds.sort((a, b) => new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime());
@@ -65,7 +65,7 @@ export const Clients = () => {
   };
 
   const filteredClients = clients.filter(c => {
-    const matchesSearch = c.nom_complet.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch = c.identities.some(id => id.toLowerCase().includes(searchTerm.toLowerCase())) || 
                          c.telephone.includes(searchTerm);
     const matchesSegment = segmentFilter === 'All' || c.segment === segmentFilter;
     return matchesSearch && matchesSegment;
@@ -171,16 +171,24 @@ export const Clients = () => {
               <tbody>
                 {loading ? (
                   <tr><td colSpan={5} style={{ textAlign: 'center', padding: '4rem' }}>Chargement...</td></tr>
-                ) : filteredClients.map((client: Client & ClientFidelityStats) => (
+                ) : filteredClients.map((client: Client & ClientFidelityStats & { identities: string[], locations: string[] }) => (
                   <tr key={client.id} onClick={() => openClientDetails(client)} style={{ cursor: 'pointer' }}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                         <div style={{ width: '42px', height: '42px', borderRadius: '14px', background: 'var(--bg-app)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, border: '1px solid #e2e8f0' }}>
+                         <div style={{ width: '42px', height: '42px', borderRadius: '14px', background: 'var(--bg-app)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, border: '1px solid #e2e8f0', position: 'relative' }}>
                            {client.nom_complet.charAt(0).toUpperCase()}
+                           {client.identities.length > 1 && (
+                             <div title={`${client.identities.length} noms utilisés`} style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#3b82f6', color: 'white', borderRadius: '50%', width: '18px', height: '18px', fontSize: '0.6rem', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid white' }}>
+                               {client.identities.length}
+                             </div>
+                           )}
                          </div>
                          <div>
                            <div style={{ fontWeight: 800, color: 'var(--text-main)' }}>{client.nom_complet}</div>
-                           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>{client.telephone}</div>
+                           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                              {client.telephone} 
+                              {client.locations.length > 0 && <span style={{ marginLeft: '0.5rem', opacity: 0.6 }}>({client.locations.join(', ')})</span>}
+                           </div>
                          </div>
                       </div>
                     </td>
@@ -226,13 +234,18 @@ export const Clients = () => {
                  <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 900 }}>
                     {selectedClient.client.nom_complet.charAt(0).toUpperCase()}
                  </div>
-                 <div>
-                   <h2 style={{ fontSize: '1.75rem', fontWeight: 900, margin: 0 }}>{selectedClient.client.nom_complet}</h2>
-                   <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                      <span className="badge badge-success">{selectedClient.client.segment}</span>
-                      <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>{selectedClient.client.telephone}</span>
-                   </div>
-                 </div>
+                  <div>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: 900, margin: 0 }}>{selectedClient.client.nom_complet}</h2>
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                       <span className="badge badge-success">{selectedClient.client.segment}</span>
+                       <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>ID Unique: {selectedClient.client.telephone}</span>
+                       {selectedClient.client.identities.length > 1 && (
+                         <span style={{ fontSize: '0.75rem', color: '#3b82f6', background: '#eff6ff', padding: '0.2rem 0.6rem', borderRadius: '8px', fontWeight: 800 }}>
+                           Aliases: {selectedClient.client.identities.filter(id => id !== selectedClient.client.nom_complet).join(', ')}
+                         </span>
+                       )}
+                    </div>
+                  </div>
                </div>
             </div>
 

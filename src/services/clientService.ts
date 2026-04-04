@@ -1,6 +1,14 @@
 import { Client, Commande } from '../types';
 import { insforge } from '../lib/insforge';
 
+export const normalizePhone = (phone: string): string => {
+  if (!phone) return '';
+  // Remove all non-numeric characters
+  const clean = phone.replace(/\D/g, '');
+  // Take last 10 digits (Standard for CI / West Africa)
+  return clean.slice(-10);
+};
+
 export const getAllClients = async (): Promise<Client[]> => {
   const { data, error } = await insforge.database
     .from('clients')
@@ -52,7 +60,7 @@ export interface ClientFidelityStats {
   segment: 'Diamant 💎' | 'Fidèle ✅' | 'À relancer ⚠️' | 'Nouveau 🆕';
 }
 
-export const getClientsWithIntelligence = async (): Promise<(Client & ClientFidelityStats)[]> => {
+export const getClientsWithIntelligence = async (): Promise<(Client & ClientFidelityStats & { identities: string[], locations: string[] })[]> => {
   const [clients, allOrdersResult] = await Promise.all([
     getAllClients(),
     insforge.database.from('commandes').select('*')
@@ -60,26 +68,47 @@ export const getClientsWithIntelligence = async (): Promise<(Client & ClientFide
 
   const orders = allOrdersResult.data || [];
 
-  // Group orders by client_id once (O(N) instead of O(N*M))
-  const ordersByClient: Record<string, Commande[]> = {};
-  orders.forEach(o => {
-    if (!ordersByClient[o.client_id]) ordersByClient[o.client_id] = [];
-    ordersByClient[o.client_id].push(o);
+  // Group clients by normalized phone
+  const clientsByPhone: Record<string, Client[]> = {};
+  clients.forEach(c => {
+    const norm = normalizePhone(c.telephone);
+    if (!clientsByPhone[norm]) clientsByPhone[norm] = [];
+    clientsByPhone[norm].push(c);
   });
 
-  return clients.map(client => {
-    const clientOrders = ordersByClient[client.id] || [];
+  // Group orders by normalized phone (via their clients)
+  const clientToPhoneMap: Record<string, string> = {};
+  clients.forEach(c => { clientToPhoneMap[c.id] = normalizePhone(c.telephone); });
+
+  const ordersByPhone: Record<string, Commande[]> = {};
+  orders.forEach(o => {
+    const phone = clientToPhoneMap[o.client_id];
+    if (phone) {
+      if (!ordersByPhone[phone]) ordersByPhone[phone] = [];
+      ordersByPhone[phone].push(o);
+    }
+  });
+
+  const uniqueIdentities = Object.keys(clientsByPhone).map(phone => {
+    const linkedClients = clientsByPhone[phone];
+    const clientOrders = ordersByPhone[phone] || [];
+    
+    // Aggregate metadata
+    const identities = Array.from(new Set(linkedClients.map(lc => lc.nom_complet)));
+    const locations = Array.from(new Set(linkedClients.map(lc => lc.commune).filter((c): c is string => !!c)));
+    
+    // Use the most recent or first client as the primary reference
+    const primaryClient = linkedClients[0];
+
     const total_brut = clientOrders.reduce((acc, o) => acc + (Number(o.montant_total) || 0), 0);
-    const settledOrders = clientOrders.filter(o => ['livree', 'terminee'].includes(o.statut_commande));
+    const settledOrders = clientOrders.filter(o => ['livree', 'terminee'].includes(o.statut_commande?.toLowerCase()));
     const total_encaisse = settledOrders.reduce((acc, o) => acc + (Number(o.montant_total) || 0), 0);
     const total_commandes = clientOrders.length;
     
-    // Segmentation logic based on SETTLED orders for loyalty, but also potential for recruitment
     let segment: any = 'Nouveau 🆕';
     if (settledOrders.length >= 5 || total_encaisse > 150000) segment = 'Diamant 💎';
     else if (settledOrders.length >= 2) segment = 'Fidèle ✅';
     
-    // Check for "At Risk" (last order > 60 days ago)
     const now = new Date();
     const lastOrderDate = settledOrders.length > 0 ? new Date(settledOrders[0].date_creation) : null;
     if (lastOrderDate && (now.getTime() - lastOrderDate.getTime()) > 60 * 24 * 60 * 60 * 1000) {
@@ -87,7 +116,9 @@ export const getClientsWithIntelligence = async (): Promise<(Client & ClientFide
     }
 
     return {
-      ...client,
+      ...primaryClient,
+      identities,
+      locations,
       total_commandes,
       total_brut,
       total_encaisse,
@@ -96,4 +127,6 @@ export const getClientsWithIntelligence = async (): Promise<(Client & ClientFide
       segment
     };
   });
+
+  return uniqueIdentities.sort((a, b) => b.total_commandes - a.total_commandes);
 };
