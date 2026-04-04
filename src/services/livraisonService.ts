@@ -17,7 +17,7 @@ export const getCurrentFeuilleRoute = async (livreurId: string): Promise<Feuille
 export const getCommandesForFeuille = async (feuilleRouteId: string): Promise<Commande[]> => {
   const { data, error } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone), lignes(*)')
+    .select('*, clients(nom_complet, telephone), lignes_commandes(*)')
     .eq('feuille_route_id', feuilleRouteId);
 
   if (error) throw error;
@@ -25,7 +25,8 @@ export const getCommandesForFeuille = async (feuilleRouteId: string): Promise<Co
   return (data || []).map((c: any) => ({
     ...c,
     nom_client: c.clients?.nom_complet,
-    telephone_client: c.clients?.telephone
+    telephone_client: c.clients?.telephone,
+    lignes: c.lignes_commandes || []
   }));
 };
 
