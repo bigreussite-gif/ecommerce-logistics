@@ -5,7 +5,7 @@ import { addMouvementStock } from './produitService';
 export const getFeuillesEnCours = async (livreurId?: string): Promise<FeuilleRoute[]> => {
   let query = insforge.database
     .from('feuilles_route')
-    .select('*, users:livreur_id(nom_complet)') // Correct relation to users table
+    .select('*, livreurs:livreur_id(nom)') // Join with livreurs table to get name
     .in('statut_feuille', ['en_cours', 'cloturee']);
 
   if (livreurId) {
@@ -18,14 +18,14 @@ export const getFeuillesEnCours = async (livreurId?: string): Promise<FeuilleRou
   // Transform to include nom_livreur directly
   return (data || []).map((f: any) => ({
     ...f,
-    nom_livreur: f.users?.nom_complet
+    nom_livreur: f.livreurs?.nom
   }));
 };
 
 export const getCloturedFeuilles = async (): Promise<FeuilleRoute[]> => {
   const { data, error } = await insforge.database
     .from('feuilles_route')
-    .select('*, livreurs:livreur_id(nom_complet)')
+    .select('*, livreurs:livreur_id(nom)')
     .eq('statut_feuille', 'terminee')
     .order('date', { ascending: false });
 
@@ -34,7 +34,7 @@ export const getCloturedFeuilles = async (): Promise<FeuilleRoute[]> => {
   // Transform to include nom_livreur directly
   return (data || []).map((f: any) => ({
     ...f,
-    nom_livreur: f.livreurs?.nom_complet
+    nom_livreur: f.livreurs?.nom
   }));
 };
 
