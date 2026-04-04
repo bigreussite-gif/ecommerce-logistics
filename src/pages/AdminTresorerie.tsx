@@ -144,7 +144,7 @@ export const AdminTresorerie = () => {
       date: new Date(o.date_livraison_effective || o.date_creation),
       type: 'Entrée' as const,
       categorie: 'Vente',
-      description: `Commande #${o.id.substring(0, 8).toUpperCase()} - ${o.nom_client}`,
+      description: `Commande #${o.id?.substring(0, 8).toUpperCase() || '...'} - ${o.nom_client}`,
       montant: (Number(o.montant_total) || 0) - (Number(o.frais_livraison) || 0)
     })),
     ...data.expenses.map(e => ({
@@ -571,7 +571,7 @@ export const AdminTresorerie = () => {
                 ) : data.retours.map(r => (
                   <tr key={r.id}>
                     <td style={{ fontSize: '0.8rem' }}>{format(new Date(r.date), 'dd/MM HH:mm')}</td>
-                    <td style={{ fontWeight: 700 }}>{r.livreur_id.slice(0, 8)}</td>
+                    <td style={{ fontWeight: 700 }}>{r.livreur_id?.slice(0, 8) || '...'}</td>
                     <td style={{ fontWeight: 600 }}>{r.montant_remis_par_livreur.toLocaleString()} F</td>
                     <td>{r.montant_attendu.toLocaleString()} F</td>
                     <td style={{ textAlign: 'right', fontWeight: 900, color: r.ecart < 0 ? '#ef4444' : '#10b981' }}>
@@ -604,7 +604,7 @@ export const AdminTresorerie = () => {
                  </div>
                  <div>
                     <h4 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900 }}>{p.nom}</h4>
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>ID: {p.id.slice(0,8)}</p>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>ID: {p.id?.slice(0,8) || '...'}</p>
                  </div>
                </div>
 
