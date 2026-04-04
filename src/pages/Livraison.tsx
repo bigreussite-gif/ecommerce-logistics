@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentFeuilleRoute, getCommandesForFeuille, markCommandeLivre, markCommandeEchouee } from '../services/livraisonService';
 import type { Commande, FeuilleRoute } from '../types';
@@ -74,7 +74,30 @@ export const Livraison = () => {
 
   if (loading && !selectedCommande) return <div style={{ padding: '2rem' }}>Chargement...</div>;
 
-  if (!feuille) {
+  const adminStats = useMemo(() => {
+    if (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'LOGISTIQUE') return null;
+    const totalObjectif = allActiveFeuilles.reduce((acc, f) => acc + (f.total_montant_theorique || 0), 0);
+    const totalCommandes = allActiveFeuilles.reduce((acc, f) => acc + (f.total_commandes || 0), 0);
+    const inProgress = allActiveFeuilles.filter(f => f.statut_feuille === 'en_cours').length;
+    const waitingCaisse = allActiveFeuilles.filter(f => f.statut_feuille === 'cloturee').length;
+    
+    return { totalObjectif, totalCommandes, inProgress, waitingCaisse };
+  }, [allActiveFeuilles, currentUser]);
+
+  const filteredFeuilles = useMemo(() => {
+    return allActiveFeuilles.filter(f => 
+      (f.nom_livreur || f.livreur_id || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [allActiveFeuilles, searchQuery]);
+
+  if (loading && !selectedCommande && !feuille && allActiveFeuilles.length === 0) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1.5rem', animation: 'pulse 2s infinite' }}>
+       <div className="loading-spinner"></div>
+       <p style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Initialisation du centre de contrôle logistique...</p>
+    </div>
+  );
+
+  if (!feuille && (currentUser?.role !== 'ADMIN' && currentUser?.role !== 'LOGISTIQUE')) {
     return (
       <div style={{ textAlign: 'center', padding: '8rem 2rem', animation: 'pageEnter 0.6s ease' }}>
         <div style={{ background: '#f8fafc', width: '80px', height: '80px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', color: '#cbd5e1' }}>
@@ -88,36 +111,68 @@ export const Livraison = () => {
     );
   }
 
-  const totalEncaiss = commandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande)).reduce((acc, c) => acc + (Number(c.montant_encaisse) || 0), 0);
-  const totalObjectif = Number(feuille.total_montant_theorique) || 0;
-  const progressPercent = commandes.length > 0 ? Math.round((commandes.filter(c => ['livree', 'retour_livreur', 'terminee'].includes(c.statut_commande)).length / commandes.length) * 100) : 0;
+  const totalEncaiss = commandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).reduce((acc, c) => acc + (Number(c.montant_encaisse) || 0), 0);
+  const totalObjectif = Number(feuille?.total_montant_theorique) || 0;
+  const progressPercent = commandes.length > 0 ? Math.round((commandes.filter(c => ['livree', 'retour_livreur', 'terminee'].includes(c.statut_commande?.toLowerCase())).length / commandes.length) * 100) : 0;
 
   if (currentUser?.role === 'ADMIN' || currentUser?.role === 'LOGISTIQUE') {
     return (
       <div style={{ animation: 'pageEnter 0.6s ease', paddingBottom: '4rem' }}>
-        <div style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
           <div>
             <h1 className="text-premium" style={{ fontSize: '2.4rem', fontWeight: 900, margin: 0 }}>Supervision Logistique</h1>
             <p style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '1rem', marginTop: '0.4rem' }}>
-              Suivi des tournées en temps réel ({allActiveFeuilles.length})
+              Pilotage des tournées et flux financiers en temps réel.
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', background: 'white', padding: '0.6rem 1.2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: 'var(--shadow-premium)' }}>
-             <Search size={20} color="#94a3b8" />
+          <div style={{ display: 'flex', gap: '1rem', background: 'white', padding: '0.8rem 1.5rem', borderRadius: '18px', border: '1px solid #e2e8f0', boxShadow: 'var(--shadow-premium)', width: '100%', maxWidth: '400px' }}>
+             <Search size={22} color="#94a3b8" />
              <input 
                type="text" 
-               placeholder="Rechercher un livreur..." 
-               style={{ border: 'none', outline: 'none', fontWeight: 600, fontSize: '0.9rem', width: '200px' }} 
+               placeholder="Rechercher un livreur ou un secteur..." 
+               style={{ border: 'none', outline: 'none', fontWeight: 600, fontSize: '1rem', width: '100%', background: 'transparent' }} 
                value={searchQuery}
                onChange={e => setSearchQuery(e.target.value)}
              />
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '2rem' }}>
-          {allActiveFeuilles
-            .filter(f => (f.nom_livreur || f.livreur_id).toLowerCase().includes(searchQuery.toLowerCase()))
-            .map(f => (
+        {/* ADMIN GLOBAL STATS */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
+          gap: '1.5rem', 
+          marginBottom: '3rem' 
+        }}>
+          {[
+            { label: 'Argent sur le terrain', value: adminStats?.totalObjectif?.toLocaleString() + ' F', color: 'var(--primary)', icon: <Truck size={24} /> },
+            { label: 'Colis en circulation', value: adminStats?.totalCommandes, color: '#6366f1', icon: <Eye size={24} /> },
+            { label: 'Tournées actives', value: adminStats?.inProgress, color: '#f59e0b', icon: <Clock size={24} /> },
+            { label: 'Prêt pour Caisse', value: adminStats?.waitingCaisse, color: '#10b981', icon: <CheckCircle size={24} /> }
+          ].map((item, idx) => (
+            <div key={idx} className="card glass-effect" style={{ padding: '1.5rem', borderRadius: '24px', border: '1px solid white', boxShadow: 'var(--shadow-premium)' }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                 <div style={{ background: `${item.color}15`, color: item.color, padding: '0.6rem', borderRadius: '12px' }}>{item.icon}</div>
+               </div>
+               <div style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '0.2rem' }}>{item.value}</div>
+               <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{item.label}</div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ marginBottom: '2rem' }}>
+           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+              <button className="badge" style={{ background: 'var(--primary)', color: 'white', padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.8rem', fontWeight: 800, border: 'none' }}>Toutes les tournées ({filteredFeuilles.length})</button>
+           </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '2rem' }}>
+          {filteredFeuilles.length === 0 ? (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '5rem', background: '#f8fafc', borderRadius: '32px', color: '#94a3b8' }}>
+               <Truck size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
+               <p style={{ fontWeight: 800 }}>Aucune tournée trouvée pour votre recherche.</p>
+            </div>
+          ) : filteredFeuilles.map(f => (
               <div 
                 key={f.id} 
                 className="card glass-effect" 
@@ -137,60 +192,141 @@ export const Livraison = () => {
                         <User size={20} />
                       </div>
                       <div>
-                        <h4 style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem' }}>{f.nom_livreur || `Livreur #${f.livreur_id.slice(0,5)}`}</h4>
-                        <div style={{ fontSize: '0.75rem', opacity: 0.8, display: 'flex', alignItems: 'center', gap: '0.50rem', marginTop: '0.1rem' }}>
-                           <Clock size={12} /> Route #{f.id.slice(-4).toUpperCase()}
+                        <h4 style={{ margin: 0, fontWeight: 900, fontSize: '1.2rem' }}>{f.nom_livreur || `Livreur #${f.livreur_id.slice(0,5)}`}</h4>
+                        <div style={{ fontSize: '0.8rem', opacity: 0.9, display: 'flex', alignItems: 'center', gap: '0.50rem', marginTop: '0.2rem', fontWeight: 600 }}>
+                           <Clock size={12} /> Route #{f.id.slice(-4).toUpperCase()} • {new Date(f.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
                         </div>
                       </div>
                     </div>
-                    <span className="badge" style={{ background: 'rgba(255,255,255,0.2)', color: 'white', fontSize: '0.7rem' }}>
-                      {f.statut_feuille === 'en_cours' ? 'Sur le terrain' : 'En attente caisse'}
+                    <span className="badge" style={{ background: f.statut_feuille === 'cloturee' ? '#10b981' : 'rgba(255,255,255,0.25)', color: 'white', fontSize: '0.75rem', padding: '0.4rem 0.8rem', borderRadius: '10px', fontWeight: 800 }}>
+                      {f.statut_feuille === 'en_cours' ? '🛵 Sur le terrain' : '💰 Prêt Caisse'}
                     </span>
                   </div>
                   
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '1.1rem' }}>
-                    <span>{f.total_montant_theorique.toLocaleString()} F</span>
-                    <span>{f.total_commandes} Colis</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 950, fontSize: '1.3rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                       <span style={{ fontSize: '0.7rem', opacity: 0.8, textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Objectif</span>
+                       <span>{f.total_montant_theorique.toLocaleString()} F</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                       <span style={{ fontSize: '0.7rem', opacity: 0.8, textTransform: 'uppercase', fontWeight: 800, marginBottom: '0.2rem' }}>Volume</span>
+                       <span>{f.total_commandes} Colis</span>
+                    </div>
                   </div>
                 </div>
 
                 <div style={{ padding: '1.5rem' }}>
-                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem' }}>
-                      {f.communes_couvertes.map(c => (
-                        <span key={c} style={{ background: '#f1f5f9', color: '#64748b', fontSize: '0.65rem', padding: '0.3rem 0.6rem', borderRadius: '6px', fontWeight: 800 }}>{c}</span>
-                      ))}
+                   <div style={{ marginBottom: f.communes_couvertes?.length > 0 ? '1.5rem' : '0.5rem' }}>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Zones d'activité</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                        {f.communes_couvertes?.map(c => (
+                          <span key={c} style={{ background: '#f1f5f9', color: '#1e293b', fontSize: '0.75rem', padding: '0.4rem 0.75rem', borderRadius: '10px', fontWeight: 800 }}>{c}</span>
+                        )) || <span style={{ color: '#cbd5e1', fontStyle: 'italic', fontSize: '0.8rem' }}>Aucune zone spécifiée</span>}
+                      </div>
                    </div>
-                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>Cliquer pour auditer la tournée</span>
-                      <ChevronRight size={20} color="#cbd5e1" />
+                   
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                         <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: f.statut_feuille === 'en_cours' ? '#f59e0b' : '#10b981' }}></div>
+                         <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>Audit temps réel</span>
+                      </div>
+                      <div style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                         Voir Détails <ChevronRight size={18} />
+                      </div>
                    </div>
                 </div>
               </div>
           ))}
         </div>
 
-        {/* Floating Detail View for Admin */}
+        {/* Floating Detail View for Admin - OVERHAULED */}
         {feuille && (
            <div style={{ 
-             position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 100, padding: '2rem', display: 'flex', justifyContent: 'center', overflow: 'auto', backdropFilter: 'blur(10px)'
+             position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)', zIndex: 1000, padding: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(12px)', animation: 'fadeIn 0.3s ease'
            }} onClick={() => setFeuille(null)}>
-              <div style={{ width: '100%', maxWidth: '900px', height: 'fit-content' }} onClick={e => e.stopPropagation()}>
-                <div style={{ background: 'white', borderRadius: '32px', padding: '2rem' }}>
-                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                      <h2 style={{ margin: 0, fontWeight: 900 }}>Tournée de {feuille.nom_livreur}</h2>
-                      <button className="btn btn-outline" onClick={() => setFeuille(null)}><XCircle /> Fermer</button>
-                   </div>
-                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-                      {commandes.map(c => (
-                        <div key={c.id} className="card" style={{ padding: '1rem', border: '1px solid #f1f5f9' }}>
-                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                              <span style={{ fontWeight: 800 }}>{c.nom_client}</span>
-                              <span className={`badge ${c.statut_commande === 'livree' ? 'badge-success' : 'badge-warning'}`} style={{ fontSize: '0.6rem' }}>{c.statut_commande}</span>
-                           </div>
-                           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{c.adresse_livraison}</div>
-                           <div style={{ marginTop: '1rem', fontWeight: 900 }}>{c.montant_total.toLocaleString()} F</div>
+              <div style={{ width: '100%', maxWidth: '1000px', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+                <div style={{ background: 'white', borderRadius: '32px', display: 'flex', flexDirection: 'column', height: '100%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+                   {/* Modal Header */}
+                   <div style={{ padding: '2rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', borderRadius: '32px 32px 0 0' }}>
+                      <div>
+                        <h2 style={{ margin: 0, fontWeight: 950, fontSize: '1.6rem', color: 'var(--text-main)' }}>Tournée de {feuille.nom_livreur}</h2>
+                        <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                           <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)' }}>#{feuille.id.slice(0, 8).toUpperCase()}</span>
+                           <span className="badge badge-primary">{commandes.length} commandes</span>
                         </div>
-                      ))}
+                      </div>
+                      <button 
+                        onClick={() => setFeuille(null)} 
+                        style={{ border: 'none', background: 'white', width: '44px', height: '44px', borderRadius: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', color: '#64748b' }}
+                      >
+                        <XCircle size={24} />
+                      </button>
+                   </div>
+
+                   {/* Modal Body */}
+                   <div style={{ padding: '2rem', overflowY: 'auto', flex: 1 }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem' }}>
+                        {commandes.map(c => {
+                          const status = c.statut_commande?.toLowerCase();
+                          const isDone = ['livree', 'terminee', 'echouee', 'retour_livreur', 'retour_stock'].includes(status);
+                          const isSuccess = ['livree', 'terminee'].includes(status);
+                          
+                          return (
+                            <div 
+                              key={c.id} 
+                              className="card" 
+                              style={{ 
+                                padding: '1.5rem', 
+                                border: '1px solid #f1f5f9',
+                                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)',
+                                transition: 'all 0.2s ease',
+                                cursor: 'pointer',
+                                position: 'relative'
+                              }}
+                              onClick={() => setSelectedViewOrderId(c.id)}
+                              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                            >
+                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                                  <div style={{ fontWeight: 900, color: 'var(--text-main)', fontSize: '1.05rem' }}>{c.nom_client}</div>
+                                  <span className={`badge ${isSuccess ? 'badge-success' : isDone ? 'badge-danger' : 'badge-warning'}`} style={{ fontSize: '0.7rem', fontWeight: 800 }}>
+                                    {status === 'livree' || status === 'terminee' ? 'LIVRÉE' : status?.replace(/_/g, ' ')?.toUpperCase()}
+                                  </span>
+                               </div>
+                               
+                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600 }}>
+                                  <MapPin size={14} /> {c.commune_livraison}
+                               </div>
+
+                               <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div style={{ fontSize: '1.1rem', fontWeight: 950, color: 'var(--primary)' }}>{Number(c.montant_total).toLocaleString()} F</div>
+                                  {isDone && (
+                                    <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)' }}>
+                                       {isSuccess ? '✅ ENCAISSÉ' : '❌ ÉCHEC'}
+                                    </div>
+                                  )}
+                               </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                   </div>
+
+                   {/* Modal Footer */}
+                   <div style={{ padding: '1.5rem 2rem', background: '#f8fafc', borderTop: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', borderRadius: '0 0 32px 32px' }}>
+                      <div style={{ display: 'flex', gap: '2rem' }}>
+                         <div>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Collecté</div>
+                            <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#10b981' }}>{commandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).reduce((acc, c) => acc + (c.montant_encaisse || c.montant_total), 0).toLocaleString()} F</div>
+                         </div>
+                         <div>
+                            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Taux Succès</div>
+                            <div style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--primary)' }}>
+                              {commandes.length > 0 ? Math.round((commandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).length / commandes.length) * 100) : 0}%
+                            </div>
+                         </div>
+                      </div>
+                      <button className="btn btn-primary" onClick={() => setFeuille(null)} style={{ padding: '0 2rem', borderRadius: '14px', height: '48px', fontWeight: 800 }}>Terminer l'Audit</button>
                    </div>
                 </div>
               </div>
