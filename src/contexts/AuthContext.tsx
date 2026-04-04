@@ -23,13 +23,13 @@ export const useAuth = () => useContext(AuthContext);
 
 // --- Role to Permission Mapping for Fallback ---
 const ROLE_PERMISSIONS: Record<Role, string[]> = {
-  ADMIN: ['DASHBOARD', 'PRODUITS', 'COMMANDES', 'CENTRE_APPEL', 'LOGISTIQUE', 'LIVREUR', 'CAISSE', 'CLIENTS', 'HISTORIQUE', 'ADMIN', 'FINANCE', 'PROFIL'],
-  GESTIONNAIRE: ['PRODUITS', 'COMMANDES', 'CLIENTS', 'PROFIL', 'COMMUNES', 'GESTION_LIVREURS', 'FINANCE'],
+  ADMIN: ['DASHBOARD', 'PRODUITS', 'COMMANDES', 'CENTRE_APPEL', 'LOGISTIQUE', 'LIVREUR', 'CAISSE', 'CLIENTS', 'HISTORIQUE', 'ADMIN', 'FINANCE', 'PROFIL', 'TRESORERIE', 'GESTION_LIVREURS'],
+  GESTIONNAIRE: ['PRODUITS', 'COMMANDES', 'CLIENTS', 'PROFIL', 'COMMUNES', 'GESTION_LIVREURS', 'FINANCE', 'TRESORERIE'],
   AGENT_APPEL: ['COMMANDES', 'CENTRE_APPEL', 'CLIENTS', 'PROFIL'],
-  AGENT_MIXTE: ['COMMANDES', 'CENTRE_APPEL', 'CLIENTS', 'CAISSE', 'FINANCE', 'PROFIL'],
-  LOGISTIQUE: ['COMMANDES', 'LOGISTIQUE', 'PROFIL'],
+  AGENT_MIXTE: ['COMMANDES', 'CENTRE_APPEL', 'CLIENTS', 'CAISSE', 'FINANCE', 'PROFIL', 'TRESORERIE'],
+  LOGISTIQUE: ['COMMANDES', 'LOGISTIQUE', 'PROFIL', 'RETORS-RMA'],
   LIVREUR: ['LIVREUR', 'PROFIL'],
-  CAISSIERE: ['CAISSE', 'FINANCE', 'PROFIL']
+  CAISSIERE: ['CAISSE', 'FINANCE', 'PROFIL', 'TRESORERIE']
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -139,14 +139,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const logout = async () => {
-    const { error } = await insforge.auth.signOut();
-    if (!error) {
-      setCurrentUser(null);
-      showToast("Déconnexion réussie.", "success");
-      window.location.href = '/login';
-    } else {
-      showToast("Erreur lors de la déconnexion.", "error");
+    try {
+      await insforge.auth.signOut();
+    } catch (e) {
+      console.error("SignOut error background:", e);
     }
+    // Definitive local logout
+    setCurrentUser(null);
+    localStorage.removeItem('insforge_auth_token'); // Clear cache
+    showToast("Déconnexion réussie.", "success");
+    window.location.href = '/login';
   };
 
   const hasPermission = (perms: string | string[]) => {

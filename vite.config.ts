@@ -9,6 +9,9 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
+            if (id.includes('recharts')) return 'charts';
+            if (id.includes('lucide-react')) return 'icons';
+            if (id.includes('date-fns')) return 'date-utils';
             return 'vendor';
           }
         }

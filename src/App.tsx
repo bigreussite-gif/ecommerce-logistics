@@ -4,26 +4,26 @@ import { ToastProvider } from './contexts/ToastContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Layout } from './components/layout/Layout';
 
-// --- Direct Imports to prevent Lazy Loading crashes on Vercel Delta ---
-import { Dashboard } from './pages/Dashboard';
-import { Produits } from './pages/Produits';
-import { Commandes } from './pages/Commandes';
-import { CentreAppel } from './pages/CentreAppel';
-import { Logistique } from './pages/Logistique';
-import { Livraison } from './pages/Livraison';
-import { Historique } from './pages/Historique';
-import { Caisse } from './pages/Caisse';
-import { Clients } from './pages/Clients';
-import { Admin } from './pages/Admin';
-import { Profil } from './pages/Profil';
-import { Login } from './pages/Login';
-import { FinancialReport } from './pages/FinancialReport';
-import { Home } from './pages/Home';
-import { StaffPerformance } from './pages/StaffPerformance';
-import { NetProfit } from './pages/NetProfit';
-import { AdminTresorerie } from './pages/AdminTresorerie';
-import { AuditTresorerie } from './pages/AuditTresorerie';
-import { Retours } from './pages/Retours';
+// --- Lazy Loading for Performance Optimization ---
+const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const Produits = React.lazy(() => import('./pages/Produits').then(m => ({ default: m.Produits })));
+const Commandes = React.lazy(() => import('./pages/Commandes').then(m => ({ default: m.Commandes })));
+const CentreAppel = React.lazy(() => import('./pages/CentreAppel').then(m => ({ default: m.CentreAppel })));
+const Logistique = React.lazy(() => import('./pages/Logistique').then(m => ({ default: m.Logistique })));
+const Livraison = React.lazy(() => import('./pages/Livraison').then(m => ({ default: m.Livraison })));
+const Historique = React.lazy(() => import('./pages/Historique').then(m => ({ default: m.Historique })));
+const Caisse = React.lazy(() => import('./pages/Caisse').then(m => ({ default: m.Caisse })));
+const Clients = React.lazy(() => import('./pages/Clients').then(m => ({ default: m.Clients })));
+const Admin = React.lazy(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
+const Profil = React.lazy(() => import('./pages/Profil').then(m => ({ default: m.Profil })));
+const Login = React.lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const FinancialReport = React.lazy(() => import('./pages/FinancialReport').then(m => ({ default: m.FinancialReport })));
+const Home = React.lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
+const StaffPerformance = React.lazy(() => import('./pages/StaffPerformance').then(m => ({ default: m.StaffPerformance })));
+const NetProfit = React.lazy(() => import('./pages/NetProfit').then(m => ({ default: m.NetProfit })));
+const AdminTresorerie = React.lazy(() => import('./pages/AdminTresorerie').then(m => ({ default: m.AdminTresorerie })));
+const AuditTresorerie = React.lazy(() => import('./pages/AuditTresorerie').then(m => ({ default: m.AuditTresorerie })));
+const Retours = React.lazy(() => import('./pages/Retours').then(m => ({ default: m.Retours })));
 
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '5rem' }}>
