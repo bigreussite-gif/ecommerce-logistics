@@ -2,13 +2,17 @@ import { Commande, FeuilleRoute } from '../types';
 import { insforge } from '../lib/insforge';
 import { addMouvementStock } from './produitService';
 
-export const getFeuillesEnCours = async (livreurId: string): Promise<FeuilleRoute[]> => {
-  const { data, error } = await insforge.database
+export const getFeuillesEnCours = async (livreurId?: string): Promise<FeuilleRoute[]> => {
+  let query = insforge.database
     .from('feuilles_route')
     .select('*')
-    .eq('livreur_id', livreurId)
     .in('statut_feuille', ['en_cours', 'cloturee']);
 
+  if (livreurId) {
+    query = query.eq('livreur_id', livreurId);
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
   return data || [];
 };

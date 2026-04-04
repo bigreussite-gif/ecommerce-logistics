@@ -31,8 +31,11 @@ export const Livraison = () => {
   const lastFetchedIdRef = useRef<string | null>(null);
   const isFetchingRef = useRef(false);
 
+  const currentUserId = currentUser?.id;
+  const currentUserRole = currentUser?.role;
+
   const fetchData = useCallback(async (forcedId?: string) => {
-    if (!currentUser || isFetchingRef.current) return;
+    if (!currentUserId || !currentUserRole || isFetchingRef.current) return;
     
     const targetId = forcedId || selectedFeuilleId;
     
@@ -42,8 +45,9 @@ export const Livraison = () => {
     isFetchingRef.current = true;
     setLoading(true);
     try {
-      if (currentUser.role === 'ADMIN' || currentUser.role === 'LOGISTIQUE') {
-        const active = await getFeuillesEnCours(''); 
+      if (currentUserRole === 'ADMIN' || currentUserRole === 'LOGISTIQUE') {
+        // Now calling with NO arguments to get ALL active routes for supervision
+        const active = await getFeuillesEnCours(); 
         setAllActiveFeuilles(active);
         
         let currentId = targetId;
@@ -62,7 +66,7 @@ export const Livraison = () => {
           if (found) setFeuille(found);
         }
       } else {
-        const currentLog = await getCurrentFeuilleRoute(currentUser.id);
+        const currentLog = await getCurrentFeuilleRoute(currentUserId);
         setFeuille(currentLog);
         if (currentLog) {
           const cmds = await getCommandesForFeuille(currentLog.id);
@@ -75,11 +79,11 @@ export const Livraison = () => {
       setLoading(false);
       isFetchingRef.current = false;
     }
-  }, [currentUser, selectedFeuilleId]);
+  }, [currentUserId, currentUserRole, selectedFeuilleId]); 
 
   useEffect(() => {
     fetchData();
-  }, [currentUser?.id, selectedFeuilleId, fetchData]); 
+  }, [currentUserId, currentUserRole, selectedFeuilleId, fetchData]); 
 
   const handleUpdate = async () => {
     if (!selectedCommande) return;
