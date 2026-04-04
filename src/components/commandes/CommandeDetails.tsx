@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ShoppingBag, User, MapPin, Receipt, Phone } from 'lucide-react';
+import { X, ShoppingBag, User, MapPin, Receipt, Phone, RefreshCw } from 'lucide-react';
 import { getCommandeWithLines, updateCommandeStatus } from '../../services/commandeService';
 import { useToast } from '../../contexts/ToastContext';
 import type { Commande, LigneCommande } from '../../types';
@@ -35,6 +35,24 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
     } catch (error) {
       console.error(error);
       showToast("Erreur lors de l'annulation.", "error");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleReactivateOrder = async () => {
+    if (!commande) return;
+    if (!window.confirm("Voulez-vous vraiment réactiver cette commande ?")) return;
+
+    setIsUpdating(true);
+    try {
+      const updatedNotes = `[RÉACTIVATION] Commande réactivée le ${new Date().toLocaleString()}${commande.notes ? "\n--- Notes ---\n" + commande.notes : ""}`;
+      await updateCommandeStatus(commande.id, 'en_attente_appel', { notes: updatedNotes });
+      showToast("Commande réactivée et renvoyée en attente d'appel.", "success");
+      onClose();
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de la réactivation.", "error");
     } finally {
       setIsUpdating(false);
     }
@@ -163,6 +181,16 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
                 style={{ borderRadius: '12px', fontWeight: 700, background: '#fee2e2', color: '#991b1b', border: 'none' }}
               >
                 {isUpdating ? 'Traitement...' : 'Annuler la Commande'}
+              </button>
+            )}
+            {commande.statut_commande?.toLowerCase() === 'annulee' && (
+              <button 
+                className="btn btn-primary" 
+                onClick={handleReactivateOrder} 
+                disabled={isUpdating}
+                style={{ borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                {isUpdating ? 'Traitement...' : <><RefreshCw size={18} /> Réactiver la Commande</>}
               </button>
             )}
           </div>
