@@ -39,6 +39,9 @@ export interface ProfitStats {
   taux_succes: number;
   marge_brute_percent: number;
   marge_nette_percent: number;
+  ads_spend?: number;
+  roas?: number;
+  cac?: number;
 }
 
 export interface LogisticalStats {
@@ -127,6 +130,77 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     marge_brute_percent,
     marge_nette_percent
   };
+};
+
+// IDEA 1: Marketing ROI Analysis
+export const calculateMarketingROI = (revenue: number, ads_spend: number, client_count: number) => {
+  const roas = ads_spend > 0 ? Number((revenue / ads_spend).toFixed(2)) : 0;
+  const cac = client_count > 0 ? Math.round(ads_spend / client_count) : 0;
+  return { roas, cac };
+};
+
+// IDEA 2: Predictive Cash Flow (30-day)
+export const projectCashFlow = (history: { revenue: number, profit: number }[], current_cash: number) => {
+  if (history.length === 0) return { day15: current_cash, day30: current_cash };
+  
+  const avgProfitPerDay = history.reduce((acc, h) => acc + h.profit, 0) / history.length;
+  const day15 = Math.round(current_cash + (avgProfitPerDay * 15));
+  const day30 = Math.round(current_cash + (avgProfitPerDay * 30));
+  
+  return { day15, day30, avg_velocity: Math.round(avgProfitPerDay) };
+};
+
+// IDEA 5: Geographical Profitability
+export interface GeoProfit {
+  commune: string;
+  total_commandes: number;
+  livrees: number;
+  taux_succes: number;
+  ca_net: number;
+  profit_net: number;
+}
+
+export const analyzeGeographicalProfit = (commandes: (Commande & { lignes?: LigneCommande[] })[]): GeoProfit[] => {
+  const geoMap: { [key: string]: GeoProfit } = {};
+
+  (commandes || []).forEach(c => {
+    const commune = c.commune_livraison || 'Inconnu';
+    const s = c.statut_commande?.toLowerCase();
+    const isSuccess = ['livree', 'terminee'].includes(s);
+    
+    if (!geoMap[commune]) {
+      geoMap[commune] = {
+        commune,
+        total_commandes: 0,
+        livrees: 0,
+        taux_succes: 0,
+        ca_net: 0,
+        profit_net: 0
+      };
+    }
+
+    const g = geoMap[commune];
+    g.total_commandes++;
+    
+    if (isSuccess) {
+      g.livrees++;
+      const rev = (Number(c.montant_total) || 0) - (Number(c.frais_livraison) || 0);
+      let cost = 0;
+      (c.lignes || []).forEach(l => { cost += (l.quantite * (l.prix_achat_unitaire || 0)); });
+      
+      g.ca_net += rev;
+      g.profit_net += (rev - cost);
+    } else {
+      // Failed delivery still costs us something
+      const loss = Number(c.frais_livraison) || 1000;
+      g.profit_net -= loss;
+    }
+  });
+
+  return Object.values(geoMap).map(g => {
+    g.taux_succes = Math.round((g.livrees / g.total_commandes) * 100);
+    return g;
+  }).sort((a, b) => b.profit_net - a.profit_net);
 };
 
 export const generateTimeSeriesData = (commandes: (Commande & { lignes?: LigneCommande[] })[], type: 'daily' | 'monthly' = 'daily') => {

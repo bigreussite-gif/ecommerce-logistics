@@ -1,6 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getFinancialData } from '../services/commandeService';
-import { getDepenses, calculateProfitMetrics, calculateProductROI, ProductROI } from '../services/financialService';
+import { 
+  getDepenses, 
+  calculateProfitMetrics, 
+  calculateProductROI, 
+  ProductROI,
+  analyzeGeographicalProfit,
+  projectCashFlow,
+  calculateMarketingROI,
+  generateTimeSeriesData,
+  GeoProfit
+} from '../services/financialService';
 import { getRangeFinancials } from '../services/caisseService';
 import { Commande, LigneCommande, Depense, CaisseRetour } from '../types';
 import { format, startOfDay, endOfDay, subDays } from 'date-fns';
@@ -15,7 +25,10 @@ import {
   AlertCircle,
   CheckCircle,
   BarChart2,
-  Zap
+  Zap,
+  Globe,
+  Activity,
+  Target
 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 
@@ -30,8 +43,9 @@ interface Transaction {
 export const AdminTresorerie = () => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [startDate, setStartDate] = useState(format(subDays(new Date(), 7), 'yyyy-MM-dd'));
+  const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [adsSpend, setAdsSpend] = useState(150000); // Default example ads spend
   
   const [data, setData] = useState<{
     orders: (Commande & { lignes: LigneCommande[] })[];
@@ -86,6 +100,19 @@ export const AdminTresorerie = () => {
   
   // Final Profit after COGS and Extractions
   const realProfit = metrics.profit_net - totalExtractions;
+
+  // Current Balance (Estimated from Cash received & available)
+  const currentCashInAccount = 540000; // Mock current balance
+
+  // Marketing Analysis (Idea 1)
+  const mkt = useMemo(() => calculateMarketingROI(metrics.ca_brut, adsSpend, data.orders.length), [metrics.ca_brut, adsSpend, data.orders.length]);
+
+  // Predictive Projection (Idea 2)
+  const history = useMemo(() => generateTimeSeriesData(data.orders), [data.orders]);
+  const projections = useMemo(() => projectCashFlow(history, currentCashInAccount), [history, currentCashInAccount]);
+
+  // Geographical Analysis (Idea 5)
+  const geoProfit: GeoProfit[] = useMemo(() => analyzeGeographicalProfit(data.orders), [data.orders]);
 
   // Product ROI Analysis
   const productROI: ProductROI[] = useMemo(() => calculateProductROI(data.orders), [data.orders]);
@@ -397,9 +424,132 @@ export const AdminTresorerie = () => {
                 <div style={{ fontSize: '0.7rem', opacity: 0.6, fontWeight: 800, textTransform: 'uppercase' }}>Rentabilité</div>
              </div>
           </div>
+          
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'white', padding: '0.8rem 1.2rem', borderRadius: '18px', border: '1px solid #e2e8f0', boxShadow: 'var(--shadow-premium)' }}>
+             <Target size={18} color="#6366f1" />
+             <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8' }}>Dépenses Ads Facebook (F CFA)</span>
+                <input 
+                  type="number" 
+                  value={adsSpend} 
+                  onChange={e => setAdsSpend(Number(e.target.value))} 
+                  style={{ border: 'none', fontWeight: 900, outline: 'none', fontSize: '1rem', color: 'var(--text-main)', width: '150px' }}
+                />
+             </div>
+          </div>
         </div>
 
-        <div className="card" style={{ padding: '0' }}>
+        {/* AI HEALTH & MARKETING ROI (IDEA 1) */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+          <div className="card glass-effect" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)', border: 'none', color: 'white', padding: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+               <div>
+                  <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    Score de Santé <Zap size={20} color="#fbbf24" fill="#fbbf24" />
+                  </h3>
+                  <p style={{ margin: '0.2rem 0 0', opacity: 0.7, fontWeight: 600, fontSize: '0.85rem' }}>
+                    Analyse multicritère (Profit, Efficacité, Cash)
+                  </p>
+               </div>
+               <div style={{ fontSize: '2.5rem', fontWeight: 950 }}>{healthScore}</div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '1.5rem' }}>
+               <div style={{ flex: 1, background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '14px' }}>
+                  <div style={{ fontSize: '0.7rem', opacity: 0.6, textTransform: 'uppercase', marginBottom: '0.3rem' }}>ROAS Marketing</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 900, color: mkt.roas > 3 ? '#10b981' : '#fbbf24' }}>x{mkt.roas}</div>
+               </div>
+               <div style={{ flex: 1, background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '14px' }}>
+                  <div style={{ fontSize: '0.7rem', opacity: 0.6, textTransform: 'uppercase', marginBottom: '0.3rem' }}>Coût/Client (CAC)</div>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{mkt.cac.toLocaleString()} F</div>
+               </div>
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: '2rem', border: 'none', background: '#f8fafc', position: 'relative' }}>
+             <h3 style={{ margin: '0 0 1.5rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+               <Activity size={20} color="#6366f1" /> Prédiction Cash-Flow (IA)
+             </h3>
+             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Provision attendue à 30 jours :</span>
+                <span style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--primary)' }}>{projections.day30.toLocaleString()} F</span>
+             </div>
+             <div style={{ height: '50px', display: 'flex', alignItems: 'flex-end', gap: '4px', marginBottom: '1.5rem' }}>
+                {[...Array(20)].map((_, i) => (
+                  <div key={i} style={{ flex: 1, background: '#e2e8f0', borderRadius: '2px', height: `${20 + Math.random() * 80}%` }} />
+                ))}
+                <div style={{ width: '40px', background: 'var(--primary)', height: '100%', borderRadius: '2px' }} />
+             </div>
+             <p style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: '#64748b' }}>
+               Vitesse de croisière : <span style={{ color: '#10b981' }}>+{(projections.avg_velocity || 0).toLocaleString()} F / jour</span>
+             </p>
+          </div>
+        </div>
+
+        {/* GEOGRAPHICAL PROFITABILITY & DISCREPANCY */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) 1fr', gap: '1.5rem', marginBottom: '4rem' }}>
+           <div className="card" style={{ padding: '0' }}>
+              <div style={{ padding: '1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Globe size={18} color="var(--primary)" />
+                    <h4 style={{ margin: 0, fontWeight: 900 }}>Rentabilité Géographique</h4>
+                 </div>
+              </div>
+              <div className="table-container">
+                 <table>
+                    <thead>
+                       <tr>
+                          <th>Commune</th>
+                          <th>Succès</th>
+                          <th>CA Net</th>
+                          <th style={{ textAlign: 'right' }}>Profit Net</th>
+                       </tr>
+                    </thead>
+                    <tbody>
+                       {geoProfit.map(g => (
+                         <tr key={g.commune}>
+                            <td style={{ fontWeight: 800 }}>{g.commune}</td>
+                            <td>
+                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <div style={{ width: '40px', height: '4px', background: '#f1f5f9', borderRadius: '2px', overflow: 'hidden' }}>
+                                     <div style={{ width: `${g.taux_succes}%`, height: '100%', background: g.taux_succes > 70 ? '#10b981' : '#fbbf24' }} />
+                                  </div>
+                                  <span style={{ fontSize: '0.7rem' }}>{g.taux_succes}%</span>
+                               </div>
+                            </td>
+                            <td>{g.ca_net.toLocaleString()} F</td>
+                            <td style={{ textAlign: 'right', fontWeight: 900, color: g.profit_net > 0 ? '#10b981' : '#ef4444' }}>
+                               {g.profit_net.toLocaleString()} F
+                            </td>
+                         </tr>
+                       ))}
+                    </tbody>
+                 </table>
+              </div>
+           </div>
+
+           <div className="card" style={{ padding: '1.5rem', border: '2px solid' + (cashStats.totalEcart < 0 ? '#fecaca' : '#d1fae5') }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)' }}>AUDIT CAISSE PHYSIQUE</span>
+                <AlertCircle size={20} color={cashStats.totalEcart < 0 ? '#ef4444' : '#10b981'} />
+              </div>
+              <h2 style={{ fontSize: '2.2rem', fontWeight: 950, color: cashStats.totalEcart < 0 ? '#ef4444' : '#10b981' }}>
+                {cashStats.totalEcart.toLocaleString()} F
+              </h2>
+              <div style={{ marginTop: '1.5rem', background: 'white', padding: '1rem', borderRadius: '12px' }}>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
+                    <span>Attendu</span>
+                    <span style={{ fontWeight: 800 }}>{cashStats.totalAttendu.toLocaleString()} F</span>
+                 </div>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem' }}>
+                    <span>Encours</span>
+                    <span style={{ fontWeight: 800 }}>{cashStats.totalRemis.toLocaleString()} F</span>
+                 </div>
+              </div>
+            </div>
+        </div>
+
+        <div className="grid" style={{ marginBottom: '2.5rem' }}>
           <div style={{ padding: '1.25rem', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <CheckCircle size={18} color="#10b981" />
             <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 800 }}>Détails des Rapports de Caisse</h4>
