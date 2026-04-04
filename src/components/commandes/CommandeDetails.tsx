@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, ShoppingBag, User, MapPin, Receipt, Phone, RefreshCw } from 'lucide-react';
-import { getCommandeWithLines, updateCommandeStatus } from '../../services/commandeService';
+import { X, ShoppingBag, User, MapPin, Receipt, Phone, RefreshCw, RotateCcw, PackageX } from 'lucide-react';
+import { getCommandeWithLines, updateCommandeStatus, reactivateFailedCommande, registerReturn } from '../../services/commandeService';
 import { useToast } from '../../contexts/ToastContext';
 import type { Commande, LigneCommande } from '../../types';
 
@@ -58,6 +58,41 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
     }
   };
 
+  const [showReturnForm, setShowReturnForm] = useState(false);
+  const [returnMotif, setReturnMotif] = useState('');
+  const [isDefective, setIsDefective] = useState(false);
+
+  const handleReturnOrder = async () => {
+    if (!commande || !returnMotif) return;
+    setIsUpdating(true);
+    try {
+      await registerReturn(commande.id, returnMotif, isDefective);
+      showToast("Retour enregistré avec succès.", "success");
+      onClose();
+    } catch (error) {
+       console.error(error);
+       showToast("Erreur lors de l'enregistrement du retour.", "error");
+    } finally {
+       setIsUpdating(false);
+    }
+  };
+
+  const handleReactivateFailed = async () => {
+    if (!commande) return;
+    if (!window.confirm("Voulez-vous vraiment réactiver cette commande échouée ?")) return;
+    setIsUpdating(true);
+    try {
+      await reactivateFailedCommande(commande.id);
+      showToast("Commande réactivée (renvoyée en attente appel).", "success");
+      onClose();
+    } catch (error) {
+       console.error(error);
+       showToast("Erreur lors de la réactivation.", "error");
+    } finally {
+       setIsUpdating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="modal-backdrop" onClick={onClose}>
@@ -75,7 +110,7 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content card" style={{ maxWidth: '700px', padding: '0', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+      <div className="modal-content card" style={{ maxWidth: '750px', padding: '0', overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
         {/* Header Section */}
         <div style={{ padding: '2rem', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', color: 'white', position: 'relative' }}>
           <button 
@@ -96,75 +131,69 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
           </div>
         </div>
 
-        <div style={{ padding: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }} className="responsive-grid">
-          {/* Client Info */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div>
-              <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>
-                <User size={18} /> Informations Client
-              </h4>
-              <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontWeight: 800, fontSize: '1.1rem', marginBottom: '0.5rem' }}>{commande.nom_client}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '0.5rem' }}>
+        <div style={{ padding: '2rem', display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
+          {/* Top Info Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+             {/* Client Info */}
+             <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+                <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0', fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>
+                  <User size={16} /> Client
+                </h4>
+                <div style={{ fontWeight: 800, fontSize: '1.2rem', marginBottom: '0.5rem' }}>{commande.nom_client}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 700, marginBottom: '0.5rem' }}>
                    <Phone size={14} /> {commande.telephone_client}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'start', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                   <MapPin size={16} style={{ marginTop: '0.2rem' }} /> 
+                <div style={{ display: 'flex', alignItems: 'start', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
+                   <MapPin size={16} style={{ marginTop: '0.1rem' }} /> 
+                   <span>{commande.adresse_livraison}, {commande.commune_livraison}</span>
+                </div>
+             </div>
+
+             {/* Logistic Info */}
+             <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+                <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0', fontSize: '0.9rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>
+                  <ShoppingBag size={16} /> Logistique
+                </h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                    <div>
-                     <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{commande.commune_livraison}</div>
-                     <div>{commande.adresse_livraison}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800 }}>Source</div>
+                      <div style={{ fontWeight: 700 }}>{commande.source_commande}</div>
+                   </div>
+                   <div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800 }}>Paiement</div>
+                      <div style={{ fontWeight: 700 }}>{commande.mode_paiement}</div>
                    </div>
                 </div>
-              </div>
-            </div>
-
-            {/* Order Meta */}
-            <div>
-               <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Détails Logistique</h4>
-               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                 <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '12px', textAlign: 'center' }}>
-                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Source</div>
-                   <div style={{ fontWeight: 700 }}>{commande.source_commande}</div>
-                 </div>
-                 <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '12px', textAlign: 'center' }}>
-                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Paiement</div>
-                   <div style={{ fontWeight: 700, fontSize: '0.8rem' }}>{commande.mode_paiement}</div>
-                 </div>
-               </div>
-            </div>
+             </div>
           </div>
 
-          {/* Items Section */}
+          {/* Items Table-like Section */}
           <div>
             <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0 0 1rem 0', fontSize: '1rem', fontWeight: 800, color: 'var(--primary)' }}>
-              <ShoppingBag size={18} /> Articles Commandés
+              <Receipt size={18} /> Détails de la facture
             </h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '300px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
               {commande.lignes.map((l, idx) => (
-                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 800, fontSize: '0.95rem' }}>{l.nom_produit}</div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>{l.quantite} x {l.prix_unitaire?.toLocaleString()} CFA</div>
-                  </div>
-                  <div style={{ fontWeight: 800, color: 'var(--primary)' }}>
-                    {(l.montant_ligne || 0).toLocaleString()} <span style={{ fontSize: '0.6rem' }}>CFA</span>
-                  </div>
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'white', border: '1px solid #f1f5f9', borderRadius: '12px' }}>
+                  <div style={{ fontWeight: 700 }}>{l.nom_produit} <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>x{l.quantite}</span></div>
+                  <div style={{ fontWeight: 800 }}>{l.montant_ligne?.toLocaleString()} F</div>
                 </div>
               ))}
             </div>
 
-            <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                 <span>Sous-total produits</span>
-                 <span>{subtotal.toLocaleString()} CFA</span>
+            {/* Financial Summary */}
+            <div style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+              <div>
+                 <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Sous-total</div>
+                 <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>{subtotal.toLocaleString()} F</div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                 <span>Livraison</span>
-                 <span>{commande.frais_livraison?.toLocaleString()} CFA</span>
+              <div>
+                 <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Livraison</div>
+                 <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>{commande.frais_livraison?.toLocaleString()} F</div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px dashed #cbd5e1', paddingTop: '1rem' }}>
-                 <span style={{ fontWeight: 800, fontSize: '1rem' }}>TOTAL À ENCAISSER</span>
-                 <span style={{ fontWeight: 900, fontSize: '1.4rem', color: 'var(--primary)' }}>{commande.montant_total?.toLocaleString()} CFA</span>
+              <div style={{ background: 'var(--primary)', color: 'white', padding: '1rem', borderRadius: '18px', textAlign: 'center' }}>
+                 <div style={{ fontSize: '0.7rem', fontWeight: 800, opacity: 0.9, textTransform: 'uppercase' }}>Total Net</div>
+                 <div style={{ fontSize: '1.4rem', fontWeight: 950 }}>{commande.montant_total?.toLocaleString()} F</div>
               </div>
             </div>
           </div>
@@ -172,17 +201,18 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
 
         {/* Footer actions */}
         <div style={{ padding: '1.5rem 2rem', background: '#f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            {!['livree', 'terminee', 'annulee'].includes(commande.statut_commande?.toLowerCase()) && (
+          <div style={{ display: 'flex', gap: '10px' }}>
+            {!['livree', 'terminee', 'annulee', 'retour_client'].includes(commande.statut_commande?.toLowerCase()) && (
               <button 
                 className="btn btn-danger" 
                 onClick={handleCancelOrder} 
                 disabled={isUpdating}
                 style={{ borderRadius: '12px', fontWeight: 700, background: '#fee2e2', color: '#991b1b', border: 'none' }}
               >
-                {isUpdating ? 'Traitement...' : 'Annuler la Commande'}
+                {isUpdating ? 'Traitement...' : 'Annuler'}
               </button>
             )}
+
             {commande.statut_commande?.toLowerCase() === 'annulee' && (
               <button 
                 className="btn btn-primary" 
@@ -190,15 +220,79 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
                 disabled={isUpdating}
                 style={{ borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
               >
-                {isUpdating ? 'Traitement...' : <><RefreshCw size={18} /> Réactiver la Commande</>}
+                <RefreshCw size={18} /> Réactiver Annulation
+              </button>
+            )}
+
+            {['retour_livreur', 'echouee'].includes(commande.statut_commande?.toLowerCase()) && (
+              <button 
+                className="btn btn-primary" 
+                onClick={handleReactivateFailed} 
+                disabled={isUpdating}
+                style={{ borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#3b82f6' }}
+              >
+                <RotateCcw size={18} /> Réactiver Echec
+              </button>
+            )}
+
+            {['livree', 'terminee'].includes(commande.statut_commande?.toLowerCase()) && (
+              <button 
+                className="btn btn-warning" 
+                onClick={() => setShowReturnForm(true)} 
+                disabled={isUpdating}
+                style={{ borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f59e0b', color: 'white' }}
+              >
+                <PackageX size={18} /> Gérer Retour
               </button>
             )}
           </div>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button className="btn btn-outline" onClick={onClose} style={{ borderRadius: '12px', fontWeight: 700 }}>Fermer</button>
-          </div>
+          <button className="btn btn-outline" onClick={onClose} style={{ borderRadius: '12px', fontWeight: 700 }}>Fermer</button>
         </div>
       </div>
+
+      {showReturnForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.8)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(5px)' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '420px', padding: '2.5rem', borderRadius: '32px' }}>
+            <h3 style={{ marginBottom: '1.5rem', fontWeight: 900, fontSize: '1.4rem' }}>Enregistrer un retour</h3>
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 800 }}>Motif du retour</label>
+              <textarea 
+                className="form-input" 
+                rows={3} 
+                value={returnMotif} 
+                onChange={e => setReturnMotif(e.target.value)}
+                placeholder="Ex: Client pas satisfait, ne correspond pas..."
+                style={{ borderRadius: '16px', background: '#f8fafc', padding: '1rem' }}
+                required
+              />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem', background: '#fef2f2', borderRadius: '16px', border: '1px solid #fee2e2' }}>
+              <input 
+                type="checkbox" 
+                id="isDefective" 
+                checked={isDefective} 
+                onChange={e => setIsDefective(e.target.checked)}
+                style={{ width: '24px', height: '24px', cursor: 'pointer' }}
+              />
+              <label htmlFor="isDefective" style={{ fontWeight: 800, color: '#ef4444', cursor: 'pointer', fontSize: '0.9rem' }}>
+                PRODUIT DÉFAILLANT (Pertes)<br/>
+                <span style={{ fontSize: '0.75rem', fontWeight: 500, opacity: 0.8 }}>Sera retiré du stock actif</span>
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '2.5rem' }}>
+              <button className="btn btn-outline" style={{ flex: 1, height: '52px', borderRadius: '14px' }} onClick={() => setShowReturnForm(false)}>Annuler</button>
+              <button 
+                className="btn btn-primary" 
+                style={{ flex: 1, background: '#f59e0b', height: '52px', borderRadius: '14px' }} 
+                onClick={handleReturnOrder}
+                disabled={!returnMotif || isUpdating}
+              >
+                {isUpdating ? 'Traitement...' : 'Valider'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

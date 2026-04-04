@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, CheckCircle, Download, X, ShoppingBag, Clock, Truck, AlertCircle, Calendar, TrendingUp } from 'lucide-react';
+import { Plus, Search, CheckCircle, Download, X, ShoppingBag, Clock, Truck, AlertCircle, Calendar, TrendingUp, RotateCcw, XCircle } from 'lucide-react';
 import { CommandeList } from '../components/commandes/CommandeList';
 import { CommandeForm } from '../components/commandes/CommandeForm';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
@@ -19,7 +19,7 @@ export const Commandes = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedCommandeId, setSelectedCommandeId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'to_process' | 'in_delivery' | 'done' | 'failed' | 'annulee'>('to_process');
+  const [activeTab, setActiveTab] = useState<'all' | 'to_process' | 'in_delivery' | 'done' | 'failed' | 'annulee' | 'retours'>('to_process');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   
   // Stats & Periods
@@ -149,10 +149,11 @@ export const Commandes = () => {
     const delivered = filteredByDateCommandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande)).length;
     const failed = filteredByDateCommandes.filter(c => ['echouee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande?.toLowerCase())).length;
     const cancelled = filteredByDateCommandes.filter(c => ['annulee'].includes(c.statut_commande?.toLowerCase())).length;
+    const retours = filteredByDateCommandes.filter(c => c.statut_commande === 'retour_client').length;
     
     const successRate = total > 0 ? Math.round((delivered / (delivered + failed)) * 100) || 0 : 0;
 
-    return { total, processing, inDelivery, delivered, failed, cancelled, successRate };
+    return { total, processing, inDelivery, delivered, failed, cancelled, retours, successRate };
   }, [filteredByDateCommandes]);
 
   const filteredCommandes = filteredByDateCommandes.filter(c => {
@@ -170,6 +171,7 @@ export const Commandes = () => {
     if (activeTab === 'done') return ['livree', 'terminee'].includes(c.statut_commande);
     if (activeTab === 'failed') return ['echouee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande?.toLowerCase());
     if (activeTab === 'annulee') return ['annulee'].includes(c.statut_commande?.toLowerCase());
+    if (activeTab === 'retours') return c.statut_commande === 'retour_client';
     
     return true;
   });
@@ -184,7 +186,6 @@ export const Commandes = () => {
           </div>
           
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            {/* Period Filter Dropdown replacement or simple buttons */}
             <div style={{ display: 'flex', background: 'white', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '0.3rem', boxShadow: 'var(--shadow-premium)', position: 'relative' }}>
                {(['today', '7d', '30d', 'all'] as Period[]).map((p) => (
                  <button
@@ -259,8 +260,8 @@ export const Commandes = () => {
             { label: 'En Livraison', value: stats.inDelivery, color: '#6366f1', icon: <Truck size={24} />, shadow: '0 10px 20px rgba(99, 102, 241, 0.15)' },
             { label: 'Livrées', value: stats.delivered, color: '#10b981', icon: <CheckCircle size={24} />, shadow: '0 10px 20px rgba(16, 185, 129, 0.15)' },
             { label: 'Échecs / Retours', value: stats.failed, color: '#ef4444', icon: <AlertCircle size={24} />, shadow: '0 10px 20px rgba(239, 68, 68, 0.15)' },
-            { label: 'Annulées', value: stats.cancelled, color: '#94a3b8', icon: <X size={24} />, shadow: '0 10px 20px rgba(148, 163, 184, 0.15)' },
-            { label: 'Taux de Succès', value: `${stats.successRate}%`, color: '#8b5cf6', icon: <TrendingUp size={24} />, shadow: '0 10px 20px rgba(139, 92, 246, 0.15)', subLabel: `${stats.delivered}/${stats.delivered+stats.failed} colis` }
+            { label: 'Retours Client', value: stats.retours, color: '#f59e0b', icon: <RotateCcw size={24} />, shadow: '0 10px 20px rgba(245, 158, 11, 0.15)' },
+            { label: 'Annulées', value: stats.cancelled, color: '#94a3b8', icon: <X size={24} />, shadow: '0 10px 20px rgba(148, 163, 184, 0.15)' }
           ].map((item, idx) => (
             <div 
               key={idx} 
@@ -283,7 +284,6 @@ export const Commandes = () => {
                 <div style={{ padding: '0.6rem', borderRadius: '14px', background: `${item.color}15`, color: item.color }}>
                   {item.icon}
                 </div>
-                {item.subLabel && <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)' }}>{item.subLabel}</span>}
               </div>
               <div>
                 <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--text-main)', marginBottom: '0.1rem' }}>{item.value}</div>
@@ -324,6 +324,7 @@ export const Commandes = () => {
               { id: 'in_delivery', label: 'En Livraison', color: 'var(--primary)' },
               { id: 'done', label: 'Terminées', color: '#10b981' },
               { id: 'failed', label: 'Retours/Échecs', color: '#ef4444' },
+              { id: 'retours', label: 'Retours Client', color: '#f59e0b' },
               { id: 'annulee', label: 'Annulées', color: '#94a3b8' },
               { id: 'all', label: 'Tout', color: 'var(--primary)' }
             ].map(tab => (

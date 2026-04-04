@@ -60,17 +60,7 @@ export interface Client {
   remarques?: string;
 }
 
-export type StatutCommande =
-  | 'en_attente_appel'
-  | 'validee'
-  | 'a_rappeler'
-  | 'annulee'
-  | 'en_cours_livraison'
-  | 'livree'
-  | 'echouee'
-  | 'retour_livreur'
-  | 'retour_stock'
-  | 'terminee';
+export type StatutCommande = 'nouvelle' | 'a_rappeler' | 'en_attente_appel' | 'validee' | 'en_cours_livraison' | 'livree' | 'retour_livreur' | 'absent' | 'echouee' | 'annulee' | 'terminee' | 'retour_stock' | 'retour_client';
 
 export interface Commande {
   id: string;

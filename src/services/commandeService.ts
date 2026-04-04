@@ -190,6 +190,82 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   }
 };
 
+export const reactivateFailedCommande = async (id: string, notes?: string): Promise<void> => {
+  await updateCommandeStatus(id, 'en_attente_appel', { 
+    notes: `[RÉACTIVATION ÉCHEC] ${notes || ''}${new Date().toLocaleString()}`,
+    feuille_route_id: null,
+    livreur_id: null
+  });
+};
+
+export const registerReturn = async (commandeId: string, motif: string, isDefective: boolean, notes?: string): Promise<void> => {
+  // 1. Get order details
+  const { data: cmd } = await insforge.database
+    .from('commandes')
+    .select('*, lines:lignes_commandes(*)')
+    .eq('id', commandeId)
+    .single();
+
+  if (!cmd) throw new Error("Commande introuvable");
+
+  // 2. Insert into retours table
+  const { error: returnErr } = await insforge.database
+    .from('retours')
+    .insert([{
+      commande_id: commandeId,
+      motif,
+      notes: isDefective ? `[DÉFAILLANT] ${notes || ''}` : notes,
+      statut: 'traite'
+    }]);
+
+  if (returnErr) throw returnErr;
+
+  // 3. Update order status
+  const finalNotes = `[RETOUR CLIENT] ${isDefective ? 'DÉFAILLANT' : 'NORMAL'} - Motif: ${motif}${cmd.notes ? "\n--- Notes Précédentes ---\n" + cmd.notes : ""}`;
+  
+  // Custom update to reverse financials if it was delivered
+  const wasDelivered = ['livree', 'terminee'].includes(cmd.statut_commande?.toLowerCase());
+  const updateData: any = { 
+    statut_commande: 'retour_client', 
+    notes: finalNotes,
+    updated_at: new Date()
+  };
+
+  if (wasDelivered) {
+    updateData.montant_encaisse = 0; // Reverse revenue
+  }
+
+  const { error: updateErr } = await insforge.database
+    .from('commandes')
+    .update(updateData)
+    .eq('id', commandeId);
+
+  if (updateErr) throw updateErr;
+
+  // 4. Handle stock
+  if (cmd.lines && cmd.lines.length > 0) {
+    for (const l of cmd.lines) {
+      if (isDefective) {
+        // Log as loss or move to defective pool (just a special movement for now)
+        await addMouvementStock({
+          produit_id: l.produit_id,
+          type_mouvement: 'sortie', // Out of active stock even if returned
+          quantite: 0, // No net change to active stock but we log it
+          reference: `Article DÉFAILLANT (Cmd #${commandeId.slice(0,8)})`
+        } as any);
+      } else {
+        // Standard return to stock
+        await addMouvementStock({
+          produit_id: l.produit_id,
+          type_mouvement: 'entree',
+          quantite: l.quantite,
+          reference: `Retour Client (Cmd #${commandeId.slice(0,8)})`
+        } as any);
+      }
+    }
+  }
+};
+
 export const bulkUpdateCommandeStatus = async (ids: string[], status: string, additionalData: any = {}): Promise<void> => {
   for (const id of ids) {
     try {
