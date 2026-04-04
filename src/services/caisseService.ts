@@ -5,7 +5,7 @@ import { addMouvementStock } from './produitService';
 export const getFeuillesEnCours = async (livreurId?: string): Promise<FeuilleRoute[]> => {
   let query = insforge.database
     .from('feuilles_route')
-    .select('*, livreurs:livreur_id(nom)') // Join with livreurs table to get name
+    .select('*')
     .in('statut_feuille', ['en_cours', 'cloturee']);
 
   if (livreurId) {
@@ -15,26 +15,46 @@ export const getFeuillesEnCours = async (livreurId?: string): Promise<FeuilleRou
   const { data, error } = await query;
   if (error) throw error;
   
-  // Transform to include nom_livreur directly
-  return (data || []).map((f: any) => ({
+  if (!data || data.length === 0) return [];
+
+  // Fetch names separately to be bulletproof against join errors
+  const userIds = Array.from(new Set(data.map(f => f.livreur_id).filter(Boolean)));
+  const { data: userData } = await insforge.database
+    .from('users')
+    .select('id, nom_complet')
+    .in('id', userIds);
+
+  const nameMap = new Map(userData?.map(u => [u.id, u.nom_complet]) || []);
+
+  return data.map((f: any) => ({
     ...f,
-    nom_livreur: f.livreurs?.nom
+    nom_livreur: nameMap.get(f.livreur_id) || `Livreur #${f.livreur_id?.slice(0,5)}`
   }));
 };
 
 export const getCloturedFeuilles = async (): Promise<FeuilleRoute[]> => {
   const { data, error } = await insforge.database
     .from('feuilles_route')
-    .select('*, livreurs:livreur_id(nom)')
+    .select('*')
     .eq('statut_feuille', 'terminee')
     .order('date', { ascending: false });
 
   if (error) throw error;
   
-  // Transform to include nom_livreur directly
-  return (data || []).map((f: any) => ({
+  if (!data || data.length === 0) return [];
+
+  // Safe fetch names
+  const userIds = Array.from(new Set(data.map(f => f.livreur_id).filter(Boolean)));
+  const { data: userData } = await insforge.database
+    .from('users')
+    .select('id, nom_complet')
+    .in('id', userIds);
+
+  const nameMap = new Map(userData?.map(u => [u.id, u.nom_complet]) || []);
+
+  return data.map((f: any) => ({
     ...f,
-    nom_livreur: f.livreurs?.nom
+    nom_livreur: nameMap.get(f.livreur_id) || `Livreur #${f.livreur_id?.slice(0,5)}`
   }));
 };
 
