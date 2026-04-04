@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentFeuilleRoute, getCommandesForFeuille, markCommandeLivre, markCommandeEchouee } from '../services/livraisonService';
 import type { Commande, FeuilleRoute } from '../types';
@@ -28,16 +28,38 @@ export const Livraison = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFeuilleId, setSelectedFeuilleId] = useState<string | null>(null);
 
-  const fetchInitialData = useCallback(async () => {
-    if (!currentUser) return;
+  const lastFetchedIdRef = useRef<string | null>(null);
+  const isFetchingRef = useRef(false);
+
+  const fetchData = useCallback(async (forcedId?: string) => {
+    if (!currentUser || isFetchingRef.current) return;
+    
+    const targetId = forcedId || selectedFeuilleId;
+    
+    // Prevent redundant fetching if nothing changed
+    if (targetId && targetId === lastFetchedIdRef.current && !forcedId) return;
+
+    isFetchingRef.current = true;
     setLoading(true);
     try {
       if (currentUser.role === 'ADMIN' || currentUser.role === 'LOGISTIQUE') {
         const active = await getFeuillesEnCours(''); 
         setAllActiveFeuilles(active);
-        // Only set default if nothing selected yet
-        if (active.length > 0 && !selectedFeuilleId) {
-           setSelectedFeuilleId(active[0].id);
+        
+        let currentId = targetId;
+        if (active.length > 0 && !currentId) {
+          currentId = active[0].id;
+          setSelectedFeuilleId(currentId);
+        }
+
+        if (currentId) {
+          lastFetchedIdRef.current = currentId;
+          const [cmds, found] = await Promise.all([
+            getCommandesForFeuille(currentId),
+            Promise.resolve(active.find(f => f.id === currentId))
+          ]);
+          setCommandes(cmds);
+          if (found) setFeuille(found);
         }
       } else {
         const currentLog = await getCurrentFeuilleRoute(currentUser.id);
@@ -48,41 +70,29 @@ export const Livraison = () => {
         }
       }
     } catch (error) {
-      console.error(error);
+      console.error("Livraison Fetch Error:", error);
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
-  }, [currentUser]); // Note: DO NOT include selectedFeuilleId here to avoid loop
+  }, [currentUser, selectedFeuilleId]);
 
-  // Effect for initial loading
   useEffect(() => {
-    fetchInitialData();
-  }, [fetchInitialData]);
-
-  // Effect specifically for when selectedFeuilleId changes (Admin view)
-  useEffect(() => {
-    if (selectedFeuilleId && (currentUser?.role === 'ADMIN' || currentUser?.role === 'LOGISTIQUE')) {
-      getCommandesForFeuille(selectedFeuilleId)
-        .then(setCommandes)
-        .catch(console.error);
-      
-      const found = allActiveFeuilles.find(f => f.id === selectedFeuilleId);
-      if (found) setFeuille(found);
-    }
-  }, [selectedFeuilleId, currentUser, allActiveFeuilles]);
+    fetchData();
+  }, [currentUser?.id, selectedFeuilleId, fetchData]); 
 
   const handleUpdate = async () => {
     if (!selectedCommande) return;
     try {
       setLoading(true);
       if (statusAction === 'livree') {
-        const montant = Number(selectedCommande.montant_total); // or any logic you want
+        const montant = Number(selectedCommande.montant_total);
         await markCommandeLivre(selectedCommande.id, montant, noteForm);
       } else {
         await markCommandeEchouee(selectedCommande.id, noteForm);
       }
       setSelectedCommande(null);
-      fetchInitialData();
+      await fetchData(); // Refresh current state after update
     } catch (error) {
       console.error(error);
     } finally {
