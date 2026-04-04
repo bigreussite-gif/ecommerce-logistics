@@ -5,26 +5,46 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Layout } from './components/layout/Layout';
 
 // --- Lazy Loading for Performance Optimization ---
-const Dashboard = React.lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
-const Produits = React.lazy(() => import('./pages/Produits').then(m => ({ default: m.Produits })));
-const Commandes = React.lazy(() => import('./pages/Commandes').then(m => ({ default: m.Commandes })));
-const CentreAppel = React.lazy(() => import('./pages/CentreAppel').then(m => ({ default: m.CentreAppel })));
-const Logistique = React.lazy(() => import('./pages/Logistique').then(m => ({ default: m.Logistique })));
-const Livraison = React.lazy(() => import('./pages/Livraison').then(m => ({ default: m.Livraison })));
-const Historique = React.lazy(() => import('./pages/Historique').then(m => ({ default: m.Historique })));
-const Caisse = React.lazy(() => import('./pages/Caisse').then(m => ({ default: m.Caisse })));
-const Clients = React.lazy(() => import('./pages/Clients').then(m => ({ default: m.Clients })));
-const Admin = React.lazy(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
-const Profil = React.lazy(() => import('./pages/Profil').then(m => ({ default: m.Profil })));
-const Login = React.lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
-const FinancialReport = React.lazy(() => import('./pages/FinancialReport').then(m => ({ default: m.FinancialReport })));
-const Home = React.lazy(() => import('./pages/Home').then(m => ({ default: m.Home })));
-const StaffPerformance = React.lazy(() => import('./pages/StaffPerformance').then(m => ({ default: m.StaffPerformance })));
-const NetProfit = React.lazy(() => import('./pages/NetProfit').then(m => ({ default: m.NetProfit })));
-const AdminTresorerie = React.lazy(() => import('./pages/AdminTresorerie').then(m => ({ default: m.AdminTresorerie })));
-const AuditTresorerie = React.lazy(() => import('./pages/AuditTresorerie').then(m => ({ default: m.AuditTresorerie })));
-const Retours = React.lazy(() => import('./pages/Retours').then(m => ({ default: m.Retours })));
-const Defaillants = React.lazy(() => import('./pages/Defaillants').then(m => ({ default: m.Defaillants })));
+// --- Lazy Loading Utility with Automatic Retry/Reload ---
+const lazyWithRetry = (componentImport: () => Promise<any>) =>
+  React.lazy(async () => {
+    const pageHasAlreadyBeenForceRefreshed = JSON.parse(
+      window.sessionStorage.getItem('page-has-been-force-refreshed') || 'false'
+    );
+
+    try {
+      const component = await componentImport();
+      window.sessionStorage.setItem('page-has-been-force-refreshed', 'false');
+      return component;
+    } catch (error) {
+      if (!pageHasAlreadyBeenForceRefreshed) {
+        window.sessionStorage.setItem('page-has-been-force-refreshed', 'true');
+        return window.location.reload();
+      }
+      throw error;
+    }
+  });
+
+const Dashboard = lazyWithRetry(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const Produits = lazyWithRetry(() => import('./pages/Produits').then(m => ({ default: m.Produits })));
+const Commandes = lazyWithRetry(() => import('./pages/Commandes').then(m => ({ default: m.Commandes })));
+const CentreAppel = lazyWithRetry(() => import('./pages/CentreAppel').then(m => ({ default: m.CentreAppel })));
+const Logistique = lazyWithRetry(() => import('./pages/Logistique').then(m => ({ default: m.Logistique })));
+const Livraison = lazyWithRetry(() => import('./pages/Livraison').then(m => ({ default: m.Livraison })));
+const Historique = lazyWithRetry(() => import('./pages/Historique').then(m => ({ default: m.Historique })));
+const Caisse = lazyWithRetry(() => import('./pages/Caisse').then(m => ({ default: m.Caisse })));
+const Clients = lazyWithRetry(() => import('./pages/Clients').then(m => ({ default: m.Clients })));
+const Admin = lazyWithRetry(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
+const Profil = lazyWithRetry(() => import('./pages/Profil').then(m => ({ default: m.Profil })));
+const Login = lazyWithRetry(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const FinancialReport = lazyWithRetry(() => import('./pages/FinancialReport').then(m => ({ default: m.FinancialReport })));
+const Home = lazyWithRetry(() => import('./pages/Home').then(m => ({ default: m.Home })));
+const StaffPerformance = lazyWithRetry(() => import('./pages/StaffPerformance').then(m => ({ default: m.StaffPerformance })));
+const NetProfit = lazyWithRetry(() => import('./pages/NetProfit').then(m => ({ default: m.NetProfit })));
+const AdminTresorerie = lazyWithRetry(() => import('./pages/AdminTresorerie').then(m => ({ default: m.AdminTresorerie })));
+const AuditTresorerie = lazyWithRetry(() => import('./pages/AuditTresorerie').then(m => ({ default: m.AuditTresorerie })));
+const Retours = lazyWithRetry(() => import('./pages/Retours').then(m => ({ default: m.Retours })));
+const Defaillants = lazyWithRetry(() => import('./pages/Defaillants').then(m => ({ default: m.Defaillants })));
 
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '5rem' }}>
@@ -32,7 +52,6 @@ const PageLoader = () => (
   </div>
 );
 
-// --- Error Boundary Component ---
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
   constructor(props: any) {
     super(props);
@@ -46,15 +65,13 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   }
   render() {
     if (this.state.hasError) {
+      const isChunkError = this.state.error?.toString().includes('Failed to fetch dynamically imported module');
       return (
         <div style={{ padding: '2rem', textAlign: 'center', background: '#fef2f2', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <h1 style={{ color: '#991b1b' }}>Une erreur critique est survenue</h1>
-          <p>L'application GomboSwift a rencontré un problème inattendu au rendu.</p>
-          <pre style={{ background: '#fee2e2', padding: '1rem', borderRadius: '8px', overflow: 'auto', maxWidth: '90%', fontSize: '0.8rem' }}>
-            {this.state.error?.toString()}
-          </pre>
-          <button onClick={() => window.location.reload()} className="btn btn-primary" style={{ marginTop: '1rem' }}>
-            Recharger l'application
+          <h1 style={{ color: '#991b1b' }}>{isChunkError ? 'Mise à jour disponible' : 'Une erreur critique est survenue'}</h1>
+          <p>{isChunkError ? 'Une nouvelle version de GomboSwift est prête. Veuillez recharger la page.' : 'L\'application a rencontré un problème inattendu.'}</p>
+          <button onClick={() => window.location.reload()} className="btn btn-primary" style={{ marginTop: '1rem', padding: '0.75rem 2rem', borderRadius: '14px' }}>
+            {isChunkError ? 'Mettre à jour maintenant' : 'Recharger l\'application'}
           </button>
         </div>
       );
