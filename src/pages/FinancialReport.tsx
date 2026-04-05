@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getRangeFinancials } from '../services/caisseService';
-import { generateTimeSeriesData, calculateProfitMetrics, calculateLogisticalStats } from '../services/financialService';
-import { TrendingUp, TrendingDown, Compass, PieChart, Calendar, BarChart, Clock } from 'lucide-react';
+import { generateTimeSeriesData, calculateProfitMetrics, calculateLogisticalStats, calculateProductROI } from '../services/financialService';
+import { TrendingUp, TrendingDown, Compass, PieChart, Calendar, BarChart, Clock, Package } from 'lucide-react';
 import { generateAnalyticalReportPDF } from '../services/pdfService';
 import { useToast } from '../contexts/ToastContext';
 import { Commande, LigneCommande } from '../types';
@@ -77,6 +77,11 @@ export const FinancialReport = () => {
   const logStats = useMemo(() => {
     if (!data) return null;
     return calculateLogisticalStats(data.commandes);
+  }, [data]);
+
+  const productROI = useMemo(() => {
+    if (!data) return [];
+    return calculateProductROI(data.commandes);
   }, [data]);
 
   if (loading || !data) {
@@ -365,6 +370,43 @@ export const FinancialReport = () => {
                 TÉLÉCHARGER PDF
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bilan par Produit */}
+      <div style={{ marginTop: '2.5rem', marginBottom: '2.5rem' }}>
+        <div className="card" style={{ padding: '2rem' }}>
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Package size={20} style={{ color: 'var(--primary)' }} /> Bilan par Produit
+          </h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid #f1f5f9' }}>
+                  <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Produit</th>
+                  <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Vendus</th>
+                  <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Invendus/Échecs</th>
+                  <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Chiffre d'Affaires</th>
+                  <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Bénéfice Net</th>
+                </tr>
+              </thead>
+              <tbody>
+                {productROI.length === 0 ? (
+                   <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Aucune donnée</td></tr>
+                ) : productROI.map(p => (
+                  <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s', cursor: 'default' }} onMouseOver={e => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}>
+                    <td style={{ padding: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>{p.nom}</td>
+                    <td style={{ padding: '1rem', fontWeight: 900, color: '#10b981' }}>{p.ventes_reussies}</td>
+                    <td style={{ padding: '1rem', fontWeight: 800, color: '#ef4444' }}>{p.echecs}</td>
+                    <td style={{ padding: '1rem', fontWeight: 800 }}>{p.ca_produits.toLocaleString()} CFA</td>
+                    <td style={{ padding: '1rem', fontWeight: 900, color: p.profit_net >= 0 ? '#10b981' : '#ef4444' }}>
+                      {p.profit_net > 0 ? '+' : ''}{p.profit_net.toLocaleString()} CFA
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

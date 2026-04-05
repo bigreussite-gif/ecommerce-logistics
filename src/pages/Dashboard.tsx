@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { subscribeToCommandes, getTopSellingProducts } from '../services/commandeService';
 import { calculateLogisticalStats } from '../services/financialService';
 import type { Commande } from '../types';
-import { Activity, Percent, DollarSign, TrendingUp, Truck, AlertCircle, ShoppingBag, BarChart2, Calendar } from 'lucide-react';
+import { Activity, Percent, DollarSign, TrendingUp, Truck, AlertCircle, ShoppingBag, BarChart2, Calendar, MapPin } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   Tooltip, PieChart, Pie, Cell
@@ -114,13 +114,16 @@ export const Dashboard = () => {
     const statusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
 
     // Zone Performance Data (Heatmap)
-    const zoneMetrics: Record<string, { total: number, delivered: number, failed: number, cancelled: number, risk: number }> = {};
+    const zoneMetrics: Record<string, { total: number, delivered: number, failed: number, cancelled: number, risk: number, ca: number }> = {};
     filteredCommandes.forEach(c => {
       const z = c.commune_livraison || 'Hors Zone';
-      if (!zoneMetrics[z]) zoneMetrics[z] = { total: 0, delivered: 0, failed: 0, cancelled: 0, risk: 0 };
+      if (!zoneMetrics[z]) zoneMetrics[z] = { total: 0, delivered: 0, failed: 0, cancelled: 0, risk: 0, ca: 0 };
       
       zoneMetrics[z].total++;
-      if (['livree', 'terminee'].includes(c.statut_commande)) zoneMetrics[z].delivered++;
+      if (['livree', 'terminee'].includes(c.statut_commande)) {
+        zoneMetrics[z].delivered++;
+        zoneMetrics[z].ca += (c.montant_encaisse || c.montant_total) - getFrais(c);
+      }
       else if (['echouee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande)) zoneMetrics[z].failed++;
       else if (c.statut_commande === 'annulee') zoneMetrics[z].cancelled++;
     });
@@ -135,6 +138,17 @@ export const Dashboard = () => {
         color: risk > 40 ? '#ef4444' : risk > 20 ? '#f59e0b' : '#10b981'
       };
     }).sort((a, b) => b.risk - a.risk);
+
+    const bestZonesData = Object.entries(zoneMetrics).map(([name, m]) => {
+      const taux_reussite = m.total > 0 ? (m.delivered / m.total) * 100 : 0;
+      return {
+        name,
+        colis: m.total,
+        ca: m.ca,
+        taux_reussite: Math.round(taux_reussite),
+        delivered: m.delivered
+      };
+    }).sort((a, b) => b.taux_reussite !== a.taux_reussite ? b.taux_reussite - a.taux_reussite : b.ca - a.ca);
 
     // Comparative Analytics
     const getPeriodDays = () => {
@@ -212,11 +226,12 @@ export const Dashboard = () => {
       historyData,
       statusData,
       zoneData: [], // Replaced by heatmap below
-      heatmapData
+      heatmapData,
+      bestZonesData
     };
   }, [filteredCommandes, period, commandes, startDate, endDate]);
 
-  const { stats, historyData, statusData, heatmapData } = memoizedAnalytics;
+  const { stats, historyData, statusData, heatmapData, bestZonesData } = memoizedAnalytics;
   const { logStats, tauxSuccesLivraison } = stats;
 
   if (loading) return <div className="p-8 text-center">Chargement...</div>;
@@ -491,6 +506,50 @@ export const Dashboard = () => {
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>
                     <span>Sortis: {p.total_sorties}</span>
                     <span>Livrées: {p.nb_ventes}</span>
+                  </div>
+                </div>
+              ))}
+           </div>
+        </div>
+
+        {/* Meilleurs Zones Section */}
+        <div className="card" style={{ padding: '2rem' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
+             <MapPin size={24} color="var(--primary)" />
+             <h3 style={{ margin: 0, fontWeight: 800 }}>Meilleures Zones</h3>
+           </div>
+           
+           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {(!bestZonesData || bestZonesData.length === 0) ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                  <MapPin size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                  <p>Aucune donnée sur cette période.</p>
+                </div>
+              ) : bestZonesData.slice(0, 10).map((z, i) => (
+                <div key={z.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-muted)', width: '20px' }}>{i+1}.</span>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.name}</span>
+                    </div>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 900, color: z.taux_reussite >= 70 ? '#10b981' : z.taux_reussite >= 40 ? '#f59e0b' : '#ef4444' }}>
+                      {z.taux_reussite}%
+                    </span>
+                  </div>
+                  <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div 
+                      style={{ 
+                        width: `${z.taux_reussite}%`, 
+                        height: '100%', 
+                        background: z.taux_reussite >= 70 ? '#10b981' : z.taux_reussite >= 40 ? '#f59e0b' : '#ef4444', 
+                        borderRadius: '4px',
+                        transition: 'width 1s ease-out'
+                      }}
+                    ></div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                    <span>Colis: {z.colis}</span>
+                    <span>CA: {z.ca.toLocaleString()} CFA</span>
                   </div>
                 </div>
               ))}
