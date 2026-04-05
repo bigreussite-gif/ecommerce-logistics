@@ -329,16 +329,25 @@ export const AdminTresorerie = () => {
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f8fafc', borderRadius: '12px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Frais Admin</span>
-                <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>250 F / v</span>
+                <div>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Frais Admin</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>250 F × {livreesCount} livrés</span>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {extractionVentes.toLocaleString()} F</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f8fafc', borderRadius: '12px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Frais Logistique</span>
-                <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>500 F / v</span>
+                <div>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Frais Logistique</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>500 F × {livreesCount} livrés</span>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {extractionLogistique.toLocaleString()} F</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f8fafc', borderRadius: '12px' }}>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Frais Internet</span>
-                <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>300 F / v</span>
+                <div>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Frais Internet</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>300 F × {livreesCount} livrés</span>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {extractionInternet.toLocaleString()} F</span>
               </div>
             </div>
             <p style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
