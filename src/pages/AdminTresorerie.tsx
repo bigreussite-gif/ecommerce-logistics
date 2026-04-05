@@ -94,9 +94,11 @@ export const AdminTresorerie = () => {
   const netRevenue = metrics.ca_brut - metrics.frais_livraison_total; // Revenue from items
   
   // Extraction Logic
-  const extractionVentes = activeOrders.length * 250;
-  const extractionLogistique = activeOrders.length * 500;
-  const totalExtractions = extractionVentes + extractionLogistique;
+  const livreesCount = activeOrders.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase() || '')).length;
+  const extractionVentes = livreesCount * 250;
+  const extractionLogistique = livreesCount * 500;
+  const extractionInternet = livreesCount * 300;
+  const totalExtractions = extractionVentes + extractionLogistique + extractionInternet;
   
   // Final Profit after COGS and Extractions
   const realProfit = metrics.profit_net - totalExtractions;
@@ -166,7 +168,7 @@ export const AdminTresorerie = () => {
       .reduce((acc, t) => acc + t.montant, 0)
   ), [transactions]);
 
-  const currentBalance = totalInflow - totalOutflow;
+  const currentBalance = totalInflow - totalOutflow - totalExtractions;
 
   const exportToExcel = () => {
     const headers = ["Date", "Type", "Catégorie", "Description", "Montant (CFA)"];
@@ -334,9 +336,13 @@ export const AdminTresorerie = () => {
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Frais Logistique</span>
                 <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>500 F / v</span>
               </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f8fafc', borderRadius: '12px' }}>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Frais Internet</span>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>300 F / v</span>
+              </div>
             </div>
             <p style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-              * Les extractions sont déduites du profit net après avoir couvert le coût d'achat (COGS).
+              * Les extractions sont appliquées par colis livré et déduites de la balance.
             </p>
           </div>
         </div>
