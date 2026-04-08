@@ -107,8 +107,7 @@ export const processCaisse = async (
     
     const updateData: any = { 
       statut_commande: finalStatus, 
-      mode_paiement: res.mode_paiement, 
-      updated_at: new Date().toISOString() 
+      mode_paiement: res.mode_paiement 
     };
 
     // If not delivered, clear the route sheet ID so it can be re-assigned in Logistics

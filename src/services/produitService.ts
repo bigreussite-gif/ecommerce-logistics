@@ -37,8 +37,7 @@ export const updateProduit = async (id: string, data: Partial<Produit>): Promise
   const { error } = await insforge.database
     .from('produits')
     .update({
-      ...data,
-      updated_at: new Date().toISOString()
+      ...data
     })
     .eq('id', id);
   
@@ -86,8 +85,7 @@ export const addMouvementStock = async (mouvement: Omit<MouvementStock, 'id'>): 
   const { error: updateError } = await insforge.database
     .from('produits')
     .update({ 
-      stock_actuel: newStock,
-      updated_at: new Date().toISOString()
+      stock_actuel: newStock
     })
     .eq('id', mouvement.produit_id);
 

@@ -143,8 +143,7 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   const resetRouteSheets = ['validee', 'a_rappeler', 'en_attente_appel', 'annulee'];
   // 2. Prepare CLEAN update payload - VERY IMPORTANT to avoid 400 errors from unknown columns
   const updatePayload: any = { 
-    statut_commande: nextStatus,
-    updated_at: new Date().toISOString()
+    statut_commande: nextStatus
   };
 
   // Map only allowed fields from additionalData to correct DB columns
