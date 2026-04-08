@@ -46,9 +46,9 @@ export const updateProduit = async (id: string, data: Partial<Produit>): Promise
 };
 
 export const addMouvementStock = async (mouvement: Omit<MouvementStock, 'id'>): Promise<void> => {
-  // Ensure date is in ISO format for the DB
   const movementToInsert: any = {
     ...mouvement,
+    quantite: Number(mouvement.quantite),
     date: new Date().toISOString()
   };
 
@@ -61,8 +61,13 @@ export const addMouvementStock = async (mouvement: Omit<MouvementStock, 'id'>): 
 
   if (fetchError) {
     console.error("Error fetching product for stock movement:", fetchError);
-    throw fetchError;
+    // If mismatch, try to proceed if movement already has tenant_id
+    if (!movementToInsert.tenant_id) throw fetchError;
   }
+
+  const currentStock = Number(prod?.stock_actuel || 0);
+  const modifier = (mouvement.type_mouvement === 'sortie') ? -Number(mouvement.quantite) : Number(mouvement.quantite);
+  const newStock = currentStock + modifier;
 
   // 2. Add tenant_id if missing to ensure RLS/Filtering consistency
   if (!movementToInsert.tenant_id && prod?.tenant_id) {
@@ -79,10 +84,7 @@ export const addMouvementStock = async (mouvement: Omit<MouvementStock, 'id'>): 
     throw moveError;
   }
 
-  // 4. Update product stock
-  const modifier = mouvement.type_mouvement === 'sortie' ? -Number(mouvement.quantite) : Number(mouvement.quantite);
-  const newStock = (prod?.stock_actuel || 0) + modifier;
-
+  // 4. Update the current stock on the product
   await updateProduit(mouvement.produit_id, { 
     stock_actuel: newStock,
     updated_at: new Date().toISOString()
