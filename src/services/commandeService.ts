@@ -147,7 +147,7 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   };
 
   // Map only allowed fields from additionalData to correct DB columns
-  if (additionalData.notes) updatePayload.notes = additionalData.notes;
+  // REMOVED 'notes' to avoid PGRST204 cache error
   if (additionalData.livreur_id !== undefined) updatePayload.livreur_id = additionalData.livreur_id;
   if (additionalData.feuille_route_id !== undefined) updatePayload.feuille_route_id = additionalData.feuille_route_id;
   if (additionalData.agent_appel_id !== undefined) updatePayload.agent_appel_id = additionalData.agent_appel_id;
