@@ -141,24 +141,36 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   const nextStatus = status;
 
   const resetRouteSheets = ['validee', 'a_rappeler', 'en_attente_appel', 'annulee'];
+  // 2. Prepare CLEAN update payload - VERY IMPORTANT to avoid 400 errors from unknown columns
   const updatePayload: any = { 
-    statut_commande: nextStatus, 
-    ...additionalData, 
-    updated_at: new Date().toISOString() 
+    statut_commande: nextStatus,
+    updated_at: new Date().toISOString()
   };
+
+  // Map only allowed fields from additionalData to correct DB columns
+  if (additionalData.notes) updatePayload.notes = additionalData.notes;
+  if (additionalData.livreur_id !== undefined) updatePayload.livreur_id = additionalData.livreur_id;
+  if (additionalData.feuille_route_id !== undefined) updatePayload.feuille_route_id = additionalData.feuille_route_id;
+  if (additionalData.agent_appel_id !== undefined) updatePayload.agent_appel_id = additionalData.agent_appel_id;
+  if (additionalData.montant_total !== undefined) updatePayload.montant_total = additionalData.montant_total;
+  if (additionalData.commune_livraison !== undefined) updatePayload.commune_livraison = additionalData.commune_livraison;
+  if (additionalData.adresse_livraison !== undefined) updatePayload.adresse_livraison = additionalData.adresse_livraison;
+  if (additionalData.frais_livraison !== undefined) updatePayload.frais_livraison = additionalData.frais_livraison;
 
   if (resetRouteSheets.includes(nextStatus?.toLowerCase())) {
     updatePayload.feuille_route_id = null;
-    updatePayload.livreur_id = null; // Also clear livreur if it's being re-queued or cancelled
+    updatePayload.livreur_id = null;
   }
 
-  // 2. Update status in DB
   const { error } = await insforge.database
     .from('commandes')
     .update(updatePayload)
     .eq('id', id);
   
-  if (error) throw error;
+  if (error) {
+    console.error("Order status update error:", error);
+    throw error;
+  }
 
   // 3. Stock management state machine
   // activeStates means the products are "out" of the main warehouse stock

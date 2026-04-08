@@ -46,50 +46,57 @@ export const updateProduit = async (id: string, data: Partial<Produit>): Promise
 };
 
 export const addMouvementStock = async (mouvement: Omit<MouvementStock, 'id'>): Promise<void> => {
-  const movementToInsert: any = {
-    ...mouvement,
-    quantite: Number(mouvement.quantite),
-    date: new Date().toISOString()
-  };
-
-  // 1. Fetch current product to get stock_actuel AND tenant_id
+  // 1. Fetch current product - strictly select only what is needed
   const { data: prod, error: fetchError } = await insforge.database
     .from('produits')
-    .select('stock_actuel, tenant_id')
+    .select('stock_actuel')
     .eq('id', mouvement.produit_id)
     .single();
 
   if (fetchError) {
     console.error("Error fetching product for stock movement:", fetchError);
-    // If mismatch, try to proceed if movement already has tenant_id
-    if (!movementToInsert.tenant_id) throw fetchError;
+    throw new Error(`Produit introuvable: ${fetchError.message}`);
   }
 
   const currentStock = Number(prod?.stock_actuel || 0);
-  const modifier = (mouvement.type_mouvement === 'sortie') ? -Number(mouvement.quantite) : Number(mouvement.quantite);
+  const qty = Number(mouvement.quantite);
+  const modifier = (mouvement.type_mouvement === 'sortie') ? -qty : qty;
   const newStock = currentStock + modifier;
 
-  // 2. Add tenant_id if missing to ensure RLS/Filtering consistency
-  if (!movementToInsert.tenant_id && prod?.tenant_id) {
-    movementToInsert.tenant_id = prod.tenant_id;
-  }
+  // 2. Prepare CLEAN movement data
+  const moveData = {
+    produit_id: mouvement.produit_id,
+    type_mouvement: mouvement.type_mouvement,
+    quantite: qty,
+    reference: mouvement.reference || '',
+    commentaire: mouvement.commentaire || '',
+    date: new Date().toISOString()
+  };
 
-  // 3. Record movement
   const { error: moveError } = await insforge.database
     .from('mouvements_stock')
-    .insert([movementToInsert]);
-  
+    .insert([moveData]);
+
   if (moveError) {
-    console.error("Error inserting movement:", moveError);
+    console.error("Error creating stock movement record:", moveError);
     throw moveError;
   }
 
-  // 4. Update the current stock on the product
-  await updateProduit(mouvement.produit_id, { 
-    stock_actuel: newStock,
-    updated_at: new Date().toISOString()
-  });
+  // 3. Update the product stock
+  const { error: updateError } = await insforge.database
+    .from('produits')
+    .update({ 
+      stock_actuel: newStock,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', mouvement.produit_id);
+
+  if (updateError) {
+    console.error("Error updating product total stock:", updateError);
+    throw updateError;
+  }
 };
+
 
 export const getHistoriqueStock = async (produit_id: string): Promise<MouvementStock[]> => {
   const { data, error } = await insforge.database
