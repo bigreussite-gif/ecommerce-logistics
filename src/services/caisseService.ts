@@ -108,7 +108,7 @@ export const processCaisse = async (
     const updateData: any = { 
       statut_commande: finalStatus, 
       mode_paiement: res.mode_paiement, 
-      updated_at: new Date() 
+      updated_at: new Date().toISOString() 
     };
 
     // If not delivered, clear the route sheet ID so it can be re-assigned in Logistics
@@ -142,10 +142,10 @@ export const processCaisse = async (
   }
   
   // 2. Log formal Caisse Retour
-  const { error: retourError } = await insforge.database
-    .from('caisse_retours')
-    .insert([{ 
-      date: new Date(), 
+    const { error: retourError } = await insforge.database
+      .from('caisse_retours')
+      .insert([{ 
+        date: new Date().toISOString(), 
       feuille_route_id: feuilleRouteId, 
       livreur_id: livreurId,
       caissiere_id: caissiereId,

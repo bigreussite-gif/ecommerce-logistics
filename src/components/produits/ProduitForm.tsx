@@ -72,8 +72,7 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
       } else {
         await createProduit({
           ...dataToSave,
-          created_by: currentUser?.id,
-          tenant_id: currentUser?.tenant_id
+          created_by: currentUser?.id
         } as Omit<Produit, 'id'>);
         showToast("Nouvel article référencé avec succès !", "success");
       }
