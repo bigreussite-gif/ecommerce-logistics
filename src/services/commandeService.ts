@@ -140,16 +140,16 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   const prevStatus = currentCmd.statut_commande;
   const nextStatus = status;
 
-  const resetRouteSheets = ['validee', 'a_rappeler', 'en_attente_appel'];
+  const resetRouteSheets = ['validee', 'a_rappeler', 'en_attente_appel', 'annulee'];
   const updatePayload: any = { 
     statut_commande: nextStatus, 
     ...additionalData, 
-    updated_at: new Date() 
+    updated_at: new Date().toISOString() 
   };
 
   if (resetRouteSheets.includes(nextStatus?.toLowerCase())) {
     updatePayload.feuille_route_id = null;
-    updatePayload.livreur_id = null; // Also clear livreur if it's being re-queued
+    updatePayload.livreur_id = null; // Also clear livreur if it's being re-queued or cancelled
   }
 
   // 2. Update status in DB
@@ -161,7 +161,8 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   if (error) throw error;
 
   // 3. Stock management state machine
-  const activeStates = ['en_attente_appel', 'validee', 'en_cours_livraison', 'livree', 'terminee'];
+  // activeStates means the products are "out" of the main warehouse stock
+  const activeStates = ['en_attente_appel', 'validee', 'en_cours_livraison', 'livree', 'terminee', 'retour_livreur', 'absent', 'echouee'];
 
   const wasActive = activeStates.includes(prevStatus?.toLowerCase());
   const isNowActive = activeStates.includes(nextStatus?.toLowerCase());

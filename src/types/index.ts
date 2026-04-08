@@ -27,6 +27,7 @@ export interface User {
   communes_servies?: string[]; 
   permissions?: string[]; // Dynamic permissions
   actif?: boolean;
+  tenant_id?: string;
 }
 
 export interface Produit {
@@ -47,6 +48,8 @@ export interface Produit {
   image_url?: string;
   created_by?: string;
   created_at?: string;
+  updated_at?: string;
+  tenant_id?: string;
 }
 
 export interface Client {
@@ -136,6 +139,8 @@ export interface MouvementStock {
   date: Date | string;
   reference?: string;
   commentaire?: string;
+  tenant_id?: string;
+  fait_par?: string;
 }
 
 export interface Commune {

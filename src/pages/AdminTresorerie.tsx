@@ -168,7 +168,9 @@ export const AdminTresorerie = () => {
       .reduce((acc, t) => acc + t.montant, 0)
   ), [transactions]);
 
-  const currentBalance = totalInflow - totalOutflow - totalExtractions;
+  const currentBalanceRaw = totalInflow - totalOutflow - totalExtractions;
+  const retenueCharge = netRevenue > 0 ? Math.round(netRevenue * 0.05) : 0;
+  const currentBalance = currentBalanceRaw - retenueCharge;
 
   const exportToExcel = () => {
     const headers = ["Date", "Type", "Catégorie", "Description", "Montant (CFA)"];
@@ -309,8 +311,15 @@ export const AdminTresorerie = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Summary Card */}
           <div className="card" style={{ padding: '1.5rem', background: '#1e293b', color: 'white' }}>
-            <h4 style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, color: 'white' }}>Balance de Période</h4>
-            <h2 style={{ fontSize: '2rem', margin: '0.5rem 0', fontWeight: 800 }}>{currentBalance.toLocaleString()} F</h2>
+            <h4 style={{ margin: 0, fontSize: '0.9rem', opacity: 0.7, color: 'white' }}>Balance Brute</h4>
+            <h2 style={{ fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 800 }}>{(totalInflow - totalOutflow).toLocaleString()} F</h2>
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '1rem 0' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '0.75rem', opacity: 0.7, color: 'white', textTransform: 'uppercase' }}>Balance Nette (Excluant frais)</h4>
+                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: '#10b981' }}>{currentBalance.toLocaleString()} F</div>
+              </div>
+            </div>
             <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '1rem 0' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
               <span style={{ opacity: 0.7 }}>Volume Ventes</span>
@@ -349,9 +358,16 @@ export const AdminTresorerie = () => {
                 </div>
                 <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {extractionInternet.toLocaleString()} F</span>
               </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#fef2f2', borderRadius: '12px' }}>
+                <div>
+                  <span style={{ fontSize: '0.8rem', color: '#ef4444', display: 'block', fontWeight: 700 }}>Retenu pour charge</span>
+                  <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 600 }}>5% des ventes nettes</span>
+                </div>
+                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {retenueCharge.toLocaleString()} F</span>
+              </div>
             </div>
             <p style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-              * Les extractions sont appliquées par colis livré et déduites de la balance.
+              * Les extractions sont appliquées par colis livré et déduites de la balance. 5% des ventes nettes sont retenus pour charges.
             </p>
           </div>
         </div>

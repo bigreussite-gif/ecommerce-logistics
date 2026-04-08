@@ -3,6 +3,7 @@ import { X, CheckCircle, Clock, XCircle, MessageCircle, AlertCircle, Plus, Minus
 import { updateCommandeStatus, updateCommandeLignesAndStock, logWhatsAppMessage } from '../../services/commandeService';
 import { insforge } from '../../lib/insforge';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { getCommunes } from '../../services/adminService';
 import { subscribeToProduits } from '../../services/produitService';
 import type { Commande, AppelCommande, Commune, LigneCommande, Produit } from '../../types';
@@ -15,6 +16,7 @@ interface AppelFormProps {
 
 export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
   const { currentUser } = useAuth();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [resultat, setResultat] = useState<AppelCommande['resultat_appel']>('validee');
   const [commentaire, setCommentaire] = useState('');
@@ -97,7 +99,10 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
-    if (lignesLocal.length === 0) return alert("La commande doit contenir au moins un article.");
+    if (resultat !== 'annulee' && lignesLocal.length === 0) {
+      showToast("La commande doit contenir au moins un article.", "error");
+      return;
+    }
     
     setLoading(true);
     try {
@@ -150,9 +155,11 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
       }
 
       await updateCommandeStatus(commande.id, nextStatusMap[resultat], payload);
+      showToast(`Commande ${resultat === 'annulee' ? 'annulée' : (resultat === 'validee' ? 'validée' : 'mise à jour')} avec succès.`, "success");
       onSave();
     } catch (error) {
       console.error("Erreur lors de la validation :", error);
+      showToast("Une erreur est survenue lors de l'enregistrement.", "error");
     } finally {
       setLoading(false);
     }
