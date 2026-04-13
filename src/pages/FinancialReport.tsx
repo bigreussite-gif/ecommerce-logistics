@@ -109,6 +109,11 @@ export const FinancialReport = () => {
 
   // Rapprochement physique (affichage séparé seulement, pour audit)
   const cashPhysiqueRecus = data.retours.reduce((acc, r) => acc + (r.montant_remis_par_livreur || 0), 0);
+  
+  const totalMobileMoney = succesCommandes
+    .filter(c => !['Cash à la livraison', 'Cash'].includes(c.mode_paiement || ''))
+    .reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
+
   const totalEcartCaisse = data.retours.reduce((acc, r) => acc + (r.ecart || 0), 0);
 
   const successRate = logStats?.taux_succes || 0;
