@@ -158,6 +158,16 @@ export const processCaisse = async (
 };
 
 export const reopenFeuilleRoute = async (id: string): Promise<void> => {
+  // 1. Supprimer l'enregistrement caisse_retours associé
+  //    pour ne pas polluer les calculs du rapport journalier
+  const { error: retourErr } = await insforge.database
+    .from('caisse_retours')
+    .delete()
+    .eq('feuille_route_id', id);
+
+  if (retourErr) throw retourErr;
+
+  // 2. Remettre la feuille en cours
   const { error } = await insforge.database
     .from('feuilles_route')
     .update({
@@ -169,6 +179,19 @@ export const reopenFeuilleRoute = async (id: string): Promise<void> => {
     .eq('id', id);
 
   if (error) throw error;
+
+  // 3. Remettre les commandes "terminee/livree" de cette feuille
+  //    en "en_cours_livraison" pour qu'elles soient re-traitées
+  const { error: cmdErr } = await insforge.database
+    .from('commandes')
+    .update({
+      statut_commande: 'en_cours_livraison',
+      date_livraison_effective: null
+    })
+    .in('statut_commande', ['terminee', 'livree'])
+    .eq('feuille_route_id', id);
+
+  if (cmdErr) throw cmdErr;
 };
 
 export const getRangeFinancials = async (startDateStr: string, endDateStr?: string): Promise<any> => {

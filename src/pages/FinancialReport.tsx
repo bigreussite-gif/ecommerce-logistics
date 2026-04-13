@@ -101,19 +101,15 @@ export const FinancialReport = () => {
     return s === 'terminee' || s === 'livree';
   });
 
-  const isSingleDay = startDate === endDate;
-  
-  // Total Mobile Money recorded for successful orders
-  const totalMobileMoney = succesCommandes
-    .filter(c => !['Cash à la livraison', 'Cash'].includes(c.mode_paiement || ''))
-    .reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
-
-  const totalEncaisseBrut = isSingleDay && data.retours && data.retours.length > 0
-    ? data.retours.reduce((acc, r) => acc + (r.montant_remis_par_livreur || 0), 0) + totalMobileMoney
-    : succesCommandes.reduce((acc, c) => acc + (c.montant_total || 0), 0);
-    
+  // SOURCE DE VÉRITÉ UNIQUE : toujours les commandes théoriques
+  // (identique entre vue admin et vue caissière)
+  const totalEncaisseBrut = succesCommandes.reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
   const totalFraisLivraison = succesCommandes.reduce((acc, c) => acc + getFrais(c), 0);
   const totalProduitsNet = totalEncaisseBrut - totalFraisLivraison;
+
+  // Rapprochement physique (affichage séparé seulement, pour audit)
+  const cashPhysiqueRecus = data.retours.reduce((acc, r) => acc + (r.montant_remis_par_livreur || 0), 0);
+  const totalEcartCaisse = data.retours.reduce((acc, r) => acc + (r.ecart || 0), 0);
 
   const successRate = logStats?.taux_succes || 0;
 
@@ -242,8 +238,41 @@ export const FinancialReport = () => {
 
       <div style={{ marginBottom: '2.5rem' }}>
         <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-main)' }}>
-           Point Caissière
+           Point Caissière (Rapprochement Physique)
         </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+          
+          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
+            <span style={{ color: '#059669', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ESPÈCES REMISES (CASH)</span>
+            <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+              {cashPhysiqueRecus.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
+            </div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+              Cash physique collecté 
+            </div>
+          </div>
+
+          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #3b82f6' }}>
+            <span style={{ color: '#2563eb', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PAIEMENTS DIGITAUX</span>
+            <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+              {(totalMobileMoney || 0).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
+            </div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+              Mobile Money, Wave, etc.
+            </div>
+          </div>
+
+          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: `4px solid ${totalEcartCaisse < 0 ? '#ef4444' : '#64748b'}` }}>
+            <span style={{ color: totalEcartCaisse < 0 ? '#ef4444' : '#64748b', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ÉCART CONSTATÉ</span>
+            <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px', color: totalEcartCaisse < 0 ? '#ef4444' : 'inherit' }}>
+              {totalEcartCaisse.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
+            </div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+              Différence liquidité vs théorique
+            </div>
+          </div>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
           
           <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #ef4444' }}>
