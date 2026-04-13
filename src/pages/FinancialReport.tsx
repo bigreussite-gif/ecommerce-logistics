@@ -101,19 +101,23 @@ export const FinancialReport = () => {
     return s === 'terminee' || s === 'livree';
   });
 
-  // SOURCE DE VÉRITÉ UNIQUE : toujours les commandes théoriques
-  // (identique entre vue admin et vue caissière)
   const totalEncaisseBrut = succesCommandes.reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
   const totalFraisLivraison = succesCommandes.reduce((acc, c) => acc + getFrais(c), 0);
   const totalProduitsNet = totalEncaisseBrut - totalFraisLivraison;
 
-  // Rapprochement physique (affichage séparé seulement, pour audit)
-  const cashPhysiqueRecus = data.retours.reduce((acc, r) => acc + (r.montant_remis_par_livreur || 0), 0);
+  // SOURCE DE VÉRITÉ POUR LA CAISSE (PHYSIQUE)
+  const isCash = (c: Commande) => ['Cash à la livraison', 'Cash'].includes(c.mode_paiement || '');
   
-  const totalMobileMoney = succesCommandes
-    .filter(c => !['Cash à la livraison', 'Cash'].includes(c.mode_paiement || ''))
+  const totalEncaisseCash = succesCommandes
+    .filter(isCash)
     .reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
 
+  const totalMobileMoney = succesCommandes
+    .filter(c => !isCash(c))
+    .reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
+
+  // Rapprochement physique (audit)
+  const cashPhysiqueRecus = data.retours.reduce((acc, r) => acc + (r.montant_remis_par_livreur || 0), 0);
   const totalEcartCaisse = data.retours.reduce((acc, r) => acc + (r.ecart || 0), 0);
 
   const successRate = logStats?.taux_succes || 0;
@@ -257,13 +261,13 @@ export const FinancialReport = () => {
             </div>
           </div>
 
-          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #3b82f6' }}>
-            <span style={{ color: '#2563eb', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PAIEMENTS DIGITAUX</span>
+          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #3b82f6', background: 'rgba(59, 130, 246, 0.05)' }}>
+            <span style={{ color: '#2563eb', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PAIEMENTS DIGITAUX (MM/WAVE)</span>
             <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
               {(totalMobileMoney || 0).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
             </div>
             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-              Mobile Money, Wave, etc.
+              Argent déjà en banque / compte
             </div>
           </div>
 
@@ -310,13 +314,13 @@ export const FinancialReport = () => {
             </div>
           </div>
 
-          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #8b5cf6', backgroundColor: '#fcfaff' }}>
-            <span style={{ color: '#6d28d9', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ARGENT ENVELOPPE</span>
+          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #8b5cf6', backgroundColor: '#fcfaff', boxShadow: '0 10px 15px -3px rgba(139, 92, 246, 0.1)' }}>
+            <span style={{ color: '#6d28d9', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ARGENT ENVELOPPE (CASH PHYSIQUE)</span>
             <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px', color: '#4c1d95' }}>
-              {(totalProduitsNet - ((logStats?.livrees || 0) * 1050)).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
+              {(totalEncaisseCash - ((logStats?.livrees || 0) * 1050) + totalEcartCaisse).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
             </div>
             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-              CA Net - (Logistique + Entretien + Internet)
+              Total Cash - Extractions +/- Écarts
             </div>
           </div>
 

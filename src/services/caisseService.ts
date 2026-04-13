@@ -201,7 +201,7 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
   const end = endDateStr ? new Date(endDateStr) : new Date(startDateStr);
   end.setHours(23,59,59,999);
 
-  // 1. Get Caisse Retours for the range
+  // 1. Get Caisse Retours for the range (Physical closure records)
   const { data: retours, error: retoursError } = await insforge.database
     .from('caisse_retours')
     .select('*')
@@ -210,8 +210,25 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
 
   if (retoursError) throw retoursError;
 
-  // 2. Get All Commandes modified or delivered in range for stats
-  const filterStr = `and(date_livraison_effective.gte.${start.toISOString()},date_livraison_effective.lte.${end.toISOString()}),and(updated_at.gte.${start.toISOString()},updated_at.lte.${end.toISOString()})`;
+  // 2. Get All Commandes delivered in range OR whose sheet was processed in range
+  // This is much more stable than updated_at
+  const startStr = start.toISOString();
+  const endStr = end.toISOString();
+  
+  // Fetch all sheets treated in range to include their orders (especially failures)
+  const { data: sheets } = await insforge.database
+    .from('feuilles_route')
+    .select('id')
+    .gte('date_traitement', startStr)
+    .lte('date_traitement', endStr);
+
+  const sheetIds = sheets?.map(s => s.id) || [];
+  
+  // Filter: (date_livraison_effective in range) OR (feuille_route_id in sheetIds)
+  let filterStr = `and(date_livraison_effective.gte.${startStr},date_livraison_effective.lte.${endStr})`;
+  if (sheetIds.length > 0) {
+    filterStr += `,feuille_route_id.in.(${sheetIds.join(',')})`;
+  }
 
   const { data: commandes, error: cmdError } = await insforge.database
     .from('commandes')

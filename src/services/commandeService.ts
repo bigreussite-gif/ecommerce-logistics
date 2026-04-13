@@ -355,8 +355,10 @@ export const deleteCommande = async (id: string): Promise<void> => {
 };
 
 export const getFinancialData = async (startDate?: string, endDate?: string): Promise<(Commande & { lignes: LigneCommande[] })[]> => {
-  // Correct grouping: (date_livraison_effective IN range) OR (updated_at IN range)
-  const filterString = `and(date_livraison_effective.gte.${startDate},date_livraison_effective.lte.${endDate}),and(updated_at.gte.${startDate},updated_at.lte.${endDate})`;
+  // Robust filter: (Delivered in range) OR (Terminal status updated in range)
+  // This prevents 'Active' orders (e.g. en_cours_livraison) from polluting financial reports due to simple updates.
+  const terminalStats = '(livree,terminee,echouee,retour_livreur,retour_stock,annulee,retour_client)';
+  const filterString = `and(date_livraison_effective.gte.${startDate},date_livraison_effective.lte.${endDate}),and(updated_at.gte.${startDate},updated_at.lte.${endDate},statut_commande.in.${terminalStats})`;
   
   let query = insforge.database
     .from('commandes')
