@@ -102,8 +102,14 @@ export const FinancialReport = () => {
   });
 
   const isSingleDay = startDate === endDate;
+  
+  // Total Mobile Money recorded for successful orders
+  const totalMobileMoney = succesCommandes
+    .filter(c => !['Cash à la livraison', 'Cash'].includes(c.mode_paiement || ''))
+    .reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
+
   const totalEncaisseBrut = isSingleDay && data.retours && data.retours.length > 0
-    ? data.retours.reduce((acc, r) => acc + (r.montant_remis_par_livreur || 0), 0)
+    ? data.retours.reduce((acc, r) => acc + (r.montant_remis_par_livreur || 0), 0) + totalMobileMoney
     : succesCommandes.reduce((acc, c) => acc + (c.montant_total || 0), 0);
     
   const totalFraisLivraison = succesCommandes.reduce((acc, c) => acc + getFrais(c), 0);
@@ -260,13 +266,23 @@ export const FinancialReport = () => {
             </div>
           </div>
 
+          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #3b82f6' }}>
+            <span style={{ color: '#2563eb', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>FRAIS INTERNET / ADS</span>
+            <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+              {((logStats?.livrees || 0) * 300).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
+            </div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+              {logStats?.livrees || 0} livrées × 300 F
+            </div>
+          </div>
+
           <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #8b5cf6', backgroundColor: '#fcfaff' }}>
             <span style={{ color: '#6d28d9', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ARGENT ENVELOPPE</span>
             <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px', color: '#4c1d95' }}>
-              {(totalProduitsNet - ((logStats?.livrees || 0) * 500) - ((logStats?.livrees || 0) * 250)).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
+              {(totalProduitsNet - ((logStats?.livrees || 0) * 1050)).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
             </div>
             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-              CA Net - (Logistique + Entretien)
+              CA Net - (Logistique + Entretien + Internet)
             </div>
           </div>
 
@@ -283,7 +299,7 @@ export const FinancialReport = () => {
           <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981', backgroundColor: '#f0fdf4' }}>
             <span style={{ color: '#166534', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>MARGE NETTE RESTANTE</span>
             <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px', color: '#15803d' }}>
-              {((stats?.profit_net || 0) - ((logStats?.livrees || 0) * 750)).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
+              {((stats?.profit_net || 0) - ((logStats?.livrees || 0) * 1050)).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
             </div>
             <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
               Bénéfice après extractions

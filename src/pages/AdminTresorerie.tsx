@@ -147,7 +147,7 @@ export const AdminTresorerie = () => {
       type: 'Entrée' as const,
       categorie: 'Vente',
       description: `Commande #${(o.id || '').substring(0, 8).toUpperCase() || '...'} - ${o.nom_client}`,
-      montant: (Number(o.montant_total) || 0) - (Number(o.frais_livraison) || 0)
+      montant: (Number(o.montant_total) || 0) - (o.frais_livraison !== undefined && o.frais_livraison !== null ? Number(o.frais_livraison) : 1000)
     })),
     ...data.expenses.map(e => ({
       date: new Date(e.date),

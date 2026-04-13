@@ -361,7 +361,6 @@ export const getFinancialData = async (startDate?: string, endDate?: string): Pr
   let query = insforge.database
     .from('commandes')
     .select('*, clients(nom_complet, telephone)')
-    .in('statut_commande', ['livree', 'terminee', 'LIVREE', 'TERMINEE'])
     .or(filterString);
 
   const { data: orders, error: orderError } = await query.order('updated_at', { ascending: false });

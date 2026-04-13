@@ -45,6 +45,7 @@ const AdminTresorerie = lazyWithRetry(() => import('./pages/AdminTresorerie').th
 const AuditTresorerie = lazyWithRetry(() => import('./pages/AuditTresorerie').then(m => ({ default: m.AuditTresorerie })));
 const Retours = lazyWithRetry(() => import('./pages/Retours').then(m => ({ default: m.Retours })));
 const Defaillants = lazyWithRetry(() => import('./pages/Defaillants').then(m => ({ default: m.Defaillants })));
+const Landing = lazyWithRetry(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
 
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '5rem' }}>
@@ -93,9 +94,11 @@ const ProtectedRoute = ({ children, requiredPermission }: { children: React.Reac
 };
 
 const AppRoutes = () => {
+  const { currentUser } = useAuth();
+  
   return (
     <Routes>
-      <Route path="/" element={<Layout />}>
+      <Route path="/" element={currentUser ? <Layout /> : <Navigate to="/accueil" replace />}>
         <Route index element={<Home />} />
         
         {/* Admin Dashboard */}
@@ -187,6 +190,7 @@ const AppRoutes = () => {
         } />
       </Route>
 
+      <Route path="/accueil" element={currentUser ? <Navigate to="/" replace /> : <Landing />} />
       <Route path="/login" element={<Login />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
