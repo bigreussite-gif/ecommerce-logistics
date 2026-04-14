@@ -19,6 +19,7 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
   // Products State
   const [catalogue, setCatalogue] = useState<Produit[]>([]);
   const [lignes, setLignes] = useState<Partial<LigneCommande>[]>([]);
+  const [lineSearches, setLineSearches] = useState<Record<number, string>>({});
   
   // Order Details
   const [source, setSource] = useState('Facebook');
@@ -254,11 +255,21 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
             <div style={{ display: 'grid', gap: '1rem' }}>
               {lignes.map((l, idx) => (
                 <div key={idx} className="glass-effect" style={{ display: 'flex', gap: '1.5rem', padding: '1.25rem', borderRadius: '18px', alignItems: 'center', flexWrap: 'wrap', background: 'rgba(241, 245, 249, 0.5)' }}>
-                  <div style={{ flex: '2', minWidth: '240px' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Article</label>
+                  <div style={{ flex: '2', minWidth: '240px', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', margin: 0 }}>Article</label>
+                      <input 
+                        type="text" 
+                        placeholder="Filtrer article..." 
+                        style={{ border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.2rem 0.5rem', fontSize: '0.7rem', width: '120px' }}
+                        value={lineSearches[idx] || ''}
+                        onChange={e => setLineSearches({ ...lineSearches, [idx]: e.target.value })}
+                        onClick={e => e.stopPropagation()}
+                      />
+                    </div>
                     <select className="form-select" required value={l.produit_id} onChange={(e) => updateLigne(idx, 'produit_id', e.target.value)} style={{ background: 'white' }}>
                       <option value="">Choisir un produit...</option>
-                      {catalogue.map(p => (
+                      {catalogue.filter(p => !lineSearches[idx] || p.nom.toLowerCase().includes(lineSearches[idx].toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(lineSearches[idx].toLowerCase()))).map(p => (
                         <option key={p.id} value={p.id}>{p.nom} ({parsePrice(p).toLocaleString()} CFA)</option>
                       ))}
                     </select>
