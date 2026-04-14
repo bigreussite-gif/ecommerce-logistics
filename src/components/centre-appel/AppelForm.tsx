@@ -23,6 +23,8 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
   const [fraisLivraison, setFraisLivraison] = useState<number | ''>(commande.frais_livraison || '');
   const [communeLocal, setCommuneLocal] = useState(commande.commune_livraison || '');
   const [adresseLocal, setAdresseLocal] = useState(commande.adresse_livraison || '');
+  const [dateLivraisonType, setDateLivraisonType] = useState<'today' | 'tomorrow' | 'custom'>('today');
+  const [customDateValue, setCustomDateValue] = useState('');
   const [communesDb, setCommunesDb] = useState<Commune[]>([]);
   
   // Articles adjustment state
@@ -144,6 +146,17 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
 
       if (resultat === 'validee') {
         payload.date_validation_appel = new Date();
+        
+        // Handle delivery date
+        let scheduledDate: any = new Date();
+        if (dateLivraisonType === 'tomorrow') {
+          const tomorrow = new Date();
+          tomorrow.setDate(tomorrow.getDate() + 1);
+          scheduledDate = tomorrow;
+        } else if (dateLivraisonType === 'custom' && customDateValue) {
+          scheduledDate = new Date(customDateValue);
+        }
+        payload.date_livraison_prevue = scheduledDate;
       }
 
       if (resultat === 'annulee') {
@@ -427,7 +440,54 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
           </div>
 
           {resultat === 'validee' && (
-            <div style={{ padding: '1.25rem', background: '#fdf4ff', borderRadius: '20px', border: '2px solid #f5d0fe', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ padding: '1.25rem', background: '#fdf4ff', borderRadius: '20px', border: '2px solid #f5d0fe', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ borderBottom: '1px solid #f5d0fe', pb: '0.75rem', marginBottom: '0.25rem' }}>
+                <label className="form-label" style={{ fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', color: '#9d174d' }}>Programmation Livraison</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <button 
+                    type="button" 
+                    onClick={() => setDateLivraisonType('today')}
+                    style={{ 
+                      padding: '0.6rem', borderRadius: '12px', border: 'none', fontSize: '0.75rem', fontWeight: 700,
+                      background: dateLivraisonType === 'today' ? '#9d174d' : 'white',
+                      color: dateLivraisonType === 'today' ? 'white' : '#9d174d',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'all 0.2s'
+                    }}
+                  >Aujourd'hui</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setDateLivraisonType('tomorrow')}
+                    style={{ 
+                      padding: '0.6rem', borderRadius: '12px', border: 'none', fontSize: '0.75rem', fontWeight: 700,
+                      background: dateLivraisonType === 'tomorrow' ? '#9d174d' : 'white',
+                      color: dateLivraisonType === 'tomorrow' ? 'white' : '#9d174d',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'all 0.2s'
+                    }}
+                  >Demain</button>
+                  <button 
+                    type="button" 
+                    onClick={() => setDateLivraisonType('custom')}
+                    style={{ 
+                      padding: '0.6rem', borderRadius: '12px', border: 'none', fontSize: '0.75rem', fontWeight: 700,
+                      background: dateLivraisonType === 'custom' ? '#9d174d' : 'white',
+                      color: dateLivraisonType === 'custom' ? 'white' : '#9d174d',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.05)', cursor: 'pointer', transition: 'all 0.2s'
+                    }}
+                  >Choisir date</button>
+                </div>
+                
+                {dateLivraisonType === 'custom' && (
+                  <input 
+                    type="date" 
+                    className="form-input" 
+                    style={{ marginTop: '0.75rem', height: '40px', background: 'white' }} 
+                    value={customDateValue}
+                    onChange={e => setCustomDateValue(e.target.value)}
+                    required={dateLivraisonType === 'custom'}
+                  />
+                )}
+              </div>
+
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem' }}>Zone de livraison finale</label>
                 <select className="form-select" required value={communeLocal} onChange={e => handleCommuneChange(e.target.value)} style={{ background: 'white', height: '40px' }}>

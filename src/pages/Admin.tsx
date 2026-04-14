@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { User, Commune, Permission } from '../types';
-import { getAdminUsers, createAdminUser, updateAdminUser, getCommunes, createCommune, updateCommune, deleteCommune } from '../services/adminService';
+import { User, Commune, Permission, Categorie } from '../types';
+import { getAdminUsers, createAdminUser, updateAdminUser, getCommunes, createCommune, updateCommune, deleteCommune, getCategories, createCategorie, updateCategorie, deleteCategorie } from '../services/adminService';
 import { Plus, Trash2, Users as UsersIcon, Map as MapIcon } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { insforge } from '../lib/insforge';
@@ -12,21 +12,22 @@ export const Admin = () => {
   
   const canManageUsers = hasPermission('ADMIN') || hasPermission('GESTION_LIVREURS');
   const canManageCommunes = hasPermission('ADMIN') || hasPermission('COMMUNES');
+  const canManageCategories = hasPermission('ADMIN') || hasPermission('PRODUITS');
 
-  const [activeTab, setActiveTab] = useState<'utilisateurs' | 'communes'>(
-    canManageUsers ? 'utilisateurs' : 'communes'
+  const [activeTab, setActiveTab] = useState<'utilisateurs' | 'communes' | 'categories'>(
+    canManageUsers ? 'utilisateurs' : (canManageCommunes ? 'communes' : 'categories')
   );
 
   return (
     <div style={{ animation: 'pageEnter 0.6s ease' }}>
       <div style={{ marginBottom: '2.5rem' }}>
         <h1 className="text-premium" style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>
-          {hasPermission('ADMIN') ? 'Administration' : 'Gestion Équipe & Zones'}
+          {hasPermission('ADMIN') ? 'Administration' : 'Gestion Équipe & Catalogue'}
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginTop: '0.4rem', fontWeight: 500 }}>
           {hasPermission('ADMIN') 
-            ? 'Gestion globale du système et des accès.' 
-            : 'Gestion des zones de livraison et de l\'équipe.'}
+            ? 'Gestion globale du système, des accès et du catalogue.' 
+            : 'Gestion des zones, de l\'équipe et des catégories.'}
         </p>
       </div>
 
@@ -60,10 +61,26 @@ export const Admin = () => {
             <MapIcon size={18} strokeWidth={activeTab === 'communes' ? 2.5 : 2} /> Zones & Tarifs
           </button>
         )}
+        {canManageCategories && (
+          <button 
+            className="btn"
+            onClick={() => setActiveTab('categories')}
+            style={{ 
+              background: activeTab === 'categories' ? 'white' : 'transparent',
+              color: activeTab === 'categories' ? 'var(--primary)' : 'var(--text-muted)',
+              boxShadow: activeTab === 'categories' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
+              border: 'none', padding: '0.7rem 1.5rem', borderRadius: '12px', fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
+            }}
+          >
+            <Plus size={18} strokeWidth={activeTab === 'categories' ? 2.5 : 2} /> Catégories
+          </button>
+        )}
       </div>
 
       <div>
-        {activeTab === 'utilisateurs' ? <UsersManager showToast={showToast} /> : <CommunesManager showToast={showToast} />}
+        {activeTab === 'utilisateurs' && <UsersManager showToast={showToast} />}
+        {activeTab === 'communes' && <CommunesManager showToast={showToast} />}
+        {activeTab === 'categories' && <CategoriesManager showToast={showToast} />}
       </div>
     </div>
   );
@@ -415,6 +432,132 @@ const CommunesManager = ({ showToast }: { showToast: any }) => {
                 </td>
               </tr>
             ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// --- CATEGORIES MANAGER COMPONENT ---
+const CategoriesManager = ({ showToast }: { showToast: any }) => {
+  const [categories, setCategories] = useState<Categorie[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<Partial<Categorie>>({});
+
+  const loadCategories = async () => {
+    setLoading(true);
+    try {
+      const data = await getCategories();
+      setCategories(data || []);
+    } catch (e) {
+      showToast("Erreur chargement catégories.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadCategories(); }, []);
+
+  const handleSave = async () => {
+    const nom = form?.nom?.trim();
+
+    if (!nom) {
+      showToast("Le nom est requis.", "error"); return;
+    }
+
+    setLoading(true);
+    try {
+      if (editingId === 'new') {
+        await createCategorie({ nom, description: form.description });
+      } else if (editingId) {
+        await updateCategorie(editingId, { nom, description: form.description });
+      }
+      showToast("Catégorie enregistrée.", "success");
+      setEditingId(null); setForm({}); loadCategories();
+    } catch (e: any) {
+      showToast(e.message || "Erreur.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Supprimer cette catégorie ?")) {
+      try {
+        await deleteCategorie(id);
+        showToast("Catégorie supprimée.");
+        loadCategories();
+      } catch (e) {
+        showToast("Erreur lors de la suppression.", "error");
+      }
+    }
+  };
+
+  return (
+    <div className="card table-responsive-cards" style={{ padding: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Catégories de Produits</h3>
+        <button 
+          className="btn btn-primary" 
+          onClick={() => { setEditingId('new'); setForm({ nom: '', description: '' }); }}
+          disabled={loading}
+        >
+          <Plus size={18} /> Ajouter une catégorie
+        </button>
+      </div>
+
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Nom de la Catégorie</th>
+              <th>Description</th>
+              <th style={{ textAlign: 'right', width: '150px' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(editingId === 'new' || categories.some(c => c.id === editingId)) && editingId !== null && (
+               <tr style={{ background: '#f8fafc' }}>
+                 <td colSpan={3}>
+                    <div style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                      <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                        <label className="form-label">Nom</label>
+                        <input className="form-input" value={form.nom || ''} onChange={e => setForm({...form, nom: e.target.value})} placeholder="Ex: Électronique" />
+                      </div>
+                      <div className="form-group" style={{ flex: 2, minWidth: '200px' }}>
+                        <label className="form-label">Description (Optionnel)</label>
+                        <input className="form-input" value={form.description || ''} onChange={e => setForm({...form, description: e.target.value})} placeholder="Courte description..." />
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn btn-primary" onClick={handleSave} disabled={loading}>OK</button>
+                        <button className="btn btn-outline" onClick={() => setEditingId(null)}>Annuler</button>
+                      </div>
+                    </div>
+                 </td>
+               </tr>
+            )}
+
+            {categories.filter(c => c.id !== editingId).map(c => (
+              <tr key={c.id}>
+                <td data-label="Nom" style={{ fontWeight: 700 }}>{c.nom}</td>
+                <td data-label="Description" style={{ color: 'var(--text-muted)' }}>{c.description || '-'}</td>
+                <td style={{ textAlign: 'right' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button className="btn btn-outline btn-sm" onClick={() => {setEditingId(c.id); setForm(c);}}>Modifier</button>
+                    <button className="btn btn-outline btn-sm" style={{ color: '#ef4444' }} onClick={() => handleDelete(c.id)}><Trash2 size={16} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {categories.length === 0 && editingId === null && (
+              <tr>
+                <td colSpan={3} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  Aucune catégorie configurée.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Produit } from '../../types';
+import { Produit, Categorie } from '../../types';
 import { createProduit, updateProduit } from '../../services/produitService';
+import { getCategories } from '../../services/adminService';
 import { X } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -25,8 +26,10 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
     stock_actuel: 0,
     stock_minimum: 5,
     actif: true,
-    image_url: ''
+    image_url: '',
+    categorie_id: ''
   });
+  const [categories, setCategories] = useState<Categorie[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasPromo, setHasPromo] = useState(false);
   const { showToast } = useToast();
@@ -41,6 +44,7 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
       });
       if (produit.prix_promo) setHasPromo(true);
     }
+    getCategories().then(setCategories);
   }, [produit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,6 +117,22 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
             <div className="form-group">
               <label className="form-label" style={{ fontWeight: 700 }}>Désignation commerciale *</label>
               <input type="text" className="form-input" required placeholder="Ex: iPhone 15 Pro Max - 256GB" style={{ height: '52px', borderRadius: '14px', fontSize: '1.05rem', fontWeight: 600 }} value={formData.nom} onChange={e => setFormData({...formData, nom: e.target.value})} />
+            </div>
+
+            <div className="form-group" style={{ marginTop: '1.5rem' }}>
+              <label className="form-label" style={{ fontWeight: 700 }}>Catégories *</label>
+              <select 
+                className="form-select" 
+                required 
+                style={{ height: '52px', borderRadius: '14px', fontSize: '1.05rem', fontWeight: 600 }} 
+                value={formData.categorie_id} 
+                onChange={e => setFormData({...formData, categorie_id: e.target.value})}
+              >
+                <option value="">Sélectionner une catégorie...</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.nom}</option>
+                ))}
+              </select>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '1.5rem', marginTop: '1.5rem' }}>

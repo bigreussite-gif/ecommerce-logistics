@@ -1,5 +1,45 @@
-import { User, Commune } from '../types';
+import { User, Commune, Categorie } from '../types';
 import { insforge } from '../lib/insforge';
+
+// --- CATEGORIES MANAGEMENT ---
+
+export const getCategories = async (): Promise<Categorie[]> => {
+  const { data, error } = await insforge.database
+    .from('categories')
+    .select('*')
+    .order('nom', { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+};
+
+export const createCategorie = async (categorie: Omit<Categorie, 'id'>): Promise<string> => {
+  const { data, error } = await insforge.database
+    .from('categories')
+    .insert([categorie])
+    .select();
+
+  if (error) throw error;
+  return data?.[0]?.id;
+};
+
+export const updateCategorie = async (id: string, data: Partial<Categorie>): Promise<void> => {
+  const { error } = await insforge.database
+    .from('categories')
+    .update(data)
+    .eq('id', id);
+  
+  if (error) throw error;
+};
+
+export const deleteCategorie = async (id: string): Promise<void> => {
+  const { error } = await insforge.database
+    .from('categories')
+    .delete()
+    .eq('id', id);
+  
+  if (error) throw error;
+};
 
 // --- USERS MANAGEMENT ---
 

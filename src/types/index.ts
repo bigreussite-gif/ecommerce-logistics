@@ -46,6 +46,7 @@ export interface Produit {
   actif: boolean;
   images?: string[];
   image_url?: string;
+  categorie_id?: string;
   created_by?: string;
   created_at?: string;
   updated_at?: string;
@@ -61,6 +62,12 @@ export interface Client {
   commune?: string;
   ville?: string;
   remarques?: string;
+}
+
+export interface Categorie {
+  id: string;
+  nom: string;
+  description?: string;
 }
 
 export type StatutCommande = 'nouvelle' | 'a_rappeler' | 'en_attente_appel' | 'validee' | 'en_cours_livraison' | 'livree' | 'retour_livreur' | 'absent' | 'echouee' | 'annulee' | 'terminee' | 'retour_stock' | 'retour_client';
@@ -84,7 +91,7 @@ export interface Commande {
   livreur_id?: string;
   feuille_route_id?: string;
   date_validation_appel?: Date | any;
-  date_livraison_effective?: Date | any;
+  date_livraison_prevue?: Date | string;
   montant_encaisse?: number;
   notes_livreur?: string;
   commentaire_agent?: string;
