@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, Filter } from 'lucide-react';
 import { ProduitList } from '../components/produits/ProduitList';
 import { ProduitForm } from '../components/produits/ProduitForm';
 import { StockForm } from '../components/produits/StockForm';
 import { subscribeToProduits } from '../services/produitService';
-import { Produit } from '../types';
+import { getCategories } from '../services/adminService';
+import { Produit, Categorie } from '../types';
 
 export const Produits = () => {
   const [produits, setProduits] = useState<Produit[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [categories, setCategories] = useState<Categorie[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
   
   const [isProduitFormOpen, setIsProduitFormOpen] = useState(false);
   const [selectedProduit, setSelectedProduit] = useState<Produit | null>(null);
@@ -19,6 +22,7 @@ export const Produits = () => {
 
   useEffect(() => {
     setLoading(true);
+    getCategories().then(setCategories).catch(console.error);
     const unsubscribe = subscribeToProduits((data) => {
       setProduits(data);
       setLoading(false);
@@ -51,16 +55,32 @@ export const Produits = () => {
         </div>
 
         <div className="card glass-effect" style={{ marginBottom: '2.5rem', padding: '1.25rem', border: '1px solid rgba(255,255,255,0.1)' }}>
-          <div style={{ position: 'relative', maxWidth: '600px' }}>
-            <Search size={22} strokeWidth={2.5} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)' }} />
-            <input 
-              type="text" 
-              placeholder="Rechercher par nom, catégorie, ou référence unique..." 
-              className="form-input"
-              style={{ paddingLeft: '3.5rem', height: '56px', fontSize: '1.05rem', fontWeight: 600, borderRadius: '18px', border: '2px solid #f1f5f9' }}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', flex: '1 1 300px' }}>
+              <Search size={22} strokeWidth={2.5} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)' }} />
+              <input 
+                type="text" 
+                placeholder="Rechercher par nom ou référence unique..." 
+                className="form-input"
+                style={{ paddingLeft: '3.5rem', height: '56px', fontSize: '1.05rem', fontWeight: 600, borderRadius: '18px', border: '2px solid #f1f5f9' }}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div style={{ position: 'relative', flex: '0 0 250px' }}>
+              <Filter size={20} strokeWidth={2.5} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <select 
+                className="form-select"
+                style={{ paddingLeft: '3.5rem', height: '56px', fontSize: '1.05rem', fontWeight: 600, borderRadius: '18px', border: '2px solid #f1f5f9', cursor: 'pointer', backgroundColor: 'white' }}
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+              >
+                <option value="">Toutes les catégories</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.nom}</option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -72,10 +92,11 @@ export const Produits = () => {
             </div>
           ) : (
             <ProduitList 
-              produits={produits.filter(p => 
-                p.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                p.id.toLowerCase().includes(searchTerm.toLowerCase())
-              )} 
+              produits={produits.filter(p => {
+                const matchesSearch = p.nom.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesCategory = selectedCategory ? p.categorie_id === selectedCategory : true;
+                return matchesSearch && matchesCategory;
+              })} 
               onEdit={handleEdit}
               onStock={handleStock}
             />
