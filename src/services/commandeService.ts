@@ -345,6 +345,53 @@ export const getTopSellingProducts = async (limit = 10, days?: number, start?: s
     .slice(0, limit);
 };
 
+export const getCategoryPerformance = async (days?: number, start?: string, end?: string): Promise<{ nom: string, nb_articles: number, ca: number }[]> => {
+  let query = insforge.database
+    .from('lignes_commandes')
+    .select('*, commandes!inner(statut_commande, date_creation, date_livraison_effective), produits(categorie_id, categories(nom))');
+
+  if (days && days > 0) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    const iso = startDate.toISOString();
+    query = query.or(`date_livraison_effective.gte.${iso},and(date_livraison_effective.is.null,date_creation.gte.${iso})`, { foreignTable: 'commandes' });
+  } else if (start && end) {
+    query = query.or(`and(date_livraison_effective.gte.${start},date_livraison_effective.lte.${end}),and(date_livraison_effective.is.null,date_creation.gte.${start},date_creation.lte.${end})`, { foreignTable: 'commandes' });
+  }
+
+  const { data: lines, error: linesError } = await query;
+  if (linesError) throw linesError;
+  
+  const aggregates: Record<string, { nb: number, ca: number, name: string }> = {};
+  
+  (lines || []).forEach((l: any) => {
+    const prod = Array.isArray(l.produits) ? l.produits[0] : l.produits;
+    if (!prod) return;
+    
+    const cat = Array.isArray(prod.categories) ? prod.categories[0] : prod.categories;
+    const catName = cat?.nom || 'Sans Catégorie';
+    
+    if (!aggregates[catName]) {
+      aggregates[catName] = { nb: 0, ca: 0, name: catName };
+    }
+    
+    const cmd = Array.isArray(l.commandes) ? l.commandes[0] : l.commandes;
+    if (!cmd) return;
+
+    const status = cmd.statut_commande?.toLowerCase();
+    const isLivree = ['livree', 'terminee'].includes(status);
+    
+    if (isLivree) {
+      aggregates[catName].nb += Number(l.quantite || 0);
+      aggregates[catName].ca += Number(l.montant_ligne || 0);
+    }
+  });
+
+  return Object.values(aggregates)
+    .map(a => ({ nom: a.name, nb_articles: a.nb, ca: a.ca }))
+    .sort((a, b) => b.ca - a.ca);
+};
+
 export const deleteCommande = async (id: string): Promise<void> => {
   const { error } = await insforge.database
     .from('commandes')

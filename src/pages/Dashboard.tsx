@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { subscribeToCommandes, getTopSellingProducts } from '../services/commandeService';
+import { subscribeToCommandes, getTopSellingProducts, getCategoryPerformance } from '../services/commandeService';
 import { calculateLogisticalStats } from '../services/financialService';
 import type { Commande } from '../types';
-import { Activity, Percent, DollarSign, TrendingUp, Truck, AlertCircle, ShoppingBag, BarChart2, Calendar, MapPin } from 'lucide-react';
+import { Activity, Percent, DollarSign, TrendingUp, Truck, AlertCircle, ShoppingBag, BarChart2, Calendar, MapPin, Tag } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   Tooltip, PieChart, Pie, Cell
@@ -17,12 +17,15 @@ export const Dashboard = () => {
   const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
+  const [categoryStats, setCategoryStats] = useState<any[]>([]);
 
   const fetchTop = useCallback(async (p: Period, start?: string, end?: string) => {
     try {
       const days = p === 'today' ? 1 : p === '7d' ? 7 : p === '30d' ? 30 : 0;
       const top = await getTopSellingProducts(10, days, start, end);
+      const catStats = await getCategoryPerformance(days, start, end);
       setTopProducts(top);
+      setCategoryStats(catStats);
     } catch (e) { console.error(e); }
   }, []);
 
@@ -509,6 +512,53 @@ export const Dashboard = () => {
                   </div>
                 </div>
               ))}
+           </div>
+        </div>
+
+        {/* Category Performance Section */}
+        <div className="card" style={{ padding: '2rem' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
+             <Tag size={24} color="var(--primary)" />
+             <h3 style={{ margin: 0, fontWeight: 800 }}>Performance par Catégorie</h3>
+           </div>
+           
+           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {(!categoryStats || categoryStats.length === 0) ? (
+                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                  <Tag size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                  <p>Aucune donnée sur cette période.</p>
+                </div>
+              ) : categoryStats.slice(0, 10).map((c, i) => {
+                const maxCA = Math.max(...categoryStats.map(cat => cat.ca));
+                const percent = maxCA > 0 ? (c.ca / maxCA) * 100 : 0;
+                return (
+                <div key={c.nom || i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-muted)', width: '20px' }}>{i+1}.</span>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom}</span>
+                    </div>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--primary)' }}>
+                      {c.ca.toLocaleString()} CFA
+                    </span>
+                  </div>
+                  <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                    <div 
+                      style={{ 
+                        width: `${percent}%`, 
+                        height: '100%', 
+                        background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', 
+                        borderRadius: '4px',
+                        transition: 'width 1s ease-out'
+                      }}
+                    ></div>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                    <span>Articles Vendus:</span>
+                    <span>{c.nb_articles} Unités</span>
+                  </div>
+                </div>
+              )})}
            </div>
         </div>
 
