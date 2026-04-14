@@ -441,7 +441,7 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
 
           {resultat === 'validee' && (
             <div style={{ padding: '1.25rem', background: '#fdf4ff', borderRadius: '20px', border: '2px solid #f5d0fe', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={{ borderBottom: '1px solid #f5d0fe', pb: '0.75rem', marginBottom: '0.25rem' }}>
+              <div style={{ borderBottom: '1px solid #f5d0fe', paddingBottom: '0.75rem', marginBottom: '0.25rem' }}>
                 <label className="form-label" style={{ fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', color: '#9d174d' }}>Programmation Livraison</label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '0.5rem' }}>
                   <button 

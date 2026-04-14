@@ -92,6 +92,7 @@ export interface Commande {
   feuille_route_id?: string;
   date_validation_appel?: Date | any;
   date_livraison_prevue?: Date | string;
+  date_livraison_effective?: Date | any;
   montant_encaisse?: number;
   notes_livreur?: string;
   commentaire_agent?: string;
