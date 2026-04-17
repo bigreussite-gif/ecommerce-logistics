@@ -10,7 +10,7 @@ import {
   Table as TableIcon, 
   Calendar,
   Target,
-  BarChart4,
+  BarChart2,
   Download,
   Database,
   Briefcase,
@@ -367,7 +367,7 @@ export const AuditTresorerie = () => {
               {/* Main Chart */}
               <div className="card" style={{ padding: '2rem' }}>
                 <h3 style={{ margin: '0 0 2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <BarChart4 size={20} color="var(--primary)" /> Évolutions des Flux Porteurs
+                  <BarChart2 size={20} color="var(--primary)" /> Évolutions des Flux Porteurs
                 </h3>
                 <div style={{ width: '100%', height: '350px' }}>
                   <ResponsiveContainer width="100%" height="100%">
