@@ -135,7 +135,7 @@ export const AdminTresorerie = () => {
     // Components (0-100 each)
     const marginScore = Math.min(100, (metrics.marge_nette_percent / 25) * 100); // 25% is goal
     const successScore = metrics.taux_succes * 1.25; // 80% is 100
-    const liquidityScore = cashStats.totalEcart >= 0 ? 100 : Math.max(0, 100 - (Math.abs(cashStats.totalEcart) / (metrics.profit_net || 1) * 100));
+    const liquidityScore = cashStats.totalEcart >= 0 ? 100 : Math.max(0, 100 - (Math.abs(cashStats.totalEcart) / (metrics.profit_net_reel || 1) * 100));
 
     const total = (marginScore * 0.4) + (successScore * 0.4) + (liquidityScore * 0.2);
     return Math.round(Math.min(100, Math.max(0, total)));

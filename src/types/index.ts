@@ -98,6 +98,7 @@ export interface Commande {
   commentaire_agent?: string;
   // Extras for Dashboard/Reporting
   nombre_produits?: number;
+  clients?: { nom_complet: string; telephone?: string };
   lignes?: LigneCommande[];
   created_by?: string;
   wa_sent?: { type: string, date: string }[];
