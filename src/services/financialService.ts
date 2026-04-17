@@ -168,7 +168,7 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     marge_nette_percent,
     ca_global_vendu: ca_net_produits,
     total_sorties: depenses_fixes_total,
-    cout_achat_total,
+    cout_achat_total: cogs_total,
     benefice_caisse: profit_net_reel
   };
 };
