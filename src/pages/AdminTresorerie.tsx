@@ -99,6 +99,7 @@ export const AdminTresorerie = () => {
   
   // Extraction Logic from metrics
   const totalExtractions = metrics.total_extractions;
+  const livreesCount = data.orders.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).length;
   
   // Final Profit after COGS and Extractions
   const realProfit = metrics.profit_net_reel;

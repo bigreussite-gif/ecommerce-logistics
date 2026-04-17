@@ -11,7 +11,7 @@ import {
   TOTAL_EXTRACTION_PER_UNIT,
   RETENUE_PERCENT
 } from '../services/financialService';
-import { TrendingUp, TrendingDown, Compass, PieChart, Calendar, BarChart, Clock, Package } from 'lucide-react';
+import { TrendingUp, TrendingDown, Compass, PieChart, Calendar, BarChart2, Clock, Package } from 'lucide-react';
 import { generateAnalyticalReportPDF } from '../services/pdfService';
 import { useToast } from '../contexts/ToastContext';
 import { Commande, LigneCommande } from '../types';
@@ -366,7 +366,7 @@ export const FinancialReport = () => {
           <div className="card" style={{ padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0 }}>
-                <BarChart size={20} style={{ color: 'var(--primary)' }} /> Tendances des Ventes
+                <BarChart2 size={20} style={{ color: 'var(--primary)' }} /> Tendances des Ventes
               </h3>
               <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
                 Basé sur {data.commandes.length} commandes

@@ -187,7 +187,7 @@ export const AuditTresorerie = () => {
       metrics: [
         { label: "Chiffre d'Affaires Brut", value: `${financials.ca_brut.toLocaleString()} CFA` },
         { label: "Marge Brute", value: `${(financials.ca_brut - financials.cogs_total).toLocaleString()} CFA` },
-        { label: "Bénéfice Net (EBITDA)", value: `${financials.profit_net.toLocaleString()} CFA` }
+        { label: "Bénéfice Net (EBITDA)", value: `${financials.profit_net_reel.toLocaleString()} CFA` }
       ],
       summary: "L'analyse des flux de trésorerie sur la période indique une santé financière stable. Les marges opérationnelles sont conformes aux prévisions du secteur logistique. Ce document peut être utilisé pour les démarches administratives et bancaires."
     };
@@ -273,7 +273,7 @@ export const AuditTresorerie = () => {
 
             <div className="card" style={{ padding: '2rem', borderLeft: '5px solid #10b981' }}>
                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Bénéfice Net (EBITDA)</p>
-               <h2 style={{ fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 900, color: '#10b981' }}>{financials.profit_net.toLocaleString()} F</h2>
+               <h2 style={{ fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 900, color: '#10b981' }}>{financials.profit_net_reel.toLocaleString()} F</h2>
                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
                   <div style={{ flex: 1, height: '6px', background: '#f1f5f9', borderRadius: '3px' }}>
                      <div style={{ width: `${Math.max(0, Math.min(100, financials.marge_nette_percent))}%`, height: '100%', background: '#10b981', borderRadius: '3px' }} />
@@ -483,7 +483,7 @@ export const AuditTresorerie = () => {
                  <Target size={32} color="var(--primary)" style={{ margin: '0 auto 1.5rem' }} />
                  <h4 style={{ margin: '0 0 0.5rem', fontWeight: 800 }}>Confiance Bancaire</h4>
                  <div style={{ fontSize: '3rem', fontWeight: 900, color: '#10b981', margin: '0.5rem 0' }}>
-                   {financials.profit_net > 0 ? (financials.marge_nette_percent > 20 ? 'A+' : 'B') : 'C'}
+                   {financials.profit_net_reel > 0 ? (financials.marge_nette_percent > 20 ? 'A+' : 'B') : 'C'}
                  </div>
                  <p style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Le ratio de liquidité est évalué en fonction des flux réels.</p>
               </div>
