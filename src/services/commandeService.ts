@@ -311,7 +311,7 @@ export const getTopSellingProducts = async (limit = 10, days?: number, start?: s
     const iso = startDate.toISOString();
     query = query.or(`date_livraison_effective.gte.${iso},and(date_livraison_effective.is.null,date_creation.gte.${iso})`, { foreignTable: 'commandes' });
   } else if (start && end) {
-    query = query.or(`and(date_livraison_effective.gte.${start},date_livraison_effective.lte.${end}),and(date_livraison_effective.is.null,date_creation.gte.${start},date_creation.lte.${end})`, { foreignTable: 'commandes' });
+    query = query.or(`and(date_livraison_effective.gte."${start}",date_livraison_effective.lte."${end}"),and(date_livraison_effective.is.null,date_creation.gte."${start}",date_creation.lte."${end}")`, { foreignTable: 'commandes' });
   }
 
   const { data: lines, error: linesError } = await query;
@@ -378,7 +378,7 @@ export const getCategoryPerformance = async (days?: number, start?: string, end?
     const iso = startDate.toISOString();
     query = query.or(`date_livraison_effective.gte.${iso},and(date_livraison_effective.is.null,date_creation.gte.${iso})`, { foreignTable: 'commandes' });
   } else if (start && end) {
-    query = query.or(`and(date_livraison_effective.gte.${start},date_livraison_effective.lte.${end}),and(date_livraison_effective.is.null,date_creation.gte.${start},date_creation.lte.${end})`, { foreignTable: 'commandes' });
+    query = query.or(`and(date_livraison_effective.gte."${start}",date_livraison_effective.lte."${end}"),and(date_livraison_effective.is.null,date_creation.gte."${start}",date_creation.lte."${end}")`, { foreignTable: 'commandes' });
   }
 
   const { data: lines, error: linesError } = await query;
@@ -424,36 +424,23 @@ export const deleteCommande = async (id: string): Promise<void> => {
 };
 
 export const getFinancialData = async (startDate?: string, endDate?: string): Promise<(Commande & { lignes: LigneCommande[] })[]> => {
-  // Robust filter: (Delivered in range) OR (Terminal status updated in range)
-  // This prevents 'Active' orders (e.g. en_cours_livraison) from polluting financial reports due to simple updates.
   const terminalStats = '(livree,terminee,echouee,retour_livreur,retour_stock,annulee,retour_client)';
-  const filterString = `and(date_livraison_effective.gte.${startDate},date_livraison_effective.lte.${endDate}),and(updated_at.gte.${startDate},updated_at.lte.${endDate},statut_commande.in.${terminalStats})`;
+  const filterString = `and(date_livraison_effective.gte."${startDate}",date_livraison_effective.lte."${endDate}"),and(updated_at.gte."${startDate}",updated_at.lte."${endDate}",statut_commande.in.${terminalStats})`;
   
-  let query = insforge.database
+  const { data: orders, error: orderError } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone)')
-    .or(filterString);
-
-  const { data: orders, error: orderError } = await query.order('updated_at', { ascending: false });
+    .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*)')
+    .or(filterString)
+    .order('updated_at', { ascending: false });
 
   if (orderError) throw orderError;
-  if (!orders || orders.length === 0) return [];
-
-  const orderIds = orders.map(o => o.id);
-  
-  // Optimized: only fetch lines for these orders
-  const { data: lines, error: linesError } = await insforge.database
-    .from('lignes_commandes')
-    .select('*')
-    .in('commande_id', orderIds);
-
-  if (linesError) throw linesError;
+  if (!orders) return [];
 
   return orders.map((o: any) => ({
     ...o,
     nom_client: o.clients?.nom_complet,
     telephone_client: o.clients?.telephone,
-    lignes: (lines || []).filter((l: any) => l.commande_id === o.id)
+    lignes: o.lignes || []
   }));
 };
 

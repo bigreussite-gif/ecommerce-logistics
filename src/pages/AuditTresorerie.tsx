@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { insforge } from '../lib/insforge';
 import { getFinancialData, getTopSellingProducts } from '../services/commandeService';
 import { getDepenses, calculateProfitMetrics, generateTimeSeriesData, getHourlyDistribution, calculateStockValue } from '../services/financialService';
 import { getProduits } from '../services/produitService';
@@ -57,9 +58,18 @@ export const AuditTresorerie = () => {
         getProduits()
       ]);
 
-      // Calculate global metrics (all time)
-      const globalOrders = await getFinancialData("2020-01-01T00:00:00Z", new Date().toISOString());
-      const gMetrics = calculateProfitMetrics(globalOrders, allExpenses);
+      // Optimized: Fetch global metrics (all time) with targeted columns ONLY to avoid huge payload crash
+      const { data: globalOrdersData, error: globalError } = await insforge.database
+        .from('commandes')
+        .select('montant_total, statut_commande, frais_livraison, lignes:lignes_commandes(quantite, prix_achat_unitaire)')
+        .in('statut_commande', ['livree', 'terminee', 'echouee', 'retour_livreur', 'retour_stock', 'absent', 'retour_client']);
+
+      if (globalError) {
+        console.error("Global metrics fetch error:", globalError);
+        throw globalError;
+      }
+
+      const gMetrics = calculateProfitMetrics(globalOrdersData as any, allExpenses);
       const sVal = calculateStockValue(allProds);
       setGlobalMetrics(gMetrics);
       setStockVal(sVal);
@@ -95,6 +105,7 @@ export const AuditTresorerie = () => {
       setTransactions(combinedTransactions);
       setTopProducts(top);
     } catch (err) {
+      console.error("Audit load error:", err);
       showToast("Échec du chargement des données d'expertise", "error");
     } finally {
       setLoading(false);

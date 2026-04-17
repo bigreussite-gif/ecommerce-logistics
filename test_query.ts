@@ -1,22 +1,28 @@
-import { createClient } from '@insforge/sdk';
-
-const insforge = createClient({
-  baseUrl: 'https://qt3suekz.eu-central.insforge.app',
-  anonKey: 'ik_eec392fa390ce31a8fe9833700c2cf12'
-});
+import { insforge } from './src/lib/insforge';
 
 async function test() {
-  const start = '2026-03-20T00:00:00Z';
-  const end = '2026-03-31T23:59:59Z';
-  const { data, error } = await insforge.database
-    .from('lignes_commandes')
-    .select('id, nom_produit, commandes!inner(statut_commande, date_creation, date_livraison_effective)')
-    .or(`and(date_livraison_effective.gte.${start},date_livraison_effective.lte.${end}),and(date_livraison_effective.is.null,date_creation.gte.${start},date_creation.lte.${end})`, { foreignTable: 'commandes' });
-    
-  console.log('Error:', error);
-  console.log('Result Count:', data?.length);
-  if (data && data.length > 0) {
-    console.log('Sample Row:', JSON.stringify(data[0], null, 2));
+  const startDate = "2020-01-01T00:00:00Z";
+  const endDate = new Date().toISOString();
+  const terminalStats = '(livree,terminee,echouee,retour_livreur,retour_stock,annulee,retour_client)';
+  
+  const filterString = `and(date_livraison_effective.gte.${startDate},date_livraison_effective.lte.${endDate}),and(updated_at.gte.${startDate},updated_at.lte.${endDate},statut_commande.in.${terminalStats})`;
+  
+  console.log("Filter string:", filterString);
+  
+  try {
+    const { data: orders, error: orderError } = await insforge.database
+      .from('commandes')
+      .select('id, statut_commande, updated_at')
+      .or(filterString)
+      .limit(5); // Limit for testing
+
+    if (orderError) {
+      console.error("Order Error:", orderError);
+    } else {
+      console.log("Success! Found", orders?.length, "orders.");
+    }
+  } catch (err) {
+    console.error("Global Error:", err);
   }
 }
 
