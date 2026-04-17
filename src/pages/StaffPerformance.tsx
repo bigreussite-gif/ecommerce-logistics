@@ -7,7 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   Cell
 } from 'recharts';
-import { Award, Target, PhoneCall, ShoppingBag, Truck, TrendingUp, Calendar, Search, Star } from 'lucide-react';
+import { Award, Target, PhoneCall, ShoppingBag, Truck } from 'lucide-react';
 import { startOfDay, subDays, isAfter, differenceInWeeks } from 'date-fns';
 import { insforge } from '../lib/insforge';
 

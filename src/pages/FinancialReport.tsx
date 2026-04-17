@@ -101,21 +101,13 @@ export const FinancialReport = () => {
     </div>;
   }
 
-  const getFrais = (c: Commande) => {
-    if (c.frais_livraison !== undefined && c.frais_livraison !== null) return Number(c.frais_livraison);
-    return 1000;
-  };
 
-  const succesCommandes = data.commandes.filter(c => {
-    const s = c.statut_commande?.toLowerCase();
-    return s === 'terminee' || s === 'livree';
-  });
 
   // Rapprochement physique (audit)
   const cashPhysiqueRecus = data.retours.reduce((acc, r) => acc + (r.montant_remis_par_livreur || 0), 0);
   const totalEcartCaisse = data.retours.reduce((acc, r) => acc + (r.ecart || 0), 0);
 
-  const totalEncaisseBrut = stats?.ca_brut || 0;
+
   const totalProduitsNet = stats?.ca_net_produits || 0;
   
   // Frais livraison payés (Success only for the top card to match CA Net)
