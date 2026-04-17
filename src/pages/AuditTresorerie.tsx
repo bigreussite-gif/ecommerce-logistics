@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getFinancialData, getTopSellingProducts } from '../services/commandeService';
-import { getDepenses, calculateProfitMetrics, generateTimeSeriesData, getHourlyDistribution } from '../services/financialService';
+import { getDepenses, calculateProfitMetrics, generateTimeSeriesData, getHourlyDistribution, calculateStockValue } from '../services/financialService';
+import { getProduits } from '../services/produitService';
 import { exportToExcel, exportToWord, exportToJson } from '../services/exportService';
 import { generateAuditReportPDF } from '../services/pdfService';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
@@ -40,6 +41,8 @@ export const AuditTresorerie = () => {
   const [hourlyData, setHourlyData] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
+  const [globalMetrics, setGlobalMetrics] = useState<any>(null);
+  const [stockVal, setStockVal] = useState(0);
 
   const loadAuditData = async () => {
     setLoading(true);
@@ -47,11 +50,19 @@ export const AuditTresorerie = () => {
       const start = startOfDay(new Date(startDate)).toISOString();
       const end = endOfDay(new Date(endDate)).toISOString();
       
-      const [orders, allExpenses, top] = await Promise.all([
+      const [orders, allExpenses, top, allProds] = await Promise.all([
         getFinancialData(start, end),
         getDepenses(),
-        getTopSellingProducts(5, 0, start, end)
+        getTopSellingProducts(5, 0, start, end),
+        getProduits()
       ]);
+
+      // Calculate global metrics (all time)
+      const globalOrders = await getFinancialData("2020-01-01T00:00:00Z", new Date().toISOString());
+      const gMetrics = calculateProfitMetrics(globalOrders, allExpenses);
+      const sVal = calculateStockValue(allProds);
+      setGlobalMetrics(gMetrics);
+      setStockVal(sVal);
 
       const filteredExpenses = allExpenses.filter(e => {
         const d = new Date(e.date);
@@ -209,6 +220,40 @@ export const AuditTresorerie = () => {
             <input type="date" className="filter-date" value={endDate} onChange={e => setEndDate(e.target.value)} style={{ border: 'none', background: '#f1f5f9', padding: '0.5rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 600 }} />
           </div>
         </div>
+      </div>
+
+      {/* GLOBAL PATRIMONIAL BALANCE */}
+      <div className="card" style={{ padding: '2.5rem', marginBottom: '2.5rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '32px' }}>
+         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
+            <Database size={24} color="#1e293b" />
+            <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900 }}>Bilan Patrimonial Global (Audit 360°)</h3>
+         </div>
+         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem' }}>
+            <div>
+               <p style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>CA Vendu (All-time)</p>
+               <div style={{ fontSize: '1.8rem', fontWeight: 950, color: '#0f172a' }}>{globalMetrics?.ca_global_vendu?.toLocaleString() || 0} F</div>
+            </div>
+            <div>
+               <p style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Total Décaissements</p>
+               <div style={{ fontSize: '1.8rem', fontWeight: 950, color: '#ef4444' }}>{globalMetrics?.total_sorties?.toLocaleString() || 0} F</div>
+            </div>
+            <div>
+               <p style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Payé Fournisseurs</p>
+               <div style={{ fontSize: '1.8rem', fontWeight: 950, color: 'var(--primary)' }}>{globalMetrics?.cout_achat_total?.toLocaleString() || 0} F</div>
+            </div>
+            <div>
+               <p style={{ color: '#10b981', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Bénéfice Net Cash</p>
+               <div style={{ fontSize: '1.8rem', fontWeight: 950, color: '#10b981' }}>{globalMetrics?.benefice_caisse?.toLocaleString() || 0} F</div>
+            </div>
+            <div>
+               <p style={{ color: '#f59e0b', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Valeur Actuelle Stock</p>
+               <div style={{ fontSize: '1.8rem', fontWeight: 950, color: '#f59e0b' }}>{stockVal.toLocaleString()} F</div>
+            </div>
+         </div>
+         <div style={{ marginTop: '2rem', padding: '1rem', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <ShieldCheck size={18} color="#10b981" />
+            <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>Ces chiffres représentent l'état financier consolidé de l'entreprise depuis sa création.</p>
+         </div>
       </div>
 
       {loading ? (

@@ -30,15 +30,31 @@ export const deleteDepense = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
+export const DEFAULT_SHIPPING_FEE = 1000;
+export const EXTRACTION_LOGISTIQUE = 500;
+export const EXTRACTION_ENTRETIEN = 250;
+export const EXTRACTION_INTERNET = 300;
+export const TOTAL_EXTRACTION_PER_UNIT = EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN + EXTRACTION_INTERNET; // 1050
+export const RETENUE_PERCENT = 0.05;
+
 export interface ProfitStats {
   ca_brut: number;
+  ca_net_produits: number;
   cogs_total: number;
   frais_livraison_total: number;
   depenses_fixes_total: number;
-  profit_net: number;
+  total_extractions: number;
+  retenue_charges: number;
+  profit_net_brut: number; // Before extractions
+  profit_net_reel: number; // After everything
   taux_succes: number;
   marge_brute_percent: number;
   marge_nette_percent: number;
+  ca_global_vendu?: number;
+  total_sorties?: number;
+  cout_achat_total?: number;
+  valeur_stock?: number;
+  benefice_caisse?: number;
   ads_spend?: number;
   roas?: number;
   cac?: number;
@@ -69,9 +85,9 @@ export const calculateLogisticalStats = (commandes: Commande[]): LogisticalStats
   const filtered = (commandes || []);
   
   const livrees = filtered.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).length;
-  const retours = filtered.filter(c => ['retour_livreur', 'retour_stock'].includes(c.statut_commande?.toLowerCase())).length;
+  const retours = filtered.filter(c => ['retour_livreur', 'retour_stock', 'retour_client'].includes(c.statut_commande?.toLowerCase())).length;
   const annulees = filtered.filter(c => c.statut_commande?.toLowerCase() === 'annulee').length;
-  const reportees = filtered.filter(c => c.statut_commande?.toLowerCase() === 'echouee').length;
+  const reportees = filtered.filter(c => ['echouee', 'absent', 'a_rappeler'].includes(c.statut_commande?.toLowerCase())).length;
   
   const total_sortis = livrees + retours + annulees + reportees;
   const taux_succes = total_sortis > 0 ? Math.round((livrees / total_sortis) * 100) : 0;
@@ -93,14 +109,15 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
   });
   
   // Failed orders cost us delivery fees (perte logistique)
+  // These are orders that were attempted but not delivered.
   const failedCmds = (commandes || []).filter(c => {
     const s = c.statut_commande?.toLowerCase();
-    return ['echouee', 'retour_livreur'].includes(s);
+    return ['echouee', 'retour_livreur', 'retour_stock', 'absent', 'retour_client'].includes(s);
   });
   
   const ca_brut = terminalCmds.reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
-  const frais_livraison_reussis = terminalCmds.reduce((acc, c) => acc + (Number(c.frais_livraison) || 0), 0);
-  const pertes_livraison = failedCmds.reduce((acc, c) => acc + (Number(c.frais_livraison) || 1000), 0); // Defaut 1000 CFA if missing
+  const frais_livraison_reussis = terminalCmds.reduce((acc, c) => acc + (c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE), 0);
+  const pertes_livraison = failedCmds.reduce((acc, c) => acc + (c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE), 0);
   
   // Calculate COGS (Cost of Goods Sold)
   let cogs_total = 0;
@@ -114,28 +131,50 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
 
   const depenses_fixes_total = (depenses || []).reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
   
-  // Profit Net = (Revenue total - Frais Livraison) - COGS - Dépenses fixes - Pertes Logistiques
-  const ca_produits = ca_brut - frais_livraison_reussis;
-  const marge_brute = ca_produits - cogs_total;
-  const profit_net = marge_brute - depenses_fixes_total - pertes_livraison;
+  // CA Net = Total received - Shipping Fees
+  const ca_net_produits = ca_brut - frais_livraison_reussis;
   
-  const marge_brute_percent = ca_produits > 0 ? Math.round((marge_brute / ca_produits) * 100) : 0;
-  const marge_nette_percent = ca_produits > 0 ? Math.round((profit_net / ca_produits) * 100) : 0;
+  // Extractions based on number of successful deliveries
+  const total_extractions = terminalCmds.length * TOTAL_EXTRACTION_PER_UNIT;
+  
+  // Retenue based on percentage of net revenue
+  const retenue_charges = ca_net_produits > 0 ? Math.round(ca_net_produits * RETENUE_PERCENT) : 0;
+
+  // Profit Net Brut = CA Net - COGS - Dépenses Fixes - Pertes Logistiques
+  const profit_net_brut = ca_net_produits - cogs_total - depenses_fixes_total - pertes_livraison;
+  
+  // Profit Net Réel = Profit Net Brut - Extractions - Retenue
+  const profit_net_reel = profit_net_brut - total_extractions - retenue_charges;
+  
+  const marge_brute_percent = ca_net_produits > 0 ? Math.round(((ca_net_produits - cogs_total) / ca_net_produits) * 100) : 0;
+  const marge_nette_percent = ca_net_produits > 0 ? Math.round((profit_net_reel / ca_net_produits) * 100) : 0;
 
   // Global success rate
-  const totalRelevant = (commandes || []).filter(c => ['livree', 'terminee', 'retour_livreur', 'retour_stock', 'echouee'].includes(c.statut_commande?.toLowerCase())).length;
+  const totalRelevant = (commandes || []).filter(c => ['livree', 'terminee', 'retour_livreur', 'retour_stock', 'echouee', 'absent'].includes(c.statut_commande?.toLowerCase())).length;
   const taux_succes = totalRelevant > 0 ? Math.round((terminalCmds.length / totalRelevant) * 100) : 0;
 
   return {
     ca_brut,
+    ca_net_produits,
     cogs_total,
     frais_livraison_total: frais_livraison_reussis + pertes_livraison,
     depenses_fixes_total,
-    profit_net,
+    total_extractions,
+    retenue_charges,
+    profit_net_brut,
+    profit_net_reel,
     taux_succes,
     marge_brute_percent,
-    marge_nette_percent
+    marge_nette_percent,
+    ca_global_vendu: ca_net_produits,
+    total_sorties: depenses_fixes_total,
+    cout_achat_total,
+    benefice_caisse: profit_net_reel
   };
+};
+
+export const calculateStockValue = (produits: any[]): number => {
+  return produits.reduce((acc, p) => acc + (Number(p.stock_actuel || 0) * Number(p.prix_achat || 0)), 0);
 };
 
 // IDEA 1: Marketing ROI Analysis
@@ -190,15 +229,19 @@ export const analyzeGeographicalProfit = (commandes: (Commande & { lignes?: Lign
     
     if (isSuccess) {
       g.livrees++;
-      const rev = (Number(c.montant_total) || 0) - (Number(c.frais_livraison) || 0);
+      const shipping = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
+      const rev = (Number(c.montant_total) || 0) - shipping;
       let cost = 0;
       (c.lignes || []).forEach(l => { cost += (l.quantite * (l.prix_achat_unitaire || 0)); });
       
+      const extractions = TOTAL_EXTRACTION_PER_UNIT;
+      const retenue = Math.round(rev * RETENUE_PERCENT);
+
       g.ca_net += rev;
-      g.profit_net += (rev - cost);
+      g.profit_net += (rev - cost - extractions - retenue);
     } else {
       // Failed delivery still costs us something
-      const loss = Number(c.frais_livraison) || 1000;
+      const loss = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
       g.profit_net -= loss;
     }
   });
@@ -234,14 +277,18 @@ export const generateTimeSeriesData = (commandes: (Commande & { lignes?: LigneCo
       groups[key] = { name: key, revenue: 0, profit: 0 };
     }
 
-    const rev = (Number(c.montant_total) || 0) - (Number(c.frais_livraison) || 0);
+    const shipping = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
+    const rev = (Number(c.montant_total) || 0) - shipping;
     let cost = 0;
     (c.lignes || []).forEach(l => {
       cost += (l.quantite * (l.prix_achat_unitaire || 0));
     });
 
+    const extractions = TOTAL_EXTRACTION_PER_UNIT;
+    const retenue = Math.round(rev * RETENUE_PERCENT);
+
     groups[key].revenue += rev;
-    groups[key].profit += (rev - cost);
+    groups[key].profit += (rev - cost - extractions - retenue);
   });
 
   return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
@@ -278,8 +325,9 @@ export const calculateProductROI = (commandes: (Commande & { lignes?: LigneComma
           p.cogs += (l.quantite * (l.prix_achat_unitaire || 0));
         } else if (isFailure) {
           p.echecs += l.quantite;
-          // Loss estimate: if it failed, we likely paid delivery estimated at 1000 CFA or the order's delivery fee
-          const shareOfFrais = (Number(c.frais_livraison) || 1000) / (c.lignes?.length || 1);
+          // Loss estimate: if it failed, we likely paid delivery estimated at DEFAULT_SHIPPING_FEE CFA or the order's delivery fee
+          const shipping = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
+          const shareOfFrais = shipping / (c.lignes?.length || 1);
           p.frais_perte_livraison += Math.round(shareOfFrais);
         }
       });
@@ -287,7 +335,13 @@ export const calculateProductROI = (commandes: (Commande & { lignes?: LigneComma
   });
 
   return Object.values(productMap).map(p => {
+    // Basic profit before extractions and retenue per product (hard to split retenue perfectly per line without rounding noise)
     p.profit_net = p.ca_produits - p.cogs - p.frais_perte_livraison;
+    // Apply average extractions per unit sold
+    p.profit_net -= (p.ventes_reussies * TOTAL_EXTRACTION_PER_UNIT);
+    // Apply retention
+    p.profit_net -= Math.round(p.ca_produits * RETENUE_PERCENT);
+    
     p.roi_percent = p.cogs > 0 ? Math.round((p.profit_net / p.cogs) * 100) : 0;
     return p;
   }).sort((a, b) => b.profit_net - a.profit_net);

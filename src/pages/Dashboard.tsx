@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { subscribeToCommandes, getTopSellingProducts, getCategoryPerformance } from '../services/commandeService';
-import { calculateLogisticalStats } from '../services/financialService';
+import { calculateLogisticalStats, getDepenses, calculateProfitMetrics, calculateStockValue } from '../services/financialService';
+import { getProduits } from '../services/produitService';
 import type { Commande } from '../types';
 import { Activity, Percent, DollarSign, TrendingUp, Truck, AlertCircle, ShoppingBag, BarChart2, Calendar, MapPin, Tag } from 'lucide-react';
 import { 
@@ -18,6 +19,8 @@ export const Dashboard = () => {
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [categoryStats, setCategoryStats] = useState<any[]>([]);
+  const [globalMetrics, setGlobalMetrics] = useState<any>(null);
+  const [stockVal, setStockVal] = useState(0);
 
   const fetchTop = useCallback(async (p: Period, start?: string, end?: string) => {
     try {
@@ -30,8 +33,20 @@ export const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = subscribeToCommandes((data) => {
+    const unsubscribe = subscribeToCommandes(async (data) => {
       setCommandes(data);
+      
+      try {
+        const [allExpenses, allProds] = await Promise.all([
+          getDepenses(),
+          getProduits()
+        ]);
+        const gMetrics = calculateProfitMetrics(data, allExpenses);
+        const sVal = calculateStockValue(allProds);
+        setGlobalMetrics(gMetrics);
+        setStockVal(sVal);
+      } catch (err) { console.error(err); }
+      
       setLoading(false);
     });
     
@@ -286,6 +301,30 @@ export const Dashboard = () => {
               />
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Global Heritage Section */}
+      <div style={{ marginBottom: '2.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+        <div className="card glass-effect" style={{ padding: '1.25rem', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: 'white', border: 'none' }}>
+           <p style={{ opacity: 0.6, fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Chiffre d'Affaires Global</p>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{globalMetrics?.ca_global_vendu?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+        </div>
+        <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
+           <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Sorties / Charges Totales</p>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#ef4444' }}>{globalMetrics?.total_sorties?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+        </div>
+        <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
+           <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Payé Fournisseurs (COGS)</p>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--primary)' }}>{globalMetrics?.cout_achat_total?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+        </div>
+        <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
+           <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Solde Caisse Estimé</p>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#10b981' }}>{globalMetrics?.benefice_caisse?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+        </div>
+        <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
+           <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Valeur du Stock (Prix Achat)</p>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#f59e0b' }}>{stockVal.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
         </div>
       </div>
 

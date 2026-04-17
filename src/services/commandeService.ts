@@ -1,6 +1,7 @@
 import { Commande, LigneCommande } from '../types';
 import { insforge } from '../lib/insforge';
 import { addMouvementStock } from './produitService';
+import { getCommuneByName } from './adminService';
 
 export const getCommandeWithLines = async (id: string): Promise<Commande & { lignes: LigneCommande[] }> => {
   const { data: cmd, error: cmdError } = await insforge.database
@@ -80,6 +81,19 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
   commande.date_creation = new Date();
   commande.statut_commande = 'en_attente_appel'; 
 
+  // Auto-set shipping fee from commune if not provided or 0
+  if ((!commande.frais_livraison || commande.frais_livraison === 0) && commande.commune_livraison) {
+     try {
+        const zone = await getCommuneByName(commande.commune_livraison);
+        if (zone) {
+           commande.frais_livraison = zone.tarif_livraison;
+           // If montant_total was calculated without fee, add it (assuming UI sends total including fee)
+           // Actually, the UI usually calculates total = subtotal + fee. 
+           // If fee was 0, total = subtotal. We should update total.
+        }
+     } catch (e) { console.error("Could not fetch commune fee during creation", e); }
+  }
+
   const { data: cmdData, error: cmdError } = await insforge.database
     .from('commandes')
     .insert([commande])
@@ -154,7 +168,15 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   if (additionalData.montant_total !== undefined) updatePayload.montant_total = additionalData.montant_total;
   if (additionalData.commune_livraison !== undefined) updatePayload.commune_livraison = additionalData.commune_livraison;
   if (additionalData.adresse_livraison !== undefined) updatePayload.adresse_livraison = additionalData.adresse_livraison;
-  if (additionalData.frais_livraison !== undefined) updatePayload.frais_livraison = additionalData.frais_livraison;
+  if (additionalData.frais_livraison !== undefined) {
+    updatePayload.frais_livraison = additionalData.frais_livraison;
+  } else if (additionalData.commune_livraison) {
+    // If commune changed but fee not provided, look it up
+    try {
+      const zone = await getCommuneByName(additionalData.commune_livraison);
+      if (zone) updatePayload.frais_livraison = zone.tarif_livraison;
+    } catch (e) { console.error("Could not fetch commune fee during status update", e); }
+  }
 
   if (resetRouteSheets.includes(nextStatus?.toLowerCase())) {
     updatePayload.feuille_route_id = null;

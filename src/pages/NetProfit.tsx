@@ -160,7 +160,7 @@ export const NetProfit = () => {
         <div className="stats-grid" style={{ marginBottom: '2.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
           <div className="card glass-effect" style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)', color: 'white', border: 'none', padding: '2rem' }}>
             <p style={{ opacity: 0.8, fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px' }}>Profit Net Réel</p>
-            <h2 style={{ fontSize: '3rem', fontWeight: 950, margin: '1rem 0', letterSpacing: '-0.02em' }}>{metrics.profit_net.toLocaleString()} <span style={{ fontSize: '1.2rem', opacity: 0.6 }}>CFA</span></h2>
+            <h2 style={{ fontSize: '3rem', fontWeight: 950, margin: '1rem 0', letterSpacing: '-0.02em' }}>{metrics.profit_net_reel.toLocaleString()} <span style={{ fontSize: '1.2rem', opacity: 0.6 }}>CFA</span></h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(255,255,255,0.12)', padding: '0.6rem 1.2rem', borderRadius: '14px', width: 'fit-content', backdropFilter: 'blur(5px)' }}>
               <ArrowUpRight size={20} color="#34d399" /> 
               <span style={{ fontWeight: 800, color: '#34d399' }}>{metrics.marge_nette_percent}% Net</span>
@@ -175,7 +175,7 @@ export const NetProfit = () => {
               </div>
             </div>
             <h2 style={{ fontSize: '2.4rem', fontWeight: 900, margin: '0.5rem 0', color: 'var(--text-main)' }}>
-              {(metrics.ca_brut - metrics.frais_livraison_total - metrics.cogs_total).toLocaleString()} <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>CFA</span>
+              {metrics.ca_net_produits.toLocaleString()} <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>CFA</span>
             </h2>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <div style={{ height: '6px', width: '60px', borderRadius: '3px', background: '#f1f5f9' }}>

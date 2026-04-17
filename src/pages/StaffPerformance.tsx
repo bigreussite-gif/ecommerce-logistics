@@ -125,17 +125,17 @@ export const StaffPerformance = () => {
           const aCmds = (ordersByAgent[a.id] || []).filter(c => isAfter(new Date(c.date_creation), startOfInterval));
           const total = aCmds.length;
           // Validées = agent a confirmé la commande avec le client
-          const validees = aCmds.filter(c => ['validee', 'en_cours_livraison', 'livree', 'terminee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande)).length;
+          const validees = aCmds.filter(c => ['validee', 'en_cours_livraison', 'livree', 'terminee', 'retour_livreur', 'absent', 'echouee', 'retour_stock', 'retour_client'].includes(c.statut_commande?.toLowerCase())).length;
           // Livrées = commande effectivement remise au client et payée
-          const livrees = aCmds.filter(c => ['livree', 'terminee'].includes(c.statut_commande)).length;
+          const livrees = aCmds.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).length;
           // Retours = livreur a tenté mais n'a pas pu livrer
-          const retours = aCmds.filter(c => ['retour_livreur', 'retour_stock'].includes(c.statut_commande)).length;
+          const retours = aCmds.filter(c => ['retour_livreur', 'retour_stock', 'retour_client'].includes(c.statut_commande?.toLowerCase())).length;
           // Echecs livraison
-          const echecs = aCmds.filter(c => c.statut_commande === 'echouee').length;
+          const echecs = aCmds.filter(c => ['echouee', 'absent'].includes(c.statut_commande?.toLowerCase())).length;
           // Reprogrammées = à rappeler
-          const reprogrammees = aCmds.filter(c => c.statut_commande === 'a_rappeler').length;
+          const reprogrammees = aCmds.filter(c => c.statut_commande?.toLowerCase() === 'a_rappeler').length;
           // Annulées = client a refusé ou injoignable définitivement
-          const annulees = aCmds.filter(c => c.statut_commande === 'annulee').length;
+          const annulees = aCmds.filter(c => c.statut_commande?.toLowerCase() === 'annulee').length;
           const userLogins = allLogins.filter(l => l.user_id === a.id && isAfter(new Date(l.login_time), startOfInterval)).length;
           // Taux de conversion = livrees réelles / total des dossiers traités
           const taux_conversion = total > 0 ? Math.round((livrees / total) * 100) : 0;

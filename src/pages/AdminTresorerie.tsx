@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { getFinancialData } from '../services/commandeService';
 import { 
   getDepenses, 
   calculateProfitMetrics, 
@@ -9,7 +8,13 @@ import {
   projectCashFlow,
   calculateMarketingROI,
   generateTimeSeriesData,
-  GeoProfit
+  GeoProfit,
+  DEFAULT_SHIPPING_FEE,
+  TOTAL_EXTRACTION_PER_UNIT,
+  RETENUE_PERCENT,
+  EXTRACTION_LOGISTIQUE,
+  EXTRACTION_ENTRETIEN,
+  EXTRACTION_INTERNET
 } from '../services/financialService';
 import { getRangeFinancials } from '../services/caisseService';
 import { Commande, LigneCommande, Depense, CaisseRetour } from '../types';
@@ -59,8 +64,7 @@ export const AdminTresorerie = () => {
       const start = startOfDay(new Date(startDate)).toISOString();
       const end = endOfDay(new Date(endDate)).toISOString();
       
-      const [orders, expenses, caisseData] = await Promise.all([
-        getFinancialData(start, end),
+      const [expenses, caisseData] = await Promise.all([
         getDepenses(),
         getRangeFinancials(start, end)
       ]);
@@ -71,7 +75,7 @@ export const AdminTresorerie = () => {
       });
 
       setData({ 
-        orders, 
+        orders: caisseData.commandes || [],
         expenses: filteredExpenses, 
         retours: caisseData.retours || [] 
       });
@@ -91,17 +95,13 @@ export const AdminTresorerie = () => {
 
   // Calculations for Private Dashboard
   const activeOrders = data.orders || [];
-  const netRevenue = metrics.ca_brut - metrics.frais_livraison_total; // Revenue from items
+  const netRevenue = metrics.ca_net_produits; // Unified Revenue from items
   
-  // Extraction Logic
-  const livreesCount = activeOrders.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase() || '')).length;
-  const extractionVentes = livreesCount * 250;
-  const extractionLogistique = livreesCount * 500;
-  const extractionInternet = livreesCount * 300;
-  const totalExtractions = extractionVentes + extractionLogistique + extractionInternet;
+  // Extraction Logic from metrics
+  const totalExtractions = metrics.total_extractions;
   
   // Final Profit after COGS and Extractions
-  const realProfit = metrics.profit_net - totalExtractions;
+  const realProfit = metrics.profit_net_reel;
 
   // Current Balance (Estimated from Cash received & available)
   const currentCashInAccount = 540000; // Mock current balance
@@ -146,8 +146,8 @@ export const AdminTresorerie = () => {
       date: new Date(o.date_livraison_effective || o.date_creation),
       type: 'Entrée' as const,
       categorie: 'Vente',
-      description: `Commande #${(o.id || '').substring(0, 8).toUpperCase() || '...'} - ${o.nom_client}`,
-      montant: (Number(o.montant_total) || 0) - (o.frais_livraison !== undefined && o.frais_livraison !== null ? Number(o.frais_livraison) : 1000)
+      description: `Commande #${(o.id || '').substring(0, 8).toUpperCase() || '...'} - ${(o.clients as any)?.nom_complet || 'Client inconnu'}`,
+      montant: (Number(o.montant_total) || 0) - (o.frais_livraison !== undefined && o.frais_livraison !== null ? Number(o.frais_livraison) : DEFAULT_SHIPPING_FEE)
     })),
     ...data.expenses.map(e => ({
       date: new Date(e.date),
@@ -168,9 +168,7 @@ export const AdminTresorerie = () => {
       .reduce((acc, t) => acc + t.montant, 0)
   ), [transactions]);
 
-  const currentBalanceRaw = totalInflow - totalOutflow - totalExtractions;
-  const retenueCharge = netRevenue > 0 ? Math.round(netRevenue * 0.05) : 0;
-  const currentBalance = currentBalanceRaw - retenueCharge;
+  const currentBalance = realProfit; // Already accounts for everything
 
   const exportToExcel = () => {
     const headers = ["Date", "Type", "Catégorie", "Description", "Montant (CFA)"];
@@ -340,30 +338,30 @@ export const AdminTresorerie = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f8fafc', borderRadius: '12px' }}>
                 <div>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Frais Admin</span>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>250 F × {livreesCount} livrés</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>{EXTRACTION_ENTRETIEN} F × {livreesCount} livrés</span>
                 </div>
-                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {extractionVentes.toLocaleString()} F</span>
+                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {(livreesCount * EXTRACTION_ENTRETIEN).toLocaleString()} F</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f8fafc', borderRadius: '12px' }}>
                 <div>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Frais Logistique</span>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>500 F × {livreesCount} livrés</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>{EXTRACTION_LOGISTIQUE} F × {livreesCount} livrés</span>
                 </div>
-                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {extractionLogistique.toLocaleString()} F</span>
+                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {(livreesCount * EXTRACTION_LOGISTIQUE).toLocaleString()} F</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f8fafc', borderRadius: '12px' }}>
                 <div>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Frais Internet</span>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>300 F × {livreesCount} livrés</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>{EXTRACTION_INTERNET} F × {livreesCount} livrés</span>
                 </div>
-                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {extractionInternet.toLocaleString()} F</span>
+                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {(livreesCount * EXTRACTION_INTERNET).toLocaleString()} F</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#fef2f2', borderRadius: '12px' }}>
                 <div>
                   <span style={{ fontSize: '0.8rem', color: '#ef4444', display: 'block', fontWeight: 700 }}>Retenu pour charge</span>
-                  <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 600 }}>5% des ventes nettes</span>
+                  <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 600 }}>{(RETENUE_PERCENT * 100).toFixed(0)}% des ventes nettes</span>
                 </div>
-                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {retenueCharge.toLocaleString()} F</span>
+                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {metrics.retenue_charges.toLocaleString()} F</span>
               </div>
             </div>
             <p style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
