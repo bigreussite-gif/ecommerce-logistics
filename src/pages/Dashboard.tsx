@@ -33,25 +33,34 @@ export const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = subscribeToCommandes(async (data) => {
+    const unsubscribe = subscribeToCommandes((data) => {
       setCommandes(data);
-      
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const fetchGlobalData = async () => {
+      if (document.visibilityState !== 'visible') return;
       try {
         const [allExpenses, allProds] = await Promise.all([
           getDepenses(),
           getProduits()
         ]);
-        const gMetrics = calculateProfitMetrics(data, allExpenses);
+        if (commandes.length > 0) {
+           const gMetrics = calculateProfitMetrics(commandes, allExpenses);
+           setGlobalMetrics(gMetrics);
+        }
         const sVal = calculateStockValue(allProds);
-        setGlobalMetrics(gMetrics);
         setStockVal(sVal);
       } catch (err) { console.error(err); }
-      
-      setLoading(false);
-    });
+    };
     
-    return () => unsubscribe();
-  }, []);
+    fetchGlobalData();
+    const interval = setInterval(fetchGlobalData, 60000); // 1 minute is enough for these
+    return () => clearInterval(interval);
+  }, [commandes.length]);
 
   useEffect(() => {
     if (period === 'custom') {

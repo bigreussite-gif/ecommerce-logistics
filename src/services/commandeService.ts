@@ -43,37 +43,40 @@ export const getCommandes = async (): Promise<Commande[]> => {
 };
 
 export const subscribeToCommandes = (callback: (commandes: Commande[]) => void) => {
-  getCommandes().then(callback);
-  const interval = setInterval(() => getCommandes().then(callback), 3000);
+  const fetch = () => {
+    if (document.visibilityState === 'visible') {
+      getCommandes().then(callback);
+    }
+  };
+  fetch();
+  const interval = setInterval(fetch, 15000);
   return () => clearInterval(interval);
 };
 
-export const getCommandesByStatus = async (statusList: string[]): Promise<(Commande & { lignes: LigneCommande[] })[]> => {
   const { data: orders, error: orderError } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone)')
+    .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*)')
     .in('statut_commande', statusList)
     .order('date_creation', { ascending: false });
 
   if (orderError) throw orderError;
-
-  const { data: lines, error: linesError } = await insforge.database
-    .from('lignes_commandes')
-    .select('*');
-
-  if (linesError) throw linesError;
   
   return (orders || []).map((o: any) => ({
     ...o,
     nom_client: o.clients?.nom_complet,
     telephone_client: o.clients?.telephone,
-    lignes: (lines || []).filter((l: any) => l.commande_id === o.id)
+    lignes: o.lignes || []
   }));
 };
 
 export const subscribeToCommandesByStatus = (statusList: string[], callback: (commandes: Commande[]) => void) => {
-  getCommandesByStatus(statusList).then(callback);
-  const interval = setInterval(() => getCommandesByStatus(statusList).then(callback), 3000);
+  const fetch = () => {
+    if (document.visibilityState === 'visible') {
+      getCommandesByStatus(statusList).then(callback);
+    }
+  };
+  fetch();
+  const interval = setInterval(fetch, 15000);
   return () => clearInterval(interval);
 };
 

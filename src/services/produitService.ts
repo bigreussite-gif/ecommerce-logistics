@@ -4,19 +4,21 @@ import { insforge } from '../lib/insforge';
 export const getProduits = async (): Promise<Produit[]> => {
   const { data, error } = await insforge.database
     .from('produits')
-    .select('*')
+    .select('id, nom, prix_vente, prix_achat, stock_actuel, stock_minimum, sku, category_id')
     .order('nom', { ascending: true });
   
   if (error) throw error;
   return data || [];
 };
 
-// Note: For now, we replace realtime with a fetch. 
-// Real-time would require configuring triggers in the backend.
 export const subscribeToProduits = (callback: (produits: Produit[]) => void) => {
-  getProduits().then(callback);
-  // We can implement a simple interval for now or just wait for triggers
-  const interval = setInterval(() => getProduits().then(callback), 3000);
+  const fetch = () => {
+    if (document.visibilityState === 'visible') {
+      getProduits().then(callback);
+    }
+  };
+  fetch();
+  const interval = setInterval(fetch, 20000);
   return () => clearInterval(interval);
 };
 
