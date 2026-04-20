@@ -64,7 +64,7 @@ export const generateInvoicePDF = (commande: Commande & { lignes: LigneCommande[
   doc.setFontSize(10);
   doc.setTextColor(71, 85, 105);
   doc.text(`Tel: ${commande.telephone_client || 'Non renseigné'}`, 20, 78);
-  doc.text(`Zone: ${commande.commune_livraison}`, 20, 83);
+  doc.text(`Zone: ${commande.commune_livraison} - ${commande.quartier_livraison || ''}`, 20, 83);
   doc.text(`Adresse: ${commande.adresse_livraison}`, 20, 88);
 
   // --- TABLE OF PRODUCTS ---
@@ -238,7 +238,7 @@ export const generateDeliverySlipPDF = (feuilleRoute: any, commandes: Commande[]
       qtyStr || "0",
       `${fP(c.montant_total || 0)}`,
       c.telephone_client || "-",
-      `${c.commune_livraison || ""} - ${c.adresse_livraison || ""}`.trim() || "-",
+      `${c.commune_livraison || ""} - ${c.quartier_livraison || ""} - ${c.adresse_livraison || ""}`.trim().replace(/ - $/g, '') || "-",
       " " 
     ];
   });

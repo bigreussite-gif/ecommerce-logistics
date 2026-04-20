@@ -199,6 +199,8 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
                   <tr>
                     <th style={{ padding: '1rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>Client</th>
                     <th style={{ padding: '1rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>Téléphone</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>Zone / Quartier</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>Adresse</th>
                     <th style={{ padding: '1rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>Référence</th>
                     <th style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>Qté</th>
                   </tr>
@@ -208,6 +210,8 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
                     <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '1rem', fontWeight: 600 }}>{item.client.nom_complet}</td>
                       <td style={{ padding: '1rem', color: '#475569' }}>{item.client.telephone}</td>
+                      <td style={{ padding: '1rem' }}>{item.commune} {item.quartier ? `/ ${item.quartier}` : ''}</td>
+                      <td style={{ padding: '1rem', fontSize: '0.75rem' }}>{item.adresse}</td>
                       <td style={{ padding: '1rem' }}><span style={{ padding: '0.3rem 0.6rem', background: '#f1f5f9', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)' }}>{item.lines[0].produit}</span></td>
                       <td style={{ padding: '1rem', textAlign: 'center', fontWeight: 700 }}>{item.lines[0].quantite}</td>
                     </tr>

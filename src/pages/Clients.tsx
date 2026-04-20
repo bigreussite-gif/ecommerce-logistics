@@ -44,6 +44,7 @@ export const Clients = () => {
         nom_complet: client.nom_complet,
         telephone: client.telephone,
         commune: client.commune,
+        quartier: client.quartier,
         adresse: client.adresse
       });
       const cmds = await getClientCommandes(client.id);
@@ -194,13 +195,14 @@ export const Clients = () => {
                   <th>Identité & Client</th>
                   <th>Segment IA</th>
                   <th style={{ textAlign: 'center' }}>Fréquence</th>
+                  <th>Dernière Adresse</th>
                   <th style={{ textAlign: 'right' }}>Volume d'achat</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: '4rem' }}>Chargement...</td></tr>
+                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: '4rem' }}>Chargement...</td></tr>
                 ) : filteredClients.map((client: Client & ClientFidelityStats & { identities: string[], locations: string[] }) => (
                   <tr key={client.id} onClick={() => openClientDetails(client)} style={{ cursor: 'pointer' }}>
                     <td>
@@ -217,7 +219,6 @@ export const Clients = () => {
                            <div style={{ fontWeight: 800, color: 'var(--text-main)' }}>{client.nom_complet}</div>
                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                               {client.telephone} 
-                              {client.locations.length > 0 && <span style={{ marginLeft: '0.5rem', opacity: 0.6 }}>({client.locations.join(', ')})</span>}
                            </div>
                          </div>
                       </div>
@@ -236,6 +237,9 @@ export const Clients = () => {
                     </td>
                     <td style={{ textAlign: 'center', fontWeight: 800 }}>
                       {client.total_commandes} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>colis</span>
+                    </td>
+                    <td style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                      {client.adresse || 'N/A'} {client.quartier ? `, ${client.quartier}` : ''} {client.commune ? `, ${client.commune}` : ''}
                     </td>
                     <td style={{ textAlign: 'right', fontWeight: 900, color: 'var(--primary)' }}>
                       {client.total_encaisse.toLocaleString()} CFA
@@ -319,13 +323,24 @@ export const Clients = () => {
                         <input 
                            className="form-input" 
                            style={{ fontSize: '0.8rem', height: '36px' }}
+                           value={editForm.quartier} 
+                           onChange={e => setEditForm({...editForm, quartier: e.target.value})}
+                           placeholder="Quartier"
+                        />
+                        <input 
+                           className="form-input" 
+                           style={{ fontSize: '0.8rem', height: '36px' }}
                            value={editForm.adresse} 
                            onChange={e => setEditForm({...editForm, adresse: e.target.value})}
                            placeholder="Adresse"
                         />
                       </div>
                     ) : (
-                      <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>{selectedClient.client.commune || 'N/A'}<br/><span style={{ fontSize: '0.65rem', opacity: 0.7 }}>{selectedClient.client.adresse}</span></div>
+                      <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>
+                        {selectedClient.client.commune || 'N/A'} - {selectedClient.client.quartier || ''}
+                        <br/>
+                        <span style={{ fontSize: '0.65rem', opacity: 0.7 }}>{selectedClient.client.adresse}</span>
+                      </div>
                     )}
                   </div>
                   <div style={{ padding: '1.25rem', borderRadius: '16px', background: '#f1f5f9' }}>

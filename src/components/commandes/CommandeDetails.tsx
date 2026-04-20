@@ -241,7 +241,7 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
                 </div>
                 <div style={{ display: 'flex', alignItems: 'start', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
                    <MapPin size={16} style={{ marginTop: '0.1rem' }} /> 
-                   <span>{commande.adresse_livraison}, {commande.commune_livraison}</span>
+                   <span>{commande.adresse_livraison}{commande.quartier_livraison ? `, ${commande.quartier_livraison}` : ''}, {commande.commune_livraison}</span>
                 </div>
              </div>
 

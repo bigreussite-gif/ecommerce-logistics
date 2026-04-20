@@ -92,7 +92,7 @@ export const CommandeList = ({
               </th>
               <th>Date / ID</th>
               <th>Client & Contact</th>
-              <th>Zone de Livraison</th>
+              <th>Détails Livraison</th>
               <th>Montant Total</th>
               <th>Source</th>
               <th>État Actuel</th>
@@ -124,9 +124,10 @@ export const CommandeList = ({
                      <div style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: '0.2rem' }}>{c.nom_client || `Client #${c.client_id.slice(0,5)}`}</div>
                      {c.telephone_client && <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>{c.telephone_client}</div>}
                   </td>
-                  <td data-label="Zone">
-                    <div style={{ fontWeight: 600 }}>{c.commune_livraison}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>{c.adresse_livraison?.slice(0, 30)}...</div>
+                  <td data-label="Livraison">
+                    <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{c.commune_livraison}</div>
+                    {c.quartier_livraison && <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)' }}>{c.quartier_livraison}</div>}
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem', lineHeight: '1.2' }}>{c.adresse_livraison}</div>
                   </td>
                   <td data-label="Montant" style={{ fontWeight: 800, fontSize: '1.1rem' }}>
                     {Number(c.montant_total).toLocaleString()} <span style={{ fontSize: '0.75rem' }}>CFA</span>
