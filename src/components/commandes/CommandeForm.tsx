@@ -13,7 +13,7 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
   const [loading, setLoading] = useState(false);
   
   // Client Search & State
-  const [clientRecherche, setClientRecherche] = useState<Partial<Client>>({ telephone: '', nom_complet: '', email: '', adresse: '', commune: '', ville: '', remarques: '' });
+  const [clientRecherche, setClientRecherche] = useState<Partial<Client>>({ telephone: '', telephone_secondaire: '', nom_complet: '', email: '', adresse: '', commune: '', ville: '', remarques: '' });
   const [clientId, setClientId] = useState<string | null>(null);
 
   // Products State
@@ -138,6 +138,7 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
         } else {
           finalClientId = await createClient({
             telephone: clientRecherche.telephone,
+            telephone_secondaire: clientRecherche.telephone_secondaire || '',
             nom_complet: clientRecherche.nom_complet!,
             email: clientRecherche.email || '',
             adresse: clientRecherche.adresse || '',
@@ -225,6 +226,11 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 700 }}>Nom Complet *</label>
                 <input type="text" className="form-input" style={{ background: 'white', height: '48px' }} required value={clientRecherche.nom_complet} onChange={e => setClientRecherche({...clientRecherche, nom_complet: e.target.value})} />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 700 }}>Téléphone Secondaire (Facultatif)</label>
+                <input type="text" className="form-input" style={{ background: 'white', height: '48px' }} placeholder="Ex: 0102030405" value={clientRecherche.telephone_secondaire} onChange={e => setClientRecherche({...clientRecherche, telephone_secondaire: e.target.value})} />
               </div>
 
               <div className="form-group">

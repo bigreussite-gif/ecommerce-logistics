@@ -537,3 +537,78 @@ export const logWhatsAppMessage = async (commandeId: string, type: string): Prom
     .update({ wa_sent: waSent } as any)
     .eq('id', commandeId);
 };
+
+export const createBulkCommandes = async (data: any[]): Promise<void> => {
+  for (const item of data) {
+    try {
+      // 1. Resolve client (Create if not exists)
+      const { client, lines, source, mode_paiement, commune, adresse, notes, frais_livraison } = item;
+      
+      let clientId = "";
+      const existing = await insforge.database
+        .from('clients')
+        .select('id')
+        .or(`telephone.eq."${client.telephone}",telephone_secondaire.eq."${client.telephone}"`)
+        .maybeSingle();
+
+      if (existing.data) {
+        clientId = existing.data.id;
+      } else {
+        const { data: newClient } = await insforge.database
+          .from('clients')
+          .insert([{
+            nom_complet: client.nom_complet,
+            telephone: client.telephone,
+            telephone_secondaire: client.telephone_secondaire || '',
+            commune: commune,
+            adresse: adresse
+          }])
+          .select()
+          .single();
+        clientId = newClient.id;
+      }
+
+      // 2. Resolve products and calculate total
+      let calculatedTotal = 0;
+      const finalLines: any[] = [];
+
+      for (const line of lines) {
+        const { data: prod } = await insforge.database
+          .from('produits')
+          .select('*')
+          .eq('sku', line.produit)
+          .maybeSingle();
+
+        if (prod) {
+          const prix = prod.prix_vente;
+          const montant = prix * line.quantite;
+          calculatedTotal += montant;
+          finalLines.push({
+            produit_id: prod.id,
+            nom_produit: prod.nom,
+            quantite: line.quantite,
+            prix_unitaire: prix,
+            montant_ligne: montant
+          });
+        }
+      }
+
+      if (finalLines.length > 0) {
+        const totalWithShipping = calculatedTotal + (frais_livraison || 0);
+        
+        await createCommandeBase({
+          client_id: clientId,
+          source_commande: source || 'Import CSV',
+          montant_total: totalWithShipping,
+          frais_livraison: frais_livraison || 0,
+          mode_paiement: mode_paiement || 'Cash à la livraison',
+          commune_livraison: commune || '',
+          adresse_livraison: adresse || '',
+          notes_client: notes || '',
+        } as any, finalLines);
+      }
+    } catch (e) {
+      console.error("Erreur lors de l'import d'une ligne:", e);
+    }
+  }
+};

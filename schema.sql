@@ -52,6 +52,7 @@ CREATE TABLE clients (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   nom_complet TEXT NOT NULL,
   telephone TEXT UNIQUE NOT NULL,
+  telephone_secondaire TEXT,
   email TEXT,
   adresse TEXT,
   commune TEXT,

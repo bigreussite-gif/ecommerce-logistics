@@ -34,7 +34,7 @@ export const searchClientByPhone = async (phone: string): Promise<Client | null>
   const { data, error } = await insforge.database
     .from('clients')
     .select('*')
-    .eq('telephone', phone)
+    .or(`telephone.eq."${phone}",telephone_secondaire.eq."${phone}"`)
     .single();
 
   if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "no rows returned"

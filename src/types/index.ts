@@ -57,6 +57,7 @@ export interface Client {
   id: string;
   nom_complet: string;
   telephone: string;
+  telephone_secondaire?: string;
   email?: string;
   adresse?: string;
   commune?: string;

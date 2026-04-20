@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Plus, Search, CheckCircle, Download, X, ShoppingBag, Clock, Truck, AlertCircle, Calendar, RotateCcw } from 'lucide-react';
 import { CommandeList } from '../components/commandes/CommandeList';
 import { CommandeForm } from '../components/commandes/CommandeForm';
+import { BulkImportModal } from '../components/commandes/BulkImportModal';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
 import { subscribeToCommandes, deleteCommande, getCommandeWithLines, bulkUpdateCommandeStatus } from '../services/commandeService';
 import { generateInvoicePDF } from '../services/pdfService';
@@ -17,6 +18,7 @@ export const Commandes = () => {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [selectedCommandeId, setSelectedCommandeId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'to_process' | 'in_delivery' | 'done' | 'failed' | 'annulee' | 'retours'>('to_process');
@@ -226,6 +228,11 @@ export const Commandes = () => {
                </button>
             </div>
 
+            <button className="btn btn-outline" onClick={() => setIsBulkOpen(true)} style={{ padding: '0.8rem 1.5rem', borderRadius: '14px', fontSize: '0.95rem', fontWeight: 700, border: '1px solid #e2e8f0' }}>
+              <Download size={20} style={{ transform: 'rotate(180deg)' }} />
+              Importation Groupée
+            </button>
+
             <button className="btn btn-primary" onClick={() => setIsFormOpen(true)} style={{ padding: '0.8rem 1.5rem', borderRadius: '14px', fontSize: '0.95rem', fontWeight: 700 }}>
               <Plus size={20} />
               Nouvelle Commande
@@ -426,6 +433,13 @@ export const Commandes = () => {
         <CommandeForm 
           onClose={() => setIsFormOpen(false)} 
           onSave={() => setIsFormOpen(false)} 
+        />
+      )}
+
+      {isBulkOpen && (
+        <BulkImportModal 
+          onClose={() => setIsBulkOpen(false)} 
+          onSave={() => setIsBulkOpen(false)} 
         />
       )}
 
