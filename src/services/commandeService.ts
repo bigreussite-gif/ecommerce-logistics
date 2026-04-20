@@ -539,79 +539,95 @@ export const logWhatsAppMessage = async (commandeId: string, type: string): Prom
 };
 
 export const createBulkCommandes = async (data: any[]): Promise<void> => {
-  for (const item of data) {
-    try {
-      // 1. Resolve client (Create if not exists)
-      const { client, lines, source, mode_paiement, commune, quartier, adresse, notes, frais_livraison } = item;
-      
-      let clientId = "";
-      const existing = await insforge.database
-        .from('clients')
-        .select('id')
-        .or(`telephone.eq."${client.telephone}",telephone_secondaire.eq."${client.telephone}"`)
-        .maybeSingle();
+  if (!data || data.length === 0) return;
 
-      if (existing.data) {
-        clientId = existing.data.id;
-      } else {
-        const { data: newClient } = await insforge.database
-          .from('clients')
-          .insert([{
-            nom_complet: client.nom_complet,
-            telephone: client.telephone,
-            telephone_secondaire: client.telephone_secondaire || '',
-            commune: commune,
-            quartier: quartier || '',
-            adresse: adresse
-          }])
-          .select()
-          .single();
-        clientId = newClient.id;
-      }
+  // 1. Pre-fetch all products by SKU to avoid N queries
+  const allSkus = [...new Set(data.flatMap(item => (item.lines || []).map((l: any) => l.produit)))];
+  const { data: products } = await insforge.database
+    .from('produits')
+    .select('*')
+    .in('sku', allSkus);
+  
+  const productMap = new Map((products || []).map(p => [p.sku, p]));
 
-      // 2. Resolve products and calculate total
-      let calculatedTotal = 0;
-      const finalLines: any[] = [];
+  // 2. Pre-fetch existing clients to avoid N queries
+  const allPhones = [...new Set(data.map(item => item.client.telephone))];
+  const { data: existingClients } = await insforge.database
+    .from('clients')
+    .select('id, telephone, telephone_secondaire')
+    .or(`telephone.in.(${allPhones.join(',')}),telephone_secondaire.in.(${allPhones.join(',')})`);
+  
+  const clientMap = new Map();
+  (existingClients || []).forEach(c => {
+    clientMap.set(c.telephone, c.id);
+    if (c.telephone_secondaire) clientMap.set(c.telephone_secondaire, c.id);
+  });
 
-      for (const line of lines) {
-        const { data: prod } = await insforge.database
-          .from('produits')
-          .select('*')
-          .eq('sku', line.produit)
-          .maybeSingle();
-
-        if (prod) {
-          const prix = prod.prix_vente;
-          const montant = prix * line.quantite;
-          calculatedTotal += montant;
-          finalLines.push({
-            produit_id: prod.id,
-            nom_produit: prod.nom,
-            quantite: line.quantite,
-            prix_unitaire: prix,
-            montant_ligne: montant
-          });
-        }
-      }
-
-      if (finalLines.length > 0) {
-        const totalWithShipping = calculatedTotal + (frais_livraison || 0);
+  // 3. Process items in parallel chunks (e.g. 5 at a time to be safe and fast)
+  const chunkSize = 10;
+  for (let i = 0; i < data.length; i += chunkSize) {
+    const chunk = data.slice(i, i + chunkSize);
+    
+    await Promise.all(chunk.map(async (item) => {
+      try {
+        const { client, lines, source, mode_paiement, commune, quartier, adresse, notes, frais_livraison } = item;
         
-        await createCommandeBase({
-          client_id: clientId,
-          source_commande: source || 'Import CSV',
-          montant_total: totalWithShipping,
-          frais_livraison: frais_livraison || 0,
-          mode_paiement: mode_paiement || 'Cash à la livraison',
-          commune_livraison: commune || '',
-          quartier_livraison: quartier || '',
-          adresse_livraison: adresse || '',
-          notes_client: notes || '',
-        } as any, finalLines);
+        let clientId = clientMap.get(client.telephone);
+        
+        if (!clientId) {
+          // Double check in DB just in case of recent insertion in same batch
+          const { data: newClient } = await insforge.database
+            .from('clients')
+            .insert([{
+              nom_complet: client.nom_complet,
+              telephone: client.telephone,
+              telephone_secondaire: client.telephone_secondaire || '',
+              commune: commune,
+              quartier: quartier || '',
+              adresse: adresse
+            }])
+            .select()
+            .single();
+          clientId = newClient.id;
+          clientMap.set(client.telephone, clientId);
+        }
+
+        let calculatedTotal = 0;
+        const finalLines: any[] = [];
+
+        for (const line of lines) {
+          const prod = productMap.get(line.produit);
+          if (prod) {
+            const prix = prod.prix_vente;
+            const montant = prix * line.quantite;
+            calculatedTotal += montant;
+            finalLines.push({
+              produit_id: prod.id,
+              nom_produit: prod.nom,
+              quantite: line.quantite,
+              prix_unitaire: prix,
+              montant_ligne: montant
+            });
+          }
+        }
+
+        if (finalLines.length > 0) {
+          await createCommandeBase({
+            client_id: clientId,
+            source_commande: source || 'Import CSV',
+            montant_total: calculatedTotal + (frais_livraison || 0),
+            frais_livraison: frais_livraison || 0,
+            mode_paiement: mode_paiement || 'Cash à la livraison',
+            commune_livraison: commune || '',
+            quartier_livraison: quartier || '',
+            adresse_livraison: adresse || '',
+            notes_client: notes || '',
+          } as any, finalLines);
+        }
+      } catch (e) {
+        console.error("Erreur lors de l'import d'une ligne:", e);
       }
-    } catch (e) {
-      console.error("Erreur lors de l'import d'une ligne:", e);
-    }
+    }));
   }
 };
 
