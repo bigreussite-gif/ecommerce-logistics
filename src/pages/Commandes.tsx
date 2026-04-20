@@ -6,7 +6,7 @@ import { BulkImportModal } from '../components/commandes/BulkImportModal';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
 import { subscribeToCommandes, deleteCommande, getCommandeWithLines, bulkUpdateCommandeStatus } from '../services/commandeService';
 import { generateInvoicePDF } from '../services/pdfService';
-import type { Commande } from '../types';
+import type { Commande, LigneCommande } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -24,7 +24,7 @@ export const Commandes = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'to_process' | 'in_delivery' | 'done' | 'failed' | 'annulee' | 'retours'>('to_process');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingCommande, setEditingCommande] = useState<Commande | null>(null);
-  const [originalLines, setOriginalLines] = useState<any[]>([]);
+  const [originalLines, setOriginalLines] = useState<LigneCommande[]>([]);
   
   // Stats & Periods
   const [period, setPeriod] = useState<Period>('all');
