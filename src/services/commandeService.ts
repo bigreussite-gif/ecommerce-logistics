@@ -53,6 +53,7 @@ export const subscribeToCommandes = (callback: (commandes: Commande[]) => void) 
   return () => clearInterval(interval);
 };
 
+export const getCommandesByStatus = async (statusList: string[]): Promise<(Commande & { lignes: LigneCommande[] })[]> => {
   const { data: orders, error: orderError } = await insforge.database
     .from('commandes')
     .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*)')
