@@ -4,7 +4,7 @@ import { insforge } from '../lib/insforge';
 export const getProduits = async (): Promise<Produit[]> => {
   const { data, error } = await insforge.database
     .from('produits')
-    .select('id, nom, prix_vente, prix_achat, stock_actuel, stock_minimum, sku, category_id')
+    .select('id, nom, prix_vente, prix_achat, stock_actuel, stock_minimum, sku, categorie_id')
     .order('nom', { ascending: true });
   
   if (error) throw error;
