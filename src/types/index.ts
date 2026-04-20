@@ -80,6 +80,7 @@ export interface Commande {
   client_id: string;
   nom_client?: string;
   telephone_client?: string;
+  telephone_secondaire?: string;
   source_commande: string;
   statut_commande: StatutCommande;
   montant_total: number;
