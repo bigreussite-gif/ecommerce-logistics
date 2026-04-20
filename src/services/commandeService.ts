@@ -614,3 +614,16 @@ export const createBulkCommandes = async (data: any[]): Promise<void> => {
     }
   }
 };
+
+export const updateCommandeBase = async (id: string, commande: Partial<Commande>, currentLines: LigneCommande[], newLines: any[]): Promise<void> => {
+  // 1. Update the main order record
+  const { error: cmdError } = await insforge.database
+    .from('commandes')
+    .update(commande)
+    .eq('id', id);
+
+  if (cmdError) throw cmdError;
+
+  // 2. Synchronize lines and stock
+  await updateCommandeLignesAndStock(id, currentLines, newLines);
+};

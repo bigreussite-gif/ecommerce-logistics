@@ -23,6 +23,8 @@ export const Commandes = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'to_process' | 'in_delivery' | 'done' | 'failed' | 'annulee' | 'retours'>('to_process');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [editingCommande, setEditingCommande] = useState<Commande | null>(null);
+  const [originalLines, setOriginalLines] = useState<any[]>([]);
   
   // Stats & Periods
   const [period, setPeriod] = useState<Period>('all');
@@ -48,6 +50,19 @@ export const Commandes = () => {
     } catch (error) {
       console.error(error);
       showToast("Erreur lors de la suppression.", "error");
+    }
+  };
+
+  const handleEdit = async (commande: Commande) => {
+    try {
+      showToast("Préparation de la modification...", "info");
+      const full = await getCommandeWithLines(commande.id);
+      setEditingCommande(full);
+      setOriginalLines(full.lignes);
+      setIsFormOpen(true);
+    } catch (error) {
+      console.error(error);
+      showToast("Impossible de charger les détails.", "error");
     }
   };
 
@@ -372,6 +387,7 @@ export const Commandes = () => {
               onActionClick={(c) => setSelectedCommandeId(c.id)}
               onDelete={handleDelete}
               onInvoiceClick={handleInvoice}
+              onEditClick={handleEdit}
             />
           )}
 
@@ -431,8 +447,10 @@ export const Commandes = () => {
 
       {isFormOpen && (
         <CommandeForm 
-          onClose={() => setIsFormOpen(false)} 
-          onSave={() => setIsFormOpen(false)} 
+          onClose={() => { setIsFormOpen(false); setEditingCommande(null); setOriginalLines([]); }} 
+          onSave={() => { setIsFormOpen(false); setEditingCommande(null); setOriginalLines([]); }} 
+          editingCommande={editingCommande || undefined}
+          originalLines={originalLines}
         />
       )}
 

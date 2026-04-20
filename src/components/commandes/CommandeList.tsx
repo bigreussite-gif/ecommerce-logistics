@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Commande, StatutCommande } from '../../types';
-import { Eye, PhoneCall, Truck, Trash2, FileText } from 'lucide-react';
+import { Eye, PhoneCall, Truck, Trash2, FileText, Edit2 } from 'lucide-react';
 
 interface CommandeListProps {
   commandes: Commande[];
@@ -11,6 +11,7 @@ interface CommandeListProps {
   onViewClick?: (commande: Commande) => void;
   onDelete?: (commande: Commande) => void;
   onInvoiceClick?: (commande: Commande) => void;
+  onEditClick?: (commande: Commande) => void;
   actionIcon?: 'Eye' | 'PhoneCall' | 'Truck';
   actionLabel?: string;
 }
@@ -46,6 +47,7 @@ export const CommandeList = ({
   onViewClick,
   onDelete, 
   onInvoiceClick, 
+  onEditClick,
   actionIcon = 'Eye', 
   actionLabel = 'Voir détails' 
 }: CommandeListProps) => {
@@ -148,6 +150,17 @@ export const CommandeList = ({
                       >
                         {getIconComponent(actionIcon)}
                       </button>
+
+                      {onEditClick && (
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ padding: '0.6rem', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#f59e0b' }} 
+                          title="Modifier la commande"
+                          onClick={() => onEditClick(c)}
+                        >
+                          <Edit2 size={18} />
+                        </button>
+                      )}
 
                       {onViewClick && (
                         <button 

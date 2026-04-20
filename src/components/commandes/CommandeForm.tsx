@@ -3,12 +3,12 @@ import { X, Search, Trash2, Plus } from 'lucide-react';
 import type { Produit, Client, LigneCommande, Commande } from '../../types';
 import { subscribeToProduits } from '../../services/produitService';
 import { searchClientByPhone, createClient } from '../../services/clientService';
-import { createCommandeBase } from '../../services/commandeService';
+import { createCommandeBase, updateCommandeBase } from '../../services/commandeService';
 import { getCommunes } from '../../services/adminService';
 import { useToast } from '../../contexts/ToastContext';
 import type { Commune } from '../../types';
 
-export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave: () => void }) => {
+export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }: { onClose: () => void, onSave: () => void, editingCommande?: Commande, originalLines?: LigneCommande[] }) => {
   const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   
@@ -32,6 +32,27 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
   useEffect(() => {
     getCommunes().then(setCommunesDb);
   }, []);
+
+  useEffect(() => {
+    if (editingCommande) {
+      setClientRecherche({
+        telephone: editingCommande.telephone_client || '',
+        telephone_secondaire: editingCommande.telephone_secondaire || '',
+        nom_complet: editingCommande.nom_client || '',
+        commune: editingCommande.commune_livraison || '',
+        quartier: editingCommande.quartier_livraison || '',
+        adresse: editingCommande.adresse_livraison || '',
+      });
+      setSource(editingCommande.source_commande || 'Facebook');
+      setModePaiement(editingCommande.mode_paiement || 'Cash à la livraison');
+      setNotes(editingCommande.notes_client || '');
+      setFraisLivraison(editingCommande.frais_livraison || 0);
+      setClientId(editingCommande.client_id);
+    }
+    if (originalLines) {
+      setLignes(originalLines.map(l => ({ ...l })));
+    }
+  }, [editingCommande, originalLines]);
 
   useEffect(() => {
     const unsubscribe = subscribeToProduits((prods: Produit[]) => {
@@ -156,23 +177,40 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
         return;
       }
 
-      const newCommande: Omit<Commande, 'id' | 'date_creation' | 'statut_commande'> = {
-        client_id: finalClientId,
-        source_commande: source,
-        montant_total: totalMontant,
-        frais_livraison: fraisLivraison,
-        mode_paiement: modePaiement,
-        commune_livraison: clientRecherche.commune || '',
-        quartier_livraison: clientRecherche.quartier || '',
-        adresse_livraison: clientRecherche.adresse || '',
-        notes_client: notes,
-      };
+      if (editingCommande) {
+        const updateData: Partial<Commande> = {
+          client_id: finalClientId,
+          source_commande: source,
+          montant_total: totalMontant,
+          frais_livraison: fraisLivraison,
+          mode_paiement: modePaiement,
+          commune_livraison: clientRecherche.commune || '',
+          quartier_livraison: clientRecherche.quartier || '',
+          adresse_livraison: clientRecherche.adresse || '',
+          notes_client: notes,
+        };
+        await updateCommandeBase(editingCommande.id, updateData, originalLines || [], lignes as any[]);
+        showToast("Commande mise à jour avec succès !", "success");
+      } else {
+        const newCommande: Omit<Commande, 'id' | 'date_creation' | 'statut_commande'> = {
+          client_id: finalClientId,
+          source_commande: source,
+          montant_total: totalMontant,
+          frais_livraison: fraisLivraison,
+          mode_paiement: modePaiement,
+          commune_livraison: clientRecherche.commune || '',
+          quartier_livraison: clientRecherche.quartier || '',
+          adresse_livraison: clientRecherche.adresse || '',
+          notes_client: notes,
+        };
 
-      await createCommandeBase(newCommande as any, lignes as Omit<LigneCommande, 'id' | 'commande_id'>[]);
+        await createCommandeBase(newCommande as any, lignes as Omit<LigneCommande, 'id' | 'commande_id'>[]);
+        showToast("Commande créée avec succès !", "success");
+      }
       onSave();
     } catch (error) {
       console.error(error);
-      showToast("Erreur lors de la création.", "error");
+      showToast(editingCommande ? "Erreur lors de la mise à jour." : "Erreur lors de la création.", "error");
     } finally {
       setLoading(false);
     }
@@ -204,8 +242,12 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
         </button>
         
         <div style={{ marginBottom: '2.5rem' }}>
-          <h2 className="text-premium" style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>Nouvelle Commande</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.4rem', fontWeight: 500 }}>Veuillez renseigner les détails du client et la composition de la commande.</p>
+          <h2 className="text-premium" style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>
+            {editingCommande ? `Modifier Commande #${editingCommande.id.slice(0, 8).toUpperCase()}` : 'Nouvelle Commande'}
+          </h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.4rem', fontWeight: 500 }}>
+            {editingCommande ? 'Modifiez les informations nécessaires ci-dessous.' : 'Veuillez renseigner les détails du client et la composition de la commande.'}
+          </p>
         </div>
         
         <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '2rem' }}>
@@ -342,7 +384,7 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1.25rem', marginTop: '1.5rem' }}>
             <button type="button" className="btn btn-outline" onClick={onClose} disabled={loading} style={{ padding: '0.8rem 2rem', fontWeight: 700, borderRadius: '14px' }}>Annuler</button>
             <button type="submit" className="btn btn-primary" disabled={loading} style={{ padding: '0.8rem 3rem', fontWeight: 800, borderRadius: '14px', fontSize: '1rem', boxShadow: '0 10px 15px -3px rgba(79, 70, 229, 0.4)' }}>
-              {loading ? 'Traitement...' : 'Confirmer la Commande'}
+              {loading ? 'Traitement...' : editingCommande ? 'Enregistrer les modifications' : 'Confirmer la Commande'}
             </button>
           </div>
         </form>
