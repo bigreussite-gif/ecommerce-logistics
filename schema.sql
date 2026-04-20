@@ -56,6 +56,7 @@ CREATE TABLE clients (
   email TEXT,
   adresse TEXT,
   commune TEXT,
+  quartier TEXT,
   ville TEXT,
   remarques TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
@@ -75,6 +76,7 @@ CREATE TABLE commandes (
   frais_livraison NUMERIC(15, 2) DEFAULT 0,
   mode_paiement TEXT,
   commune_livraison TEXT,
+  quartier_livraison TEXT,
   adresse_livraison TEXT,
   notes_client TEXT,
   agent_appel_id UUID REFERENCES users(id),

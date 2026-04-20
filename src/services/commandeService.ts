@@ -542,7 +542,7 @@ export const createBulkCommandes = async (data: any[]): Promise<void> => {
   for (const item of data) {
     try {
       // 1. Resolve client (Create if not exists)
-      const { client, lines, source, mode_paiement, commune, adresse, notes, frais_livraison } = item;
+      const { client, lines, source, mode_paiement, commune, quartier, adresse, notes, frais_livraison } = item;
       
       let clientId = "";
       const existing = await insforge.database
@@ -561,6 +561,7 @@ export const createBulkCommandes = async (data: any[]): Promise<void> => {
             telephone: client.telephone,
             telephone_secondaire: client.telephone_secondaire || '',
             commune: commune,
+            quartier: quartier || '',
             adresse: adresse
           }])
           .select()
@@ -603,6 +604,7 @@ export const createBulkCommandes = async (data: any[]): Promise<void> => {
           frais_livraison: frais_livraison || 0,
           mode_paiement: mode_paiement || 'Cash à la livraison',
           commune_livraison: commune || '',
+          quartier_livraison: quartier || '',
           adresse_livraison: adresse || '',
           notes_client: notes || '',
         } as any, finalLines);

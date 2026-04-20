@@ -13,7 +13,7 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
   const [loading, setLoading] = useState(false);
   
   // Client Search & State
-  const [clientRecherche, setClientRecherche] = useState<Partial<Client>>({ telephone: '', telephone_secondaire: '', nom_complet: '', email: '', adresse: '', commune: '', ville: '', remarques: '' });
+  const [clientRecherche, setClientRecherche] = useState<Partial<Client>>({ telephone: '', telephone_secondaire: '', nom_complet: '', email: '', adresse: '', commune: '', quartier: '', ville: '', remarques: '' });
   const [clientId, setClientId] = useState<string | null>(null);
 
   // Products State
@@ -143,6 +143,7 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
             email: clientRecherche.email || '',
             adresse: clientRecherche.adresse || '',
             commune: clientRecherche.commune || '',
+            quartier: clientRecherche.quartier || '',
             ville: clientRecherche.ville || 'Abidjan',
             remarques: clientRecherche.remarques || ''
           });
@@ -162,6 +163,7 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
         frais_livraison: fraisLivraison,
         mode_paiement: modePaiement,
         commune_livraison: clientRecherche.commune || '',
+        quartier_livraison: clientRecherche.quartier || '',
         adresse_livraison: clientRecherche.adresse || '',
         notes_client: notes,
       };
@@ -234,8 +236,8 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 700 }}>Zone / Commune de Livraison</label>
-                 <select className="form-select" style={{ background: 'white', height: '48px' }} value={clientRecherche.commune || ''} onChange={e => setClientRecherche({...clientRecherche, commune: e.target.value})}>
+                <label className="form-label" style={{ fontWeight: 700 }}>Zone / Commune *</label>
+                 <select className="form-select" style={{ background: 'white', height: '48px' }} required value={clientRecherche.commune || ''} onChange={e => setClientRecherche({...clientRecherche, commune: e.target.value})}>
                   <option value="">Sélectionner une zone...</option>
                   {communesDb.map(c => <option key={c.id} value={c.nom}>{c.nom} ({c.tarif_livraison.toLocaleString()} CFA)</option>)}
                   <option value="Autre">Autre (Hors zone)</option>
@@ -243,8 +245,13 @@ export const CommandeForm = ({ onClose, onSave }: { onClose: () => void, onSave:
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 700 }}>Adresse Détaillée</label>
-                <input type="text" className="form-input" style={{ background: 'white', height: '48px' }} placeholder="Quartier, rue, bâtiment..." value={clientRecherche.adresse} onChange={e => setClientRecherche({...clientRecherche, adresse: e.target.value})} />
+                <label className="form-label" style={{ fontWeight: 700 }}>Quartier / Repère</label>
+                <input type="text" className="form-input" style={{ background: 'white', height: '48px' }} placeholder="Ex: Palmeraie, Riviera 3..." value={clientRecherche.quartier} onChange={e => setClientRecherche({...clientRecherche, quartier: e.target.value})} />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 700 }}>Adresse Détaillée (Rue, Porte, Bât...)</label>
+                <input type="text" className="form-input" style={{ background: 'white', height: '48px' }} placeholder="Ex: Bâtiment A, Porte 12..." value={clientRecherche.adresse} onChange={e => setClientRecherche({...clientRecherche, adresse: e.target.value})} />
               </div>
             </div>
           </div>

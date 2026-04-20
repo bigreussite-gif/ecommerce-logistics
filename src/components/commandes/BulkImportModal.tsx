@@ -52,6 +52,7 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
             }
           ],
           commune: item.commune || item.zone || '',
+          quartier: item.quartier || item.neighborhood || '',
           adresse: item.adresse || '',
           notes: item.notes || item.observations || '',
           source: item.source || 'Import Excel'
@@ -74,7 +75,8 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
         "Téléphone": "0707070707",
         "Téléphone 2": "0101010101",
         "Commune": "Cocody",
-        "Adresse": "Angré 8ème Tranche",
+        "Quartier": "Angré 8ème Tranche",
+        "Adresse": "Bâtiment A, Porte 12",
         "Référence": "SAV-001",
         "Quantité": 2,
         "Notes": "Livraison matin"

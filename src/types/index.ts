@@ -61,6 +61,7 @@ export interface Client {
   email?: string;
   adresse?: string;
   commune?: string;
+  quartier?: string;
   ville?: string;
   remarques?: string;
 }
@@ -85,6 +86,7 @@ export interface Commande {
   frais_livraison: number;
   mode_paiement: string;
   commune_livraison: string;
+  quartier_livraison?: string;
   adresse_livraison: string;
   notes_client?: string;
   notes?: string;
