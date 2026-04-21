@@ -47,7 +47,7 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
           },
           lines: [
             { 
-              produit: String(item.reference || item['référence'] || item.sku || item.produit || ''), 
+              produit: String(item.reference || item['référence'] || item.sku || item.produit || '').trim().toUpperCase(), 
               quantite: parseInt(item.quantite || item.qte || item['quantité'] || '1') 
             }
           ],
@@ -92,12 +92,16 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
     if (preview.length === 0) return;
     setLoading(true);
     try {
-      await createBulkCommandes(preview);
-      showToast(`${preview.length} commandes importées avec succès !`, "success");
-      onSave();
+      const count = await createBulkCommandes(preview);
+      if (count > 0) {
+        showToast(`${count} commandes importées avec succès !`, "success");
+        onSave();
+      } else {
+        showToast("Aucune commande n'a été créée. Vérifiez que les références produits (SKU) existent bien dans votre catalogue.", "error");
+      }
     } catch (err) {
       console.error(err);
-      showToast("Erreur lors de l'importation groupée. Vérifiez que les références produits existent.", "error");
+      showToast("Erreur lors de l'importation groupée. Vérifiez vos données.", "error");
     } finally {
       setLoading(false);
     }

@@ -542,17 +542,18 @@ export const logWhatsAppMessage = async (commandeId: string, type: string): Prom
     .eq('id', commandeId);
 };
 
-export const createBulkCommandes = async (data: any[]): Promise<void> => {
-  if (!data || data.length === 0) return;
+export const createBulkCommandes = async (data: any[]): Promise<number> => {
+  if (!data || data.length === 0) return 0;
 
-  // 1. Pre-fetch all products by SKU to avoid N queries
-  const allSkus = [...new Set(data.flatMap(item => (item.lines || []).map((l: any) => l.produit)))];
+  // 1. Pre-fetch all products by SKU to avoid N queries - Normalize to UPPERCASE
+  const allSkus = [...new Set(data.flatMap(item => (item.lines || []).map((l: any) => l.produit.toUpperCase())))];
   const { data: products } = await insforge.database
     .from('produits')
     .select('*')
     .in('sku', allSkus);
   
-  const productMap = new Map((products || []).map(p => [p.sku, p]));
+  // Create map with upper case keys
+  const productMap = new Map((products || []).map(p => [p.sku.toUpperCase(), p]));
 
   // 2. Pre-fetch existing clients to avoid N queries
   const allPhones = [...new Set(data.map(item => item.client.telephone))];
@@ -567,20 +568,21 @@ export const createBulkCommandes = async (data: any[]): Promise<void> => {
     if (c.telephone_secondaire) clientMap.set(c.telephone_secondaire, c.id);
   });
 
-  // 3. Process items in parallel chunks (e.g. 5 at a time to be safe and fast)
+  let successCount = 0;
+
+  // 3. Process items in parallel chunks (e.g. 10 at a time)
   const chunkSize = 10;
   for (let i = 0; i < data.length; i += chunkSize) {
     const chunk = data.slice(i, i + chunkSize);
     
-    await Promise.all(chunk.map(async (item) => {
+    const results = await Promise.all(chunk.map(async (item) => {
       try {
         const { client, lines, source, mode_paiement, commune, quartier, adresse, notes, frais_livraison } = item;
         
         let clientId = clientMap.get(client.telephone);
         
         if (!clientId) {
-          // Double check in DB just in case of recent insertion in same batch
-          const { data: newClient } = await insforge.database
+          const { data: newClient, error: clientErr } = await insforge.database
             .from('clients')
             .insert([{
               nom_complet: client.nom_complet,
@@ -592,25 +594,23 @@ export const createBulkCommandes = async (data: any[]): Promise<void> => {
             }])
             .select()
             .single();
+          
+          if (clientErr) throw clientErr;
           clientId = newClient.id;
           clientMap.set(client.telephone, clientId);
         } else if (client.telephone_secondaire) {
-          // Update existing client if they provide a secondary number
-          await insforge.database
+           await insforge.database
             .from('clients')
             .update({ telephone_secondaire: client.telephone_secondaire })
             .eq('id', clientId)
-            .is('telephone_secondaire', null); // Only update if not already set or null
-          
-          // Actually, let's be more aggressive and update if it's currently empty
-          // But 'is null' or 'eq empty' is safer.
+            .is('telephone_secondaire', null);
         }
 
         let calculatedTotal = 0;
         const finalLines: any[] = [];
 
         for (const line of lines) {
-          const prod = productMap.get(line.produit);
+          const prod = productMap.get(line.produit.toUpperCase());
           if (prod) {
             const prix = prod.prix_vente;
             const montant = prix * line.quantite;
@@ -638,12 +638,19 @@ export const createBulkCommandes = async (data: any[]): Promise<void> => {
             adresse_livraison: adresse || '',
             notes_client: notes || '',
           } as any, finalLines);
+          return true;
         }
+        return false;
       } catch (e) {
         console.error("Erreur lors de l'import d'une ligne:", e);
+        return false;
       }
     }));
+    
+    successCount += results.filter(r => r === true).length;
   }
+  
+  return successCount;
 };
 
 export const updateCommandeBase = async (id: string, commande: Partial<Commande>, currentLines: LigneCommande[], newLines: any[]): Promise<void> => {
