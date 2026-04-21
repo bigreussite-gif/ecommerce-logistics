@@ -14,13 +14,11 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
   const [commande, setCommande] = useState<(Commande & { lignes: LigneCommande[] }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [waSentLocal, setWaSentLocal] = useState<{ type: string, date: string }[]>([]);
 
   useEffect(() => {
     getCommandeWithLines(commandeId)
       .then(cmd => {
         setCommande(cmd);
-        setWaSentLocal((cmd as any).wa_sent || []);
       })
       .finally(() => setLoading(false));
   }, [commandeId]);
@@ -143,13 +141,12 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
     if (!commande) return;
     try {
       await logWhatsAppMessage(commande.id, type);
-      setWaSentLocal(prev => [...prev, { type, date: new Date().toISOString() }]);
     } catch (err) {
       console.error("Erreur log WA:", err);
     }
   };
 
-  const isWASent = (type: string) => waSentLocal.some(s => s.type === type);
+  const isWASent = (type: string) => false;
 
   const getWAType = () => {
     if (!commande) return 'validation';
@@ -233,17 +230,10 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
                         fontSize: '0.75rem', 
                         fontWeight: 700, 
                         textDecoration: 'none',
-                        opacity: isWASent(getWAType()) ? 0.7 : 1
-                      }}
                     >
                       <MessageCircle size={14} fill="currentColor" /> 
-                      {isWASent(getWAType()) ? 'Déjà envoyé' : 'WhatsApp'}
+                      WhatsApp
                     </a>
-                    {isWASent(getWAType()) && (
-                      <span style={{ fontSize: '0.6rem', color: '#059669', fontWeight: 700 }}>
-                        {new Date(waSentLocal.find(s => s.type === getWAType())?.date || '').toLocaleDateString()}
-                      </span>
-                    )}
                    </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'start', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
