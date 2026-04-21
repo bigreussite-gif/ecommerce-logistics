@@ -61,11 +61,16 @@ export const getCloturedFeuilles = async (): Promise<FeuilleRoute[]> => {
 export const getCommandesConcernees = async (feuilleRouteId: string): Promise<Commande[]> => {
   const { data, error } = await insforge.database
     .from('commandes')
-    .select('*')
+    .select('*, clients(nom_complet, telephone, telephone_secondaire)')
     .eq('feuille_route_id', feuilleRouteId);
 
   if (error) throw error;
-  return data || [];
+  return (data || []).map((c: any) => ({
+    ...c,
+    nom_client: c.clients?.nom_complet,
+    telephone_client: c.clients?.telephone,
+    telephone_secondaire: c.clients?.telephone_secondaire
+  }));
 };
 
 export const processCaisse = async (
@@ -232,7 +237,7 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
 
   const { data: commandes, error: cmdError } = await insforge.database
     .from('commandes')
-    .select('id, montant_total, statut_commande, mode_paiement, frais_livraison, updated_at, date_creation, date_livraison_effective, clients(nom_complet), lignes:lignes_commandes(*)')
+    .select('id, montant_total, statut_commande, mode_paiement, frais_livraison, updated_at, date_creation, date_livraison_effective, clients(nom_complet, telephone_secondaire), lignes:lignes_commandes(*)')
     .or(filterStr);
 
   if (cmdError) throw cmdError;

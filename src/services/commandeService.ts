@@ -23,6 +23,7 @@ export const getCommandeWithLines = async (id: string): Promise<Commande & { lig
     ...cmd,
     nom_client: cmd.clients?.nom_complet,
     telephone_client: cmd.clients?.telephone,
+    telephone_secondaire: cmd.clients?.telephone_secondaire,
     lignes: lines || []
   };
 };
@@ -611,7 +612,6 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
             
             if (clientErr) {
               if (clientErr.code === '23505' || clientErr.message?.includes('unique')) {
-                // Phone already exists - deep search as failsafe
                 const { data: found } = await insforge.database
                    .from('clients')
                    .select('id, telephone_secondaire')
@@ -619,14 +619,6 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
                    .limit(1)
                    .maybeSingle();
                 clientId = found?.id;
-                
-                // If found but missing secondary phone, update it
-                if (found && clientId && client.telephone_secondaire && !(found as any).telephone_secondaire) {
-                  await insforge.database
-                    .from('clients')
-                    .update({ telephone_secondaire: client.telephone_secondaire })
-                    .eq('id', clientId);
-                }
               } else {
                 throw new Error(`Client (${client.nom_complet}): ${clientErr.message}`);
               }
@@ -634,16 +626,14 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
               clientId = newClient.id;
             }
             if (clientId) clientMap.set(normalizedPhone, clientId);
-          } else if (client.telephone_secondaire) {
-            // Client already in map, check if we should update secondary phone
-            const existing = (allClients || []).find(c => c.id === clientId);
-            if (existing && !existing.telephone_secondaire) {
-               await insforge.database
-                .from('clients')
-                .update({ telephone_secondaire: client.telephone_secondaire })
-                .eq('id', clientId);
-               existing.telephone_secondaire = client.telephone_secondaire; // Update local ref
-            }
+          }
+
+          // Always ensure secondary phone is linked if provided in Excel
+          if (clientId && client.telephone_secondaire) {
+            await insforge.database
+              .from('clients')
+              .update({ telephone_secondaire: client.telephone_secondaire })
+              .eq('id', clientId);
           }
 
           if (!clientId) return false;
