@@ -206,10 +206,17 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
                 </h4>
                 <div style={{ fontWeight: 800, fontSize: '1.2rem', marginBottom: '0.5rem' }}>{commande.nom_client}</div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 700 }}>
-                      <Phone size={14} /> {commande.telephone_client}
-                   </div>
-                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 700 }}>
+                        <Phone size={14} /> {commande.telephone_client}
+                      </div>
+                      {commande.telephone_secondaire && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem' }}>
+                          <Phone size={12} /> {commande.telephone_secondaire} <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>(Sec.)</span>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                     <a 
                       href={generateWhatsAppLink()} 
                       target="_blank" 

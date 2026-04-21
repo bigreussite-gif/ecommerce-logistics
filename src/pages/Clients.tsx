@@ -43,6 +43,7 @@ export const Clients = () => {
       setEditForm({
         nom_complet: client.nom_complet,
         telephone: client.telephone,
+        telephone_secondaire: client.telephone_secondaire,
         commune: client.commune,
         quartier: client.quartier,
         adresse: client.adresse
@@ -281,15 +282,28 @@ export const Clients = () => {
                            className="form-input" 
                            value={editForm.telephone} 
                            onChange={e => setEditForm({...editForm, telephone: e.target.value})}
-                           placeholder="Téléphone"
+                           placeholder="Téléphone Principal"
+                        />
+                         <input 
+                           className="form-input" 
+                           value={editForm.telephone_secondaire} 
+                           onChange={e => setEditForm({...editForm, telephone_secondaire: e.target.value})}
+                           placeholder="Téléphone Secondaire"
                         />
                       </div>
                     ) : (
                       <>
                         <h2 style={{ fontSize: '1.75rem', fontWeight: 900, margin: 0 }}>{selectedClient.client.nom_complet}</h2>
                         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                          <span className="badge badge-success">{selectedClient.client.segment}</span>
-                          <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>ID Unique: {selectedClient.client.telephone}</span>
+                           <span className="badge badge-success">{selectedClient.client.segment}</span>
+                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                             <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>Tél 1: {selectedClient.client.telephone}</span>
+                             {selectedClient.client.telephone_secondaire && (
+                               <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                 Tél 2: {selectedClient.client.telephone_secondaire} <span style={{ fontSize: '0.65rem', background: '#f1f5f9', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>Sec.</span>
+                               </span>
+                             )}
+                           </div>
                           {selectedClient.client.identities.length > 1 && (
                             <span style={{ fontSize: '0.75rem', color: '#3b82f6', background: '#eff6ff', padding: '0.2rem 0.6rem', borderRadius: '8px', fontWeight: 800 }}>
                               Aliases: {selectedClient.client.identities.filter(id => id !== selectedClient.client.nom_complet).join(', ')}

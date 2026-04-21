@@ -42,8 +42,8 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
         const formatted = normalizedData.map(item => ({
           client: {
             nom_complet: item.client || item['nom complet'] || item.nom || '',
-            telephone: String(item.telephone || item['téléphone'] || item.phone || ''),
-            telephone_secondaire: String(item['telephone 2'] || item.telephone2 || item['téléphone secondaire'] || '')
+            telephone: String(item.telephone || item['téléphone'] || item.phone || item.tel || '').trim(),
+            telephone_secondaire: String(item['telephone 2'] || item['téléphone 2'] || item.telephone2 || item.tel2 || item['téléphone secondaire'] || item['telephone secondaire'] || item['numéro secondaire'] || item['numero secondaire'] || item['phone 2'] || item.phone2 || '').trim()
           },
           lines: [
             { 
@@ -209,7 +209,12 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
                   {preview.map((item, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '1rem', fontWeight: 600 }}>{item.client.nom_complet}</td>
-                      <td style={{ padding: '1rem', color: '#475569' }}>{item.client.telephone}</td>
+                      <td style={{ padding: '1rem', color: '#475569' }}>
+                        <div>{item.client.telephone}</div>
+                        {item.client.telephone_secondaire && (
+                          <div style={{ fontSize: '0.75rem', opacity: 0.7 }}>{item.client.telephone_secondaire}</div>
+                        )}
+                      </td>
                       <td style={{ padding: '1rem' }}>{item.commune} {item.quartier ? `/ ${item.quartier}` : ''}</td>
                       <td style={{ padding: '1rem', fontSize: '0.75rem' }}>{item.adresse}</td>
                       <td style={{ padding: '1rem' }}><span style={{ padding: '0.3rem 0.6rem', background: '#f1f5f9', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)' }}>{item.lines[0].produit}</span></td>

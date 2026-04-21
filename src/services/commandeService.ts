@@ -594,6 +594,16 @@ export const createBulkCommandes = async (data: any[]): Promise<void> => {
             .single();
           clientId = newClient.id;
           clientMap.set(client.telephone, clientId);
+        } else if (client.telephone_secondaire) {
+          // Update existing client if they provide a secondary number
+          await insforge.database
+            .from('clients')
+            .update({ telephone_secondaire: client.telephone_secondaire })
+            .eq('id', clientId)
+            .is('telephone_secondaire', null); // Only update if not already set or null
+          
+          // Actually, let's be more aggressive and update if it's currently empty
+          // But 'is null' or 'eq empty' is safer.
         }
 
         let calculatedTotal = 0;
@@ -618,6 +628,7 @@ export const createBulkCommandes = async (data: any[]): Promise<void> => {
         if (finalLines.length > 0) {
           await createCommandeBase({
             client_id: clientId,
+            telephone_secondaire: client.telephone_secondaire || '',
             source_commande: source || 'Import CSV',
             montant_total: calculatedTotal + (frais_livraison || 0),
             frais_livraison: frais_livraison || 0,
