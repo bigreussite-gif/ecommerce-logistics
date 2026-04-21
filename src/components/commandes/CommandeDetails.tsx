@@ -20,7 +20,7 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
     getCommandeWithLines(commandeId)
       .then(cmd => {
         setCommande(cmd);
-        setWaSentLocal(cmd.wa_sent || []);
+        setWaSentLocal((cmd as any).wa_sent || []);
       })
       .finally(() => setLoading(false));
   }, [commandeId]);

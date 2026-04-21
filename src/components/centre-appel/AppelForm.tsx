@@ -31,7 +31,7 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
   const [lignesLocal, setLignesLocal] = useState<Partial<LigneCommande>[]>(commande.lignes || []);
   const [catalogue, setCatalogue] = useState<Produit[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [waSentLocal, setWaSentLocal] = useState<{ type: string, date: string }[]>(commande.wa_sent || []);
+  const [waSentLocal, setWaSentLocal] = useState<{ type: string, date: string }[]>((commande as any).wa_sent || []);
 
   useEffect(() => {
     getCommunes().then(setCommunesDb);

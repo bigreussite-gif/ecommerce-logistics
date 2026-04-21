@@ -36,7 +36,6 @@ export const markCommandeLivre = async (commandeId: string, montantEncaisse: num
     .update({ 
       statut_commande: 'livree', 
       date_livraison_effective: new Date(), 
-      montant_encaisse: montantEncaisse, 
       notes_livreur: notesRetours 
     })
     .eq('id', commandeId);
