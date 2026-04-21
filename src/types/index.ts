@@ -94,11 +94,9 @@ export interface Commande {
   agent_appel_id?: string;
   livreur_id?: string;
   feuille_route_id?: string;
-  updated_at?: Date | any;
   date_validation_appel?: Date | any;
   date_livraison_prevue?: Date | string;
   date_livraison_effective?: Date | any;
-  montant_encaisse?: number;
   notes_livreur?: string;
   commentaire_agent?: string;
   // Extras for Dashboard/Reporting
@@ -106,7 +104,6 @@ export interface Commande {
   clients?: { nom_complet: string; telephone?: string };
   lignes?: LigneCommande[];
   created_by?: string;
-  wa_sent?: { type: string, date: string }[];
 }
 
 export interface LigneCommande {
@@ -116,7 +113,6 @@ export interface LigneCommande {
   nom_produit: string;
   quantite: number;
   prix_unitaire: number;
-  prix_achat_unitaire?: number; // Captures cost at time of sale
   montant_ligne: number;
 }
 
@@ -140,9 +136,9 @@ export interface FeuilleRoute {
   lien_pdf?: string;
   date_traitement?: string | Date;
   // Extras
-  montant_encaisse?: number;
-  ecart_caisse?: number;
   nom_livreur?: string;
+  total_encaisse?: number;
+  ecart_caisse?: number;
 }
 
 export interface MouvementStock {

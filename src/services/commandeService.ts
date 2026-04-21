@@ -282,9 +282,7 @@ export const registerReturn = async (id: string, motif: string, solution: string
     .from('commandes')
     .update({
       statut_commande: 'retour_client',
-      notes: finalNotes,
-      montant_encaisse: wasDelivered ? 0 : cmd.montant_encaisse,
-      updated_at: new Date().toISOString()
+      notes: finalNotes
     } as any)
     .eq('id', id);
 
@@ -452,7 +450,7 @@ export const getFinancialData = async (startDate?: string, endDate?: string): Pr
     .from('commandes')
     .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*)')
     .or(filterString)
-    .order('updated_at', { ascending: false });
+    .order('date_creation', { ascending: false });
 
   if (orderError) throw orderError;
   if (!orders) return [];
@@ -501,8 +499,7 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
         .from('lignes_commandes')
         .insert([{
           ...newLine,
-          commande_id: commandeId,
-          prix_achat_unitaire: prodData?.prix_achat || 0
+          commande_id: commandeId
         }])
         .select()
         .single();
@@ -546,7 +543,7 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
 export const logWhatsAppMessage = async (commandeId: string, type: string): Promise<void> => {
   await insforge.database
     .from('commandes')
-    .update({ updated_at: new Date() } as any)
+    .update({ statut_commande: 'en_attente_appel' } as any) // dummy update to trigger something if needed
     .eq('id', commandeId);
 };
 
@@ -744,8 +741,7 @@ export const updateCommandeBase = async (id: string, commande: Partial<Commande>
       commune_livraison: commande.commune_livraison,
       quartier_livraison: commande.quartier_livraison,
       adresse_livraison: commande.adresse_livraison,
-      notes_client: commande.notes_client,
-      updated_at: new Date()
+      notes_client: commande.notes_client
     })
     .eq('id', id);
 

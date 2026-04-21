@@ -83,7 +83,7 @@ export const processCaisse = async (
     .update({
       statut_feuille: 'terminee',
       date_traitement: new Date().toISOString(),
-      montant_encaisse: montantPhysique,
+      total_encaisse: montantPhysique,
       ecart_caisse: ecart
     })
     .eq('id', feuilleRouteId);
@@ -172,7 +172,7 @@ export const reopenFeuilleRoute = async (id: string): Promise<void> => {
     .from('feuilles_route')
     .update({
       statut_feuille: 'en_cours',
-      montant_encaisse: 0,
+      total_encaisse: 0,
       ecart_caisse: 0,
       date_traitement: null
     })
