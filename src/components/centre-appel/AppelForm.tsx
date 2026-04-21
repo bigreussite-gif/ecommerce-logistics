@@ -296,7 +296,8 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
                     borderRadius: '8px', 
                     fontSize: '0.75rem', 
                     fontWeight: 700, 
-                    textDecoration: 'none',
+                    textDecoration: 'none'
+                  }}
                 >
                   <MessageCircle size={14} fill="currentColor" /> 
                   WhatsApp
