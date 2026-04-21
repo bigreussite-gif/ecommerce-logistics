@@ -30,7 +30,7 @@ export const getCommandesForFeuille = async (feuilleRouteId: string): Promise<Co
   }));
 };
 
-export const markCommandeLivre = async (commandeId: string, _montantEncaisse: number, notesRetours: string): Promise<void> => {
+export const markCommandeLivre = async (commandeId: string, notesRetours: string): Promise<void> => {
   const { error } = await insforge.database
     .from('commandes')
     .update({ 

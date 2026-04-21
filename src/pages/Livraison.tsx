@@ -108,7 +108,7 @@ export const Livraison = () => {
           .eq('id', targetId);
       } else if (selectedCommande) {
         if (statusAction === 'livree') {
-          await markCommandeLivre(selectedCommande.id, Number(selectedCommande.montant_total), noteForm);
+          await markCommandeLivre(selectedCommande.id, noteForm);
         } else {
           await markCommandeEchouee(selectedCommande.id, noteForm);
         }

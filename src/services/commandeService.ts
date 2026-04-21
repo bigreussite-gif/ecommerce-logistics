@@ -270,7 +270,7 @@ export const registerReturn = async (id: string, motif: string, solution: string
       quantite: productLine?.quantite || 1
     }]);
 
-  // const wasDelivered = ... (unused)
+  // wasDelivered is unused here
   const finalNotes = `[RETOUR CLIENT] ${etat_produit} - Motif: ${motif}. ${notes}${cmd.notes_client ? "\n---\n" + cmd.notes_client : ""}`;
   
   const { error: updateErr } = await insforge.database
@@ -621,7 +621,7 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
                 clientId = found?.id;
                 
                 // If found but missing secondary phone, update it
-                if (clientId && client.telephone_secondaire && found && !found.telephone_secondaire) {
+                if (found && clientId && client.telephone_secondaire && !(found as any).telephone_secondaire) {
                   await insforge.database
                     .from('clients')
                     .update({ telephone_secondaire: client.telephone_secondaire })
