@@ -31,7 +31,6 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
   const [lignesLocal, setLignesLocal] = useState<Partial<LigneCommande>[]>(commande.lignes || []);
   const [catalogue, setCatalogue] = useState<Produit[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [waSentLocal, setWaSentLocal] = useState<{ type: string, date: string }[]>((commande as any).wa_sent || []);
 
   useEffect(() => {
     getCommunes().then(setCommunesDb);
@@ -223,16 +222,17 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   };
 
+
+
   const handleWhatsAppClick = async (type: string) => {
     try {
       await logWhatsAppMessage(commande.id, type);
-      setWaSentLocal(prev => [...prev, { type, date: new Date().toISOString() }]);
     } catch (err) {
       console.error("Erreur log WA:", err);
     }
   };
 
-  const isWASent = (type: string) => waSentLocal.some(s => s.type === type);
+  const isWASent = (type: string) => false;
 
   const getWAType = () => {
     if (resultat === 'a_rappeler' || resultat === 'injoignable') return 'relance';
@@ -297,17 +297,10 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
                     fontSize: '0.75rem', 
                     fontWeight: 700, 
                     textDecoration: 'none',
-                    opacity: isWASent(getWAType()) ? 0.7 : 1
-                  }}
                 >
                   <MessageCircle size={14} fill="currentColor" /> 
-                  {isWASent(getWAType()) ? 'Déjà envoyé' : 'WhatsApp'}
+                  WhatsApp
                 </a>
-                {isWASent(getWAType()) && (
-                  <span style={{ fontSize: '0.65rem', color: '#059669', fontWeight: 700 }}>
-                    Envoyé le {new Date(waSentLocal.find(s => s.type === getWAType())?.date || '').toLocaleDateString()}
-                  </span>
-                )}
               </div>
             </div>
           </div>

@@ -429,7 +429,7 @@ export const generateAuditReportPDF = (
       ['Coût des Marchandises (COGS)', fP(metrics.cogs_total), 'Prix d\'achat des produits vendus'],
       ['Marge Brute d\'Exploitation', fP(metrics.ca_brut - metrics.cogs_total), `${metrics.marge_brute_percent}% du CA`],
       ['Charges Fixes & Dépenses', fP(metrics.depenses_fixes_total), 'Logistique et frais administratifs'],
-      ['BÉNÉFICE NET (EBITDA)', fP(metrics.profit_net), `Marge nette: ${metrics.marge_nette_percent}%`]
+      ['BÉNÉFICE NET (EBITDA)', fP(metrics.profit_net_reel), `Marge nette: ${metrics.marge_nette_percent}%`]
     ],
     theme: 'grid',
     headStyles: { fillColor: [71, 85, 105], fontSize: 10 },

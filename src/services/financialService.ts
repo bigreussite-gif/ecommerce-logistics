@@ -124,7 +124,8 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
   terminalCmds.forEach(c => {
     if (c.lignes) {
       c.lignes.forEach(l => {
-        cogs_total += (l.quantite * (l.prix_achat_unitaire || 0));
+        // Fallback to 0 if prix_achat_unitaire is missing (legacy field)
+        cogs_total += (l.quantite * ((l as any).prix_achat_unitaire || 0));
       });
     }
   });
@@ -232,7 +233,7 @@ export const analyzeGeographicalProfit = (commandes: (Commande & { lignes?: Lign
       const shipping = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
       const rev = (Number(c.montant_total) || 0) - shipping;
       let cost = 0;
-      (c.lignes || []).forEach(l => { cost += (l.quantite * (l.prix_achat_unitaire || 0)); });
+      (c.lignes || []).forEach(l => { cost += (l.quantite * ((l as any).prix_achat_unitaire || 0)); });
       
       const extractions = TOTAL_EXTRACTION_PER_UNIT;
       const retenue = Math.round(rev * RETENUE_PERCENT);
@@ -281,7 +282,7 @@ export const generateTimeSeriesData = (commandes: (Commande & { lignes?: LigneCo
     const rev = (Number(c.montant_total) || 0) - shipping;
     let cost = 0;
     (c.lignes || []).forEach(l => {
-      cost += (l.quantite * (l.prix_achat_unitaire || 0));
+      cost += (l.quantite * ((l as any).prix_achat_unitaire || 0));
     });
 
     const extractions = TOTAL_EXTRACTION_PER_UNIT;
@@ -322,7 +323,7 @@ export const calculateProductROI = (commandes: (Commande & { lignes?: LigneComma
         if (isSuccess) {
           p.ventes_reussies += l.quantite;
           p.ca_produits += (l.quantite * l.prix_unitaire);
-          p.cogs += (l.quantite * (l.prix_achat_unitaire || 0));
+          p.cogs += (l.quantite * ((l as any).prix_achat_unitaire || 0));
         } else if (isFailure) {
           p.echecs += l.quantite;
           // Loss estimate: if it failed, we likely paid delivery estimated at DEFAULT_SHIPPING_FEE CFA or the order's delivery fee
