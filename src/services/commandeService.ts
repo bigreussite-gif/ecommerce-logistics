@@ -618,11 +618,19 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
                 // Phone already exists - deep search as failsafe
                 const { data: found } = await insforge.database
                    .from('clients')
-                   .select('id')
+                   .select('id, telephone_secondaire')
                    .or(`telephone.ilike.%${normalizedPhone}%,telephone_secondaire.ilike.%${normalizedPhone}%`)
                    .limit(1)
                    .maybeSingle();
                 clientId = found?.id;
+                
+                // If found but missing secondary phone, update it
+                if (clientId && client.telephone_secondaire && !found.telephone_secondaire) {
+                  await insforge.database
+                    .from('clients')
+                    .update({ telephone_secondaire: client.telephone_secondaire })
+                    .eq('id', clientId);
+                }
               } else {
                 throw new Error(`Client (${client.nom_complet}): ${clientErr.message}`);
               }
@@ -630,6 +638,16 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
               clientId = newClient.id;
             }
             if (clientId) clientMap.set(normalizedPhone, clientId);
+          } else if (client.telephone_secondaire) {
+            // Client already in map, check if we should update secondary phone
+            const existing = (allClients || []).find(c => c.id === clientId);
+            if (existing && !existing.telephone_secondaire) {
+               await insforge.database
+                .from('clients')
+                .update({ telephone_secondaire: client.telephone_secondaire })
+                .eq('id', clientId);
+               existing.telephone_secondaire = client.telephone_secondaire; // Update local ref
+            }
           }
 
           if (!clientId) return false;
