@@ -39,23 +39,30 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
         });
 
         // Map to our expected structure
+        const cleanValue = (val: any) => {
+          if (!val) return '';
+          const str = String(val).split('\n')[0].split('\r')[0].trim();
+          return str;
+        };
+
         const formatted = normalizedData.map(item => ({
           client: {
-            nom_complet: item.client || item['nom complet'] || item.nom || '',
-            telephone: String(item.telephone || item['téléphone'] || item.phone || item.tel || '').trim(),
-            telephone_secondaire: String(item['telephone 2'] || item['téléphone 2'] || item.telephone2 || item.tel2 || item['téléphone secondaire'] || item['telephone secondaire'] || item['numéro secondaire'] || item['numero secondaire'] || item['phone 2'] || item.phone2 || '').trim()
+            nom_complet: cleanValue(item.client || item.nom || item['nom complet'] || item.customer || ''),
+            telephone: cleanValue(item.telephone || item['téléphone'] || item.phone || item.tel || ''),
+            telephone_secondaire: cleanValue(item['telephone 2'] || item['téléphone 2'] || item.telephone2 || item.tel2 || item['téléphone secondaire'] || item['telephone secondaire'] || item['numéro secondaire'] || item['numero secondaire'] || item['phone 2'] || item.phone2 || '')
           },
           lines: [
             { 
-              produit: String(item.reference || item['référence'] || item.ref || item['réf'] || item.sku || item.code || item.produit || item.article || item.item || '').trim().toUpperCase(), 
+              produit: cleanValue(item.reference || item['référence'] || item.ref || item['réf'] || item.sku || item.code || item.produit || item.article || item.item || '').toUpperCase(), 
               quantite: parseInt(item.quantite || item.qte || item['quantité'] || '1') 
             }
           ],
-          commune: item.commune || item.zone || '',
-          quartier: item.quartier || item.neighborhood || '',
-          adresse: item.adresse || '',
-          notes: item.notes || item.observations || '',
-          source: item.source || 'Import Excel'
+          source: 'Import Groupé',
+          commune: cleanValue(item.commune || item.zone || item.ville || ''),
+          quartier: cleanValue(item.quartier || item.secteur || ''),
+          adresse: cleanValue(item.adresse || item.localisation || ''),
+          notes: cleanValue(item.notes || item.commentaire || item.infos || ''),
+          frais_livraison: parseInt(item.frais || item.livraison || item['frais livraison'] || '0')
         }));
 
         setPreview(formatted);
