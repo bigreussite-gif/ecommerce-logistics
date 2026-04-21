@@ -284,7 +284,7 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
                   href={generateWhatsAppLink()} 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  onClick={() => handleWhatsAppClick(getWAType())}
+                  onClick={() => handleWhatsAppClick()}
                   style={{ 
                     display: 'flex', 
                     alignItems: 'center', 
