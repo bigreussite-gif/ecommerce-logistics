@@ -84,7 +84,7 @@ export const ProduitList = ({ produits, onEdit, onStock }: ProduitListProps) => 
                 </td>
               <td>
                 <div style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.85rem', color: 'var(--primary)' }}>#{produit.sku || produit.id.slice(0, 8).toUpperCase()}</div>
-                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>REF-IND-01</div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Catalogue Central</div>
               </td>
               <td>
                 <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1.05rem' }}>{produit.nom}</div>

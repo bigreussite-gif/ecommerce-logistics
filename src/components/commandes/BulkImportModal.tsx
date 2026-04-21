@@ -47,7 +47,7 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
           },
           lines: [
             { 
-              produit: String(item.reference || item['référence'] || item.sku || item.produit || '').trim().toUpperCase(), 
+              produit: String(item.reference || item['référence'] || item.ref || item['réf'] || item.sku || item.code || item.produit || item.article || item.item || '').trim().toUpperCase(), 
               quantite: parseInt(item.quantite || item.qte || item['quantité'] || '1') 
             }
           ],

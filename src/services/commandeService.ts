@@ -545,15 +545,14 @@ export const logWhatsAppMessage = async (commandeId: string, type: string): Prom
 export const createBulkCommandes = async (data: any[]): Promise<number> => {
   if (!data || data.length === 0) return 0;
 
-  // 1. Pre-fetch all products by SKU to avoid N queries - Normalize to UPPERCASE
-  const allSkus = [...new Set(data.flatMap(item => (item.lines || []).map((l: any) => l.produit.toUpperCase())))];
+  // 1. Pre-fetch ALL products to ensure case-insensitive matching in Javascript
   const { data: products } = await insforge.database
     .from('produits')
     .select('*')
-    .in('sku', allSkus);
+    .eq('actif', true); // Only active products
   
-  // Create map with upper case keys
-  const productMap = new Map((products || []).map(p => [p.sku.toUpperCase(), p]));
+  // Create map with upper case keys for easy lookup
+  const productMap = new Map((products || []).map(p => [(p.sku || '').trim().toUpperCase(), p]));
 
   // 2. Pre-fetch existing clients to avoid N queries
   const allPhones = [...new Set(data.map(item => item.client.telephone))];
