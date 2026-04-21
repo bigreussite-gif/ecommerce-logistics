@@ -137,20 +137,17 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
   };
 
-  const handleWhatsAppClick = async (type: string) => {
+  const handleWhatsAppClick = async () => {
     if (!commande) return;
     try {
-      await logWhatsAppMessage(commande.id, type);
+      await logWhatsAppMessage(commande.id, getWAType());
     } catch (err) {
       console.error("Erreur log WA:", err);
     }
   };
 
-  const isWASent = (type: string) => false;
-
   const getWAType = () => {
-    if (!commande) return 'validation';
-    const status = commande.statut_commande.toLowerCase();
+    const status = (commande?.statut_commande || '').toLowerCase();
     if (['a_rappeler', 'absent', 'injoignable'].includes(status)) return 'relance';
     if (status === 'annulee') return 'annulation';
     if (['echouee', 'retour_livreur'].includes(status)) return 'echec';

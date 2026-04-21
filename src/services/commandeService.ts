@@ -126,13 +126,6 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
   if (!id) throw new Error("ID de commande non généré par la base de données.");
 
   for (const l of lignes) {
-    // Fetch current purchase price to lock it in the line
-    const { data: prodData } = await insforge.database
-      .from('produits')
-      .select('prix_achat')
-      .eq('id', l.produit_id)
-      .single();
-
     const { error: lineError } = await insforge.database
       .from('lignes_commandes')
       .insert([{ 
@@ -277,7 +270,7 @@ export const registerReturn = async (id: string, motif: string, solution: string
       quantite: productLine?.quantite || 1
     }]);
 
-  const wasDelivered = ['livree', 'terminee'].includes(cmd.statut_commande?.toLowerCase());
+  // const wasDelivered = ... (unused)
   const finalNotes = `[RETOUR CLIENT] ${etat_produit} - Motif: ${motif}. ${notes}${cmd.notes_client ? "\n---\n" + cmd.notes_client : ""}`;
   
   const { error: updateErr } = await insforge.database
@@ -491,11 +484,7 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
   for (const newLine of newLines) {
     if (!newLine.id) {
       // It's a new line - fetch cost price first
-      const { data: prodData } = await insforge.database
-        .from('produits')
-        .select('prix_achat')
-        .eq('id', newLine.produit_id)
-        .single();
+      // It's a new line - skip fetch if not needed
 
       await insforge.database
         .from('lignes_commandes')
@@ -542,7 +531,7 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
   }
 };
 
-export const logWhatsAppMessage = async (commandeId: string, type: string): Promise<void> => {
+export const logWhatsAppMessage = async (commandeId: string, _type: string): Promise<void> => {
   await insforge.database
     .from('commandes')
     .update({ statut_commande: 'en_attente_appel' } as any) // dummy update to trigger something if needed
@@ -596,7 +585,7 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
       
       const results = await Promise.all(chunk.map(async (item) => {
         try {
-          const { client, lines, source, mode_paiement, commune, quartier, adresse, notes, frais_livraison } = item;
+          const { client, lines, mode_paiement, commune, quartier, adresse, notes, frais_livraison } = item;
           const normalizedPhone = cleanPhone(client.telephone);
           
           if (!normalizedPhone || normalizedPhone.length < 8) {
@@ -632,7 +621,7 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
                 clientId = found?.id;
                 
                 // If found but missing secondary phone, update it
-                if (clientId && client.telephone_secondaire && !found.telephone_secondaire) {
+                if (clientId && client.telephone_secondaire && found && !found.telephone_secondaire) {
                   await insforge.database
                     .from('clients')
                     .update({ telephone_secondaire: client.telephone_secondaire })

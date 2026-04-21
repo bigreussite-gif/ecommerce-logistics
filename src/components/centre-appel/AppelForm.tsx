@@ -224,21 +224,20 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
 
 
 
-  const handleWhatsAppClick = async (type: string) => {
+  const handleWhatsAppClick = async () => {
     try {
-      await logWhatsAppMessage(commande.id, type);
+      await logWhatsAppMessage(commande.id, getWAType());
     } catch (err) {
       console.error("Erreur log WA:", err);
     }
   };
 
-  const isWASent = (type: string) => false;
-
   const getWAType = () => {
-    if (resultat === 'a_rappeler' || resultat === 'injoignable') return 'relance';
-    if (resultat === 'annulee') return 'annulation';
-    if (resultat === 'echouee') return 'echec';
-    return 'validation';
+    if (resultat === 'validee') return 'CONFIRM_ORDER';
+    if (resultat === 'a_rappeler' || resultat === 'injoignable') return 'RECALL_LATER';
+    if (resultat === 'annulee') return 'ORDER_CANCELLED';
+    if (resultat === 'echouee') return 'ORDER_FAILED';
+    return 'GENERAL';
   };
 
   const filteredCatalogue = searchTerm.length > 0 
