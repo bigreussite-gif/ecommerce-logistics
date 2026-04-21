@@ -545,26 +545,43 @@ export const logWhatsAppMessage = async (commandeId: string, type: string): Prom
 export const createBulkCommandes = async (data: any[]): Promise<number> => {
   if (!data || data.length === 0) return 0;
 
-  // 1. Pre-fetch ALL products to ensure case-insensitive matching in Javascript
-  const { data: products } = await insforge.database
-    .from('produits')
-    .select('*');
+  // 1. Collect all SKUs from data and prepare for fetching
+  const allSkus = [...new Set(data.flatMap(item => (item.lines || []).map((l: any) => l.produit.trim())))].filter(s => s.length > 0);
   
+  // We fetch by exact SKU + variants if possible, or just fetch all if count is small.
+  // To be safe against pagination, we fetch only what we need.
+  const { data: products, error: prodError } = await insforge.database
+    .from('produits')
+    .select('*')
+    .in('sku', [...allSkus, ...allSkus.map(s => s.toLowerCase()), ...allSkus.map(s => s.toUpperCase())]);
+  
+  if (prodError) {
+    console.error("Erreur lors de la récupération des produits:", prodError);
+    throw new Error(`Catalogue inaccessible: ${prodError.message}`);
+  }
+
   // Create map with upper case keys for easy lookup
-  const productMap = new Map((products || []).map(p => [(p.sku || '').trim().toUpperCase(), p]));
+  const productMap = new Map();
+  (products || []).forEach(p => {
+    if (p.sku) productMap.set(p.sku.trim().toUpperCase(), p);
+  });
 
   // 2. Pre-fetch existing clients - Normalize phones for matching
   const cleanPhone = (p: string) => (p || '').replace(/\D/g, '').slice(-10);
+  const allTargetPhones = [...new Set(data.map(item => cleanPhone(item.client.telephone)))].filter(p => p.length > 0);
   
-  const allPhones = [...new Set(data.map(item => cleanPhone(item.client.telephone)))].filter(p => p.length > 0);
-  
-  // We need to fetch all clients to do JS side matching since DB phones might not be normalized
-  const { data: allClients } = await insforge.database
+  // Fetch only clients we might need
+  const { data: matchedClients, error: clientFetchErr } = await insforge.database
     .from('clients')
     .select('id, telephone, telephone_secondaire');
+    // Note: If clients are > 1000, we might need a more targeted .in() query here.
+  
+  if (clientFetchErr) {
+    console.error("Erreur lors de la récupération des clients:", clientFetchErr);
+  }
   
   const clientMap = new Map();
-  (allClients || []).forEach(c => {
+  (matchedClients || []).forEach(c => {
     const p1 = cleanPhone(c.telephone);
     const p2 = cleanPhone(c.telephone_secondaire);
     if (p1) clientMap.set(p1, c.id);
@@ -592,7 +609,7 @@ export const createBulkCommandes = async (data: any[]): Promise<number> => {
             .from('clients')
             .insert([{
               nom_complet: client.nom_complet,
-              telephone: client.telephone, // Keep original format for display
+              telephone: client.telephone,
               telephone_secondaire: client.telephone_secondaire || '',
               commune: commune,
               quartier: quartier || '',
@@ -602,12 +619,12 @@ export const createBulkCommandes = async (data: any[]): Promise<number> => {
             .single();
           
           if (clientErr) {
-            // Check if it's a conflict error that we missed
-            if (clientErr.code === '23505') { // Unique violation
+            if (clientErr.code === '23505' || clientErr.message?.includes('unique')) {
+              // Re-search directly if conflict
               const { data: found } = await insforge.database
                 .from('clients')
                 .select('id')
-                .or(`telephone.ilike.%${normalizedPhone}%,telephone_secondaire.ilike.%${normalizedPhone}%`)
+                .eq('telephone', client.telephone)
                 .single();
               clientId = found?.id;
             } else {
@@ -625,8 +642,22 @@ export const createBulkCommandes = async (data: any[]): Promise<number> => {
         const finalLines: any[] = [];
 
         for (const line of lines) {
-          const skuToMatch = line.produit.toUpperCase().trim();
-          const prod = productMap.get(skuToMatch);
+          const skuToMatch = String(line.produit).trim().toUpperCase();
+          let prod = productMap.get(skuToMatch);
+          
+          if (!prod) {
+            // Last resort: search catalog again if map failed (maybe missed during bulk fetch)
+            const { data: fallback } = await insforge.database
+               .from('produits')
+               .select('*')
+               .ilike('sku', skuToMatch)
+               .single();
+            if (fallback) {
+              prod = fallback;
+              productMap.set(skuToMatch, prod);
+            }
+          }
+
           if (prod) {
             const prix = prod.prix_vente;
             const montant = prix * line.quantite;
@@ -638,8 +669,6 @@ export const createBulkCommandes = async (data: any[]): Promise<number> => {
               prix_unitaire: prix,
               montant_ligne: montant
             });
-          } else {
-            console.warn(`Product not found for SKU: ${skuToMatch}`);
           }
         }
 
@@ -660,7 +689,7 @@ export const createBulkCommandes = async (data: any[]): Promise<number> => {
         }
         return false;
       } catch (e) {
-        console.error("Erreur lors de l'import d'une ligne:", e);
+        console.error("Erreur critique sur une ligne d'import:", e);
         return false;
       }
     }));
