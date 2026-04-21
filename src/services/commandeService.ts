@@ -102,7 +102,19 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
 
   const { data: cmdData, error: cmdError } = await insforge.database
     .from('commandes')
-    .insert([commande])
+    .insert([{
+      client_id: commande.client_id,
+      source_commande: commande.source_commande,
+      statut_commande: commande.statut_commande,
+      montant_total: commande.montant_total,
+      frais_livraison: commande.frais_livraison,
+      mode_paiement: commande.mode_paiement,
+      commune_livraison: commande.commune_livraison,
+      quartier_livraison: commande.quartier_livraison || '',
+      adresse_livraison: commande.adresse_livraison,
+      notes_client: commande.notes_client || '',
+      date_creation: commande.date_creation
+    }])
     .select();
 
   if (cmdError) {
@@ -124,8 +136,12 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
     const { error: lineError } = await insforge.database
       .from('lignes_commandes')
       .insert([{ 
-        ...l, 
-        commande_id: id
+        commande_id: id,
+        produit_id: l.produit_id,
+        nom_produit: l.nom_produit,
+        quantite: l.quantite,
+        prix_unitaire: l.prix_unitaire,
+        montant_ligne: l.montant_ligne
       }]);
     
     if (lineError) {
