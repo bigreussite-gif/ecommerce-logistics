@@ -30,8 +30,8 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
 
     setIsUpdating(true);
     try {
-      const updatedNotes = `[ANNULATION] Motif: ${motif}${commande.notes ? "\n--- Notes Précédentes ---\n" + commande.notes : ""}`;
-      await updateCommandeStatus(commande.id, 'annulee', { notes: updatedNotes });
+      const updatedNotes = `[ANNULATION] Motif: ${motif}${commande.notes_client ? "\n--- Notes Précédentes ---\n" + commande.notes_client : ""}`;
+      await updateCommandeStatus(commande.id, 'annulee', { notes_client: updatedNotes });
       showToast("Commande annulée avec motif enregistré.", "success");
       onClose();
     } catch (error) {
@@ -48,8 +48,8 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
 
     setIsUpdating(true);
     try {
-      const updatedNotes = `[RÉACTIVATION] Commande réactivée le ${new Date().toLocaleString()}${commande.notes ? "\n--- Notes ---\n" + commande.notes : ""}`;
-      await updateCommandeStatus(commande.id, 'en_attente_appel', { notes: updatedNotes });
+      const updatedNotes = `[RÉACTIVATION] Commande réactivée le ${new Date().toLocaleString()}${commande.notes_client ? "\n--- Notes ---\n" + commande.notes_client : ""}`;
+      await updateCommandeStatus(commande.id, 'en_attente_appel', { notes_client: updatedNotes });
       showToast("Commande réactivée et renvoyée en attente d'appel.", "success");
       onClose();
     } catch (error) {

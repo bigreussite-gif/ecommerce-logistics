@@ -90,7 +90,6 @@ export interface Commande {
   quartier_livraison?: string;
   adresse_livraison: string;
   notes_client?: string;
-  notes?: string;
   agent_appel_id?: string;
   livreur_id?: string;
   feuille_route_id?: string;

@@ -183,6 +183,8 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
 
   // Map only allowed fields from additionalData to correct DB columns
   // REMOVED 'notes' to avoid PGRST204 cache error
+  if (additionalData.notes_client !== undefined) updatePayload.notes_client = additionalData.notes_client;
+  if (additionalData.commentaire_agent !== undefined) updatePayload.commentaire_agent = additionalData.commentaire_agent;
   if (additionalData.livreur_id !== undefined) updatePayload.livreur_id = additionalData.livreur_id;
   if (additionalData.feuille_route_id !== undefined) updatePayload.feuille_route_id = additionalData.feuille_route_id;
   if (additionalData.agent_appel_id !== undefined) updatePayload.agent_appel_id = additionalData.agent_appel_id;
@@ -247,7 +249,7 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
 
 export const reactivateFailedCommande = async (id: string, notes?: string): Promise<void> => {
   await updateCommandeStatus(id, 'en_attente_appel', { 
-    notes: `[RÉACTIVATION ÉCHEC] ${notes || ''}${new Date().toLocaleString()}`,
+    notes_client: `[RÉACTIVATION ÉCHEC] ${notes || ''}${new Date().toLocaleString()}`,
     feuille_route_id: null,
     livreur_id: null
   });
@@ -276,13 +278,13 @@ export const registerReturn = async (id: string, motif: string, solution: string
     }]);
 
   const wasDelivered = ['livree', 'terminee'].includes(cmd.statut_commande?.toLowerCase());
-  const finalNotes = `[RETOUR CLIENT] ${etat_produit} - Motif: ${motif}. ${notes}${cmd.notes ? "\n---\n" + cmd.notes : ""}`;
+  const finalNotes = `[RETOUR CLIENT] ${etat_produit} - Motif: ${motif}. ${notes}${cmd.notes_client ? "\n---\n" + cmd.notes_client : ""}`;
   
   const { error: updateErr } = await insforge.database
     .from('commandes')
     .update({
       statut_commande: 'retour_client',
-      notes: finalNotes
+      notes_client: finalNotes
     } as any)
     .eq('id', id);
 

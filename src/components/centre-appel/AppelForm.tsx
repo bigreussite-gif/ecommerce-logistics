@@ -159,11 +159,11 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
       }
 
       if (resultat === 'annulee') {
-        payload.notes = `[ANNULATION APPEL] Motif: ${commentaire}${commande.notes ? "\n--- Notes Précédentes ---\n" + commande.notes : ""}`;
+        payload.notes_client = `[ANNULATION APPEL] Motif: ${commentaire}${commande.notes_client ? "\n--- Notes Précédentes ---\n" + commande.notes_client : ""}`;
       }
 
       if (resultat === 'echouee') {
-        payload.notes = `[ECHEC LIVRAISON - RELANCE] Agent: ${commentaire}${commande.notes ? "\n--- Notes ---\n" + commande.notes : ""}`;
+        payload.notes_client = `[ECHEC LIVRAISON - RELANCE] Agent: ${commentaire}${commande.notes_client ? "\n--- Notes ---\n" + commande.notes_client : ""}`;
       }
 
       await updateCommandeStatus(commande.id, nextStatusMap[resultat], payload);
