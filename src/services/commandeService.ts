@@ -30,7 +30,7 @@ export const getCommandeWithLines = async (id: string): Promise<Commande & { lig
 export const getCommandes = async (): Promise<Commande[]> => {
   const { data, error } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone)')
+    .select('*, clients(nom_complet, telephone, telephone_secondaire)')
     .order('date_creation', { ascending: false });
   
   if (error) throw error;
@@ -38,7 +38,8 @@ export const getCommandes = async (): Promise<Commande[]> => {
   return (data || []).map((c: any) => ({
     ...c,
     nom_client: c.clients?.nom_complet,
-    telephone_client: c.clients?.telephone
+    telephone_client: c.clients?.telephone,
+    telephone_secondaire: c.clients?.telephone_secondaire
   }));
 };
 
@@ -56,7 +57,7 @@ export const subscribeToCommandes = (callback: (commandes: Commande[]) => void) 
 export const getCommandesByStatus = async (statusList: string[]): Promise<(Commande & { lignes: LigneCommande[] })[]> => {
   const { data: orders, error: orderError } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*)')
+    .select('*, clients(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*)')
     .in('statut_commande', statusList)
     .order('date_creation', { ascending: false });
 
@@ -66,6 +67,7 @@ export const getCommandesByStatus = async (statusList: string[]): Promise<(Comma
     ...o,
     nom_client: o.clients?.nom_complet,
     telephone_client: o.clients?.telephone,
+    telephone_secondaire: o.clients?.telephone_secondaire,
     lignes: o.lignes || []
   }));
 };
@@ -123,8 +125,7 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
       .from('lignes_commandes')
       .insert([{ 
         ...l, 
-        commande_id: id,
-        prix_achat_unitaire: prodData?.prix_achat || 0 
+        commande_id: id
       }]);
     
     if (lineError) {
@@ -538,7 +539,7 @@ export const logWhatsAppMessage = async (commandeId: string, type: string): Prom
 
   await insforge.database
     .from('commandes')
-    .update({ wa_sent: waSent } as any)
+    .update({ updated_at: new Date() } as any)
     .eq('id', commandeId);
 };
 
@@ -672,7 +673,6 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
           if (finalLines.length > 0) {
             await createCommandeBase({
               client_id: clientId,
-              telephone_secondaire: client.telephone_secondaire || '',
               source_commande: source || 'Import Groupé',
               montant_total: calculatedTotal + (frais_livraison || 0),
               frais_livraison: frais_livraison || 0,
