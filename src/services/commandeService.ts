@@ -548,28 +548,32 @@ export const createBulkCommandes = async (data: any[]): Promise<number> => {
   // 1. Pre-fetch ALL products to ensure case-insensitive matching in Javascript
   const { data: products } = await insforge.database
     .from('produits')
-    .select('*')
-    .eq('actif', true); // Only active products
+    .select('*');
   
   // Create map with upper case keys for easy lookup
   const productMap = new Map((products || []).map(p => [(p.sku || '').trim().toUpperCase(), p]));
 
-  // 2. Pre-fetch existing clients to avoid N queries
-  const allPhones = [...new Set(data.map(item => item.client.telephone))];
-  const { data: existingClients } = await insforge.database
+  // 2. Pre-fetch existing clients - Normalize phones for matching
+  const cleanPhone = (p: string) => (p || '').replace(/\D/g, '').slice(-10);
+  
+  const allPhones = [...new Set(data.map(item => cleanPhone(item.client.telephone)))].filter(p => p.length > 0);
+  
+  // We need to fetch all clients to do JS side matching since DB phones might not be normalized
+  const { data: allClients } = await insforge.database
     .from('clients')
-    .select('id, telephone, telephone_secondaire')
-    .or(`telephone.in.(${allPhones.join(',')}),telephone_secondaire.in.(${allPhones.join(',')})`);
+    .select('id, telephone, telephone_secondaire');
   
   const clientMap = new Map();
-  (existingClients || []).forEach(c => {
-    clientMap.set(c.telephone, c.id);
-    if (c.telephone_secondaire) clientMap.set(c.telephone_secondaire, c.id);
+  (allClients || []).forEach(c => {
+    const p1 = cleanPhone(c.telephone);
+    const p2 = cleanPhone(c.telephone_secondaire);
+    if (p1) clientMap.set(p1, c.id);
+    if (p2) clientMap.set(p2, c.id);
   });
 
   let successCount = 0;
 
-  // 3. Process items in parallel chunks (e.g. 10 at a time)
+  // 3. Process items in parallel chunks
   const chunkSize = 10;
   for (let i = 0; i < data.length; i += chunkSize) {
     const chunk = data.slice(i, i + chunkSize);
@@ -577,15 +581,18 @@ export const createBulkCommandes = async (data: any[]): Promise<number> => {
     const results = await Promise.all(chunk.map(async (item) => {
       try {
         const { client, lines, source, mode_paiement, commune, quartier, adresse, notes, frais_livraison } = item;
+        const normalizedPhone = cleanPhone(client.telephone);
         
-        let clientId = clientMap.get(client.telephone);
+        if (!normalizedPhone) return false;
+
+        let clientId = clientMap.get(normalizedPhone);
         
         if (!clientId) {
           const { data: newClient, error: clientErr } = await insforge.database
             .from('clients')
             .insert([{
               nom_complet: client.nom_complet,
-              telephone: client.telephone,
+              telephone: client.telephone, // Keep original format for display
               telephone_secondaire: client.telephone_secondaire || '',
               commune: commune,
               quartier: quartier || '',
@@ -594,22 +601,32 @@ export const createBulkCommandes = async (data: any[]): Promise<number> => {
             .select()
             .single();
           
-          if (clientErr) throw clientErr;
-          clientId = newClient.id;
-          clientMap.set(client.telephone, clientId);
-        } else if (client.telephone_secondaire) {
-           await insforge.database
-            .from('clients')
-            .update({ telephone_secondaire: client.telephone_secondaire })
-            .eq('id', clientId)
-            .is('telephone_secondaire', null);
+          if (clientErr) {
+            // Check if it's a conflict error that we missed
+            if (clientErr.code === '23505') { // Unique violation
+              const { data: found } = await insforge.database
+                .from('clients')
+                .select('id')
+                .or(`telephone.ilike.%${normalizedPhone}%,telephone_secondaire.ilike.%${normalizedPhone}%`)
+                .single();
+              clientId = found?.id;
+            } else {
+              throw clientErr;
+            }
+          } else {
+            clientId = newClient.id;
+          }
+          if (clientId) clientMap.set(normalizedPhone, clientId);
         }
+
+        if (!clientId) return false;
 
         let calculatedTotal = 0;
         const finalLines: any[] = [];
 
         for (const line of lines) {
-          const prod = productMap.get(line.produit.toUpperCase());
+          const skuToMatch = line.produit.toUpperCase().trim();
+          const prod = productMap.get(skuToMatch);
           if (prod) {
             const prix = prod.prix_vente;
             const montant = prix * line.quantite;
@@ -621,6 +638,8 @@ export const createBulkCommandes = async (data: any[]): Promise<number> => {
               prix_unitaire: prix,
               montant_ligne: montant
             });
+          } else {
+            console.warn(`Product not found for SKU: ${skuToMatch}`);
           }
         }
 
