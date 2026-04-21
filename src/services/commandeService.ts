@@ -731,7 +731,19 @@ export const updateCommandeBase = async (id: string, commande: Partial<Commande>
   // 1. Update the main order record
   const { error: cmdError } = await insforge.database
     .from('commandes')
-    .update(commande)
+    .update({
+      client_id: commande.client_id,
+      source_commande: commande.source_commande,
+      statut_commande: commande.statut_commande,
+      montant_total: commande.montant_total,
+      frais_livraison: commande.frais_livraison,
+      mode_paiement: commande.mode_paiement,
+      commune_livraison: commande.commune_livraison,
+      quartier_livraison: commande.quartier_livraison,
+      adresse_livraison: commande.adresse_livraison,
+      notes_client: commande.notes_client,
+      updated_at: new Date()
+    })
     .eq('id', id);
 
   if (cmdError) throw cmdError;

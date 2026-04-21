@@ -94,6 +94,7 @@ export interface Commande {
   agent_appel_id?: string;
   livreur_id?: string;
   feuille_route_id?: string;
+  updated_at?: Date | any;
   date_validation_appel?: Date | any;
   date_livraison_prevue?: Date | string;
   date_livraison_effective?: Date | any;
