@@ -101,11 +101,11 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
     try {
       const result = await createBulkCommandes(preview);
       if (result.count > 0) {
-        showToast(`${result.count} commandes importées avec succès !`, "success");
+        showToast(`${result.count} commandes importées avec succès ! [v4]`, "success");
         onSave();
       } else {
         const errorMsg = result.error || "Aucune commande n'a été créée. Vérifiez que les références produits (SKU) existent bien dans votre catalogue.";
-        showToast(errorMsg, "error");
+        showToast(`${errorMsg} [v4]`, "error");
       }
     } catch (err: any) {
       console.error(err);
