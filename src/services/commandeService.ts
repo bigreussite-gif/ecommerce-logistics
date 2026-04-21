@@ -106,14 +106,14 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
       client_id: commande.client_id,
       source_commande: commande.source_commande,
       statut_commande: commande.statut_commande,
-      montant_total: commande.montant_total,
-      frais_livraison: commande.frais_livraison,
-      mode_paiement: commande.mode_paiement,
-      commune_livraison: commande.commune_livraison,
+      montant_total: Number(commande.montant_total) || 0,
+      frais_livraison: Number(commande.frais_livraison) || 0,
+      mode_paiement: commande.mode_paiement || 'Cash à la livraison',
+      commune_livraison: commande.commune_livraison || '',
       quartier_livraison: commande.quartier_livraison || '',
-      adresse_livraison: commande.adresse_livraison,
+      adresse_livraison: commande.adresse_livraison || '',
       notes_client: commande.notes_client || '',
-      date_creation: commande.date_creation
+      date_creation: (commande.date_creation instanceof Date ? commande.date_creation.toISOString() : commande.date_creation)
     }])
     .select();
 
@@ -564,22 +564,22 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
     
     if (prodError) throw new Error(`Chargement catalogue: ${prodError.message}`);
 
-    const productMap = new Map();
+    const productMap = new Map<string, any>();
     (products || []).forEach(p => {
       if (p.sku) productMap.set(String(p.sku).trim().toUpperCase(), p);
     });
 
-    // 2. Pre-fetch existing clients for matching
-    const cleanPhone = (p: string) => String(p || '').replace(/\D/g, '').slice(-10);
+    // 2. Client matching
+    const cleanPhone = (p: any): string => String(p || '').replace(/\D/g, '').slice(-10);
     
-    // Fetch only clients that might match to be efficient
+    // Fetch all for matching
     const { data: allClients, error: fetchClientsErr } = await insforge.database
       .from('clients')
       .select('id, telephone, telephone_secondaire');
     
     if (fetchClientsErr) console.warn("Client fetch error", fetchClientsErr);
     
-    const clientMap = new Map();
+    const clientMap = new Map<string, string>();
     (allClients || []).forEach(c => {
       const p1 = cleanPhone(c.telephone);
       const p2 = cleanPhone(c.telephone_secondaire);
@@ -588,6 +588,7 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
     });
 
     let successCount = 0;
+    const chunkDate = new Date().toISOString();
 
     // 3. Process items in parallel chunks
     const chunkSize = 10;
@@ -698,7 +699,7 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
           if (finalLines.length > 0) {
             await createCommandeBase({
               client_id: clientId,
-              source_commande: source || 'Import Groupé',
+              source_commande: `Import ${chunkDate.slice(0,10)}`,
               montant_total: calculatedTotal + (frais_livraison || 0),
               frais_livraison: frais_livraison || 0,
               mode_paiement: mode_paiement || 'Cash à la livraison',
@@ -706,7 +707,9 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
               quartier_livraison: quartier || '',
               adresse_livraison: adresse || '',
               notes_client: notes || '',
-            } as any, finalLines);
+              statut_commande: 'en_attente_appel',
+              date_creation: new Date()
+            }, finalLines);
             return true;
           }
           return false;
