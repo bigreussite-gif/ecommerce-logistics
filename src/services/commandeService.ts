@@ -542,162 +542,164 @@ export const logWhatsAppMessage = async (commandeId: string, type: string): Prom
     .eq('id', commandeId);
 };
 
-export const createBulkCommandes = async (data: any[]): Promise<number> => {
-  if (!data || data.length === 0) return 0;
+export const createBulkCommandes = async (data: any[]): Promise<{ count: number, error?: string }> => {
+  if (!data || data.length === 0) return { count: 0 };
 
-  // 1. Collect all SKUs from data and prepare for fetching
-  const allSkus = [...new Set(data.flatMap(item => (item.lines || []).map((l: any) => l.produit.trim())))].filter(s => s.length > 0);
-  
-  // We fetch by exact SKU + variants if possible, or just fetch all if count is small.
-  // To be safe against pagination, we fetch only what we need.
-  const { data: products, error: prodError } = await insforge.database
-    .from('produits')
-    .select('*')
-    .in('sku', [...allSkus, ...allSkus.map(s => s.toLowerCase()), ...allSkus.map(s => s.toUpperCase())]);
-  
-  if (prodError) {
-    console.error("Erreur lors de la récupération des produits:", prodError);
-    throw new Error(`Catalogue inaccessible: ${prodError.message}`);
-  }
+  let lastError = "";
 
-  // Create map with upper case keys for easy lookup
-  const productMap = new Map();
-  (products || []).forEach(p => {
-    if (p.sku) productMap.set(p.sku.trim().toUpperCase(), p);
-  });
-
-  // 2. Pre-fetch existing clients - Normalize phones for matching
-  const cleanPhone = (p: string) => (p || '').replace(/\D/g, '').slice(-10);
-  const allTargetPhones = [...new Set(data.map(item => cleanPhone(item.client.telephone)))].filter(p => p.length > 0);
-  
-  // Fetch only clients we might need
-  const { data: matchedClients, error: clientFetchErr } = await insforge.database
-    .from('clients')
-    .select('id, telephone, telephone_secondaire');
-    // Note: If clients are > 1000, we might need a more targeted .in() query here.
-  
-  if (clientFetchErr) {
-    console.error("Erreur lors de la récupération des clients:", clientFetchErr);
-  }
-  
-  const clientMap = new Map();
-  (matchedClients || []).forEach(c => {
-    const p1 = cleanPhone(c.telephone);
-    const p2 = cleanPhone(c.telephone_secondaire);
-    if (p1) clientMap.set(p1, c.id);
-    if (p2) clientMap.set(p2, c.id);
-  });
-
-  let successCount = 0;
-
-  // 3. Process items in parallel chunks
-  const chunkSize = 10;
-  for (let i = 0; i < data.length; i += chunkSize) {
-    const chunk = data.slice(i, i + chunkSize);
+  try {
+    // 1. Pre-fetch products
+    // We try to fetch all products to be fast, but fallback to single queries if needed.
+    const { data: products, error: prodError } = await insforge.database
+      .from('produits')
+      .select('id, nom, sku, prix_vente, actif');
     
-    const results = await Promise.all(chunk.map(async (item) => {
-      try {
-        const { client, lines, source, mode_paiement, commune, quartier, adresse, notes, frais_livraison } = item;
-        const normalizedPhone = cleanPhone(client.telephone);
-        
-        if (!normalizedPhone) return false;
+    if (prodError) throw new Error(`Chargement catalogue: ${prodError.message}`);
 
-        let clientId = clientMap.get(normalizedPhone);
-        
-        if (!clientId) {
-          const { data: newClient, error: clientErr } = await insforge.database
-            .from('clients')
-            .insert([{
-              nom_complet: client.nom_complet,
-              telephone: client.telephone,
-              telephone_secondaire: client.telephone_secondaire || '',
-              commune: commune,
-              quartier: quartier || '',
-              adresse: adresse
-            }])
-            .select()
-            .single();
+    const productMap = new Map();
+    (products || []).forEach(p => {
+      if (p.sku) productMap.set(String(p.sku).trim().toUpperCase(), p);
+    });
+
+    // 2. Pre-fetch existing clients for matching
+    const cleanPhone = (p: string) => String(p || '').replace(/\D/g, '').slice(-10);
+    
+    // Fetch only clients that might match to be efficient
+    const { data: allClients, error: fetchClientsErr } = await insforge.database
+      .from('clients')
+      .select('id, telephone, telephone_secondaire');
+    
+    if (fetchClientsErr) console.warn("Client fetch error", fetchClientsErr);
+    
+    const clientMap = new Map();
+    (allClients || []).forEach(c => {
+      const p1 = cleanPhone(c.telephone);
+      const p2 = cleanPhone(c.telephone_secondaire);
+      if (p1 && p1.length >= 8) clientMap.set(p1, c.id);
+      if (p2 && p2.length >= 8) clientMap.set(p2, c.id);
+    });
+
+    let successCount = 0;
+
+    // 3. Process items in parallel chunks
+    const chunkSize = 10;
+    for (let i = 0; i < data.length; i += chunkSize) {
+      const chunk = data.slice(i, i + chunkSize);
+      
+      const results = await Promise.all(chunk.map(async (item) => {
+        try {
+          const { client, lines, source, mode_paiement, commune, quartier, adresse, notes, frais_livraison } = item;
+          const normalizedPhone = cleanPhone(client.telephone);
           
-          if (clientErr) {
-            if (clientErr.code === '23505' || clientErr.message?.includes('unique')) {
-              // Re-search directly if conflict
-              const { data: found } = await insforge.database
-                .from('clients')
-                .select('id')
-                .eq('telephone', client.telephone)
-                .single();
-              clientId = found?.id;
+          if (!normalizedPhone || normalizedPhone.length < 8) {
+            console.warn("Phone too short or empty", client.telephone);
+            return false;
+          }
+
+          let clientId = clientMap.get(normalizedPhone);
+          
+          if (!clientId) {
+            const { data: newClient, error: clientErr } = await insforge.database
+              .from('clients')
+              .insert([{
+                nom_complet: client.nom_complet,
+                telephone: client.telephone,
+                telephone_secondaire: client.telephone_secondaire || '',
+                commune: commune,
+                quartier: quartier || '',
+                adresse: adresse
+              }])
+              .select()
+              .single();
+            
+            if (clientErr) {
+              if (clientErr.code === '23505' || clientErr.message?.includes('unique')) {
+                // Phone already exists - deep search as failsafe
+                const { data: found } = await insforge.database
+                   .from('clients')
+                   .select('id')
+                   .or(`telephone.ilike.%${normalizedPhone}%,telephone_secondaire.ilike.%${normalizedPhone}%`)
+                   .limit(1)
+                   .maybeSingle();
+                clientId = found?.id;
+              } else {
+                throw new Error(`Client (${client.nom_complet}): ${clientErr.message}`);
+              }
             } else {
-              throw clientErr;
+              clientId = newClient.id;
             }
-          } else {
-            clientId = newClient.id;
+            if (clientId) clientMap.set(normalizedPhone, clientId);
           }
-          if (clientId) clientMap.set(normalizedPhone, clientId);
-        }
 
-        if (!clientId) return false;
+          if (!clientId) return false;
 
-        let calculatedTotal = 0;
-        const finalLines: any[] = [];
+          let calculatedTotal = 0;
+          const finalLines: any[] = [];
 
-        for (const line of lines) {
-          const skuToMatch = String(line.produit).trim().toUpperCase();
-          let prod = productMap.get(skuToMatch);
-          
-          if (!prod) {
-            // Last resort: search catalog again if map failed (maybe missed during bulk fetch)
-            const { data: fallback } = await insforge.database
-               .from('produits')
-               .select('*')
-               .ilike('sku', skuToMatch)
-               .single();
-            if (fallback) {
-              prod = fallback;
-              productMap.set(skuToMatch, prod);
+          for (const line of lines) {
+            const skuToMatch = String(line.produit).trim().toUpperCase();
+            let prod = productMap.get(skuToMatch);
+            
+            if (!prod) {
+              // Try directly on DB
+              const { data: fallback } = await insforge.database
+                 .from('produits')
+                 .select('*')
+                 .ilike('sku', skuToMatch)
+                 .maybeSingle();
+              if (fallback) {
+                prod = fallback;
+                productMap.set(skuToMatch, prod);
+              }
+            }
+
+            if (prod) {
+              const prix = prod.prix_vente;
+              const montant = prix * line.quantite;
+              calculatedTotal += montant;
+              finalLines.push({
+                produit_id: prod.id,
+                nom_produit: prod.nom,
+                quantite: line.quantite,
+                prix_unitaire: prix,
+                montant_ligne: montant
+              });
+            } else {
+               lastError = `Article non trouvé : "${skuToMatch}"`;
             }
           }
 
-          if (prod) {
-            const prix = prod.prix_vente;
-            const montant = prix * line.quantite;
-            calculatedTotal += montant;
-            finalLines.push({
-              produit_id: prod.id,
-              nom_produit: prod.nom,
-              quantite: line.quantite,
-              prix_unitaire: prix,
-              montant_ligne: montant
-            });
+          if (finalLines.length > 0) {
+            await createCommandeBase({
+              client_id: clientId,
+              telephone_secondaire: client.telephone_secondaire || '',
+              source_commande: source || 'Import Groupé',
+              montant_total: calculatedTotal + (frais_livraison || 0),
+              frais_livraison: frais_livraison || 0,
+              mode_paiement: mode_paiement || 'Cash à la livraison',
+              commune_livraison: commune || '',
+              quartier_livraison: quartier || '',
+              adresse_livraison: adresse || '',
+              notes_client: notes || '',
+            } as any, finalLines);
+            return true;
           }
+          return false;
+        } catch (e: any) {
+          console.error("Ligne import fail:", e);
+          lastError = e.message;
+          return false;
         }
-
-        if (finalLines.length > 0) {
-          await createCommandeBase({
-            client_id: clientId,
-            telephone_secondaire: client.telephone_secondaire || '',
-            source_commande: source || 'Import CSV',
-            montant_total: calculatedTotal + (frais_livraison || 0),
-            frais_livraison: frais_livraison || 0,
-            mode_paiement: mode_paiement || 'Cash à la livraison',
-            commune_livraison: commune || '',
-            quartier_livraison: quartier || '',
-            adresse_livraison: adresse || '',
-            notes_client: notes || '',
-          } as any, finalLines);
-          return true;
-        }
-        return false;
-      } catch (e) {
-        console.error("Erreur critique sur une ligne d'import:", e);
-        return false;
-      }
-    }));
+      }));
+      
+      successCount += results.filter(r => r === true).length;
+    }
     
-    successCount += results.filter(r => r === true).length;
+    return { count: successCount, error: successCount === 0 ? lastError : undefined };
+  } catch (globalErr: any) {
+    console.error("Global import fail:", globalErr);
+    return { count: 0, error: globalErr.message };
   }
-  
-  return successCount;
 };
 
 export const updateCommandeBase = async (id: string, commande: Partial<Commande>, currentLines: LigneCommande[], newLines: any[]): Promise<void> => {

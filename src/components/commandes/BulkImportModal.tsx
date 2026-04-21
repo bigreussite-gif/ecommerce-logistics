@@ -99,16 +99,17 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
     if (preview.length === 0) return;
     setLoading(true);
     try {
-      const count = await createBulkCommandes(preview);
-      if (count > 0) {
-        showToast(`${count} commandes importées avec succès !`, "success");
+      const result = await createBulkCommandes(preview);
+      if (result.count > 0) {
+        showToast(`${result.count} commandes importées avec succès !`, "success");
         onSave();
       } else {
-        showToast("Aucune commande n'a été créée. Vérifiez que les références produits (SKU) existent bien dans votre catalogue.", "error");
+        const errorMsg = result.error || "Aucune commande n'a été créée. Vérifiez que les références produits (SKU) existent bien dans votre catalogue.";
+        showToast(errorMsg, "error");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      showToast("Erreur lors de l'importation groupée. Vérifiez vos données.", "error");
+      showToast(err.message || "Erreur lors de l'importation groupée. Vérifiez vos données.", "error");
     } finally {
       setLoading(false);
     }
