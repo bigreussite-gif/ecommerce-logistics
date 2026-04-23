@@ -124,8 +124,18 @@ export const AdminTresorerie = () => {
     const totalEcart = data.retours.reduce((acc, r) => acc + (r.ecart || 0), 0);
     const totalRemis = data.retours.reduce((acc, r) => acc + (r.montant_remis_par_livreur || 0), 0);
     const totalAttendu = data.retours.reduce((acc, r) => acc + (r.montant_attendu || 0), 0);
-    return { totalEcart, totalRemis, totalAttendu };
-  }, [data.retours]);
+    const totalCashExpenses = data.expenses
+      .filter(d => d.mode_paiement === 'Espèces')
+      .reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
+    
+    return { 
+      totalEcart, 
+      totalRemis, 
+      totalAttendu,
+      totalCashExpenses,
+      netCashBalance: totalRemis - totalCashExpenses
+    };
+  }, [data.retours, data.expenses]);
 
   // AI Health Score Calculation
   const healthScore = useMemo(() => {
@@ -393,15 +403,16 @@ export const AdminTresorerie = () => {
 
           <div className="card" style={{ padding: '1.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>CASH ATTENDU (LIVRISONS)</span>
-              <span style={{ fontWeight: 800 }}>{cashStats.totalAttendu.toLocaleString()} F</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>CASH REÇU (PHYSIQUE)</span>
               <span style={{ fontWeight: 800 }}>{cashStats.totalRemis.toLocaleString()} F</span>
             </div>
-            <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', marginTop: '1rem', overflow: 'hidden' }}>
-              <div style={{ width: `${Math.min(100, (cashStats.totalRemis / (cashStats.totalAttendu || 1)) * 100)}%`, height: '100%', background: '#6366f1' }}></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>DÉPENSES CASH (SORTIES)</span>
+              <span style={{ fontWeight: 800, color: '#f43f5e' }}>-{cashStats.totalCashExpenses.toLocaleString()} F</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+              <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)' }}>SOLDE EN CAISSE</span>
+              <span style={{ fontWeight: 950, color: 'var(--primary)', fontSize: '1.2rem' }}>{cashStats.netCashBalance.toLocaleString()} F</span>
             </div>
           </div>
         </div>

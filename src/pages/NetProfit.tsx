@@ -35,7 +35,8 @@ export const NetProfit = () => {
     categorie: 'Marketing / ADS',
     montant: 0,
     description: '',
-    date: new Date().toISOString().split('T')[0]
+    date: new Date().toISOString().split('T')[0],
+    mode_paiement: 'Espèces'
   });
 
   const fetchData = async () => {
@@ -255,7 +256,10 @@ export const NetProfit = () => {
                      <div>
                         <div style={{ fontWeight: 850, color: 'var(--text-main)', fontSize: '1rem' }}>{d.categorie}</div>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500, marginTop: '0.1rem' }}>{d.description || 'Sans description'}</div>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--primary)', marginTop: '0.4rem', fontWeight: 700 }}>{format(new Date(d.date), 'dd MMM yyyy', { locale: fr })}</div>
+                        <div style={{ fontSize: '0.75rem', marginTop: '0.4rem', fontWeight: 700, display: 'flex', gap: '8px' }}>
+                           <span style={{ color: 'var(--primary)' }}>{format(new Date(d.date), 'dd MMM yyyy', { locale: fr })}</span>
+                           {d.mode_paiement && <span style={{ color: '#64748b' }}>• {d.mode_paiement}</span>}
+                        </div>
                      </div>
                      <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                         <div style={{ fontWeight: 950, fontSize: '1.3rem', color: '#f43f5e' }}>-{d.montant.toLocaleString()}</div>
@@ -301,6 +305,14 @@ export const NetProfit = () => {
               <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                 <label className="form-label" style={{ fontWeight: 700, marginBottom: '0.6rem', display: 'block' }}>Date de Paiement</label>
                 <input type="date" className="form-input" style={{ height: '54px', borderRadius: '14px', fontWeight: 600 }} required value={newDepense.date} onChange={e => setNewDepense({...newDepense, date: e.target.value})} />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label" style={{ fontWeight: 700, marginBottom: '0.6rem', display: 'block' }}>Moyen de Paiement</label>
+                <select className="form-select" style={{ height: '54px', borderRadius: '14px', fontWeight: 600 }} value={newDepense.mode_paiement} onChange={e => setNewDepense({...newDepense, mode_paiement: e.target.value})}>
+                  <option value="Espèces">Espèces (Impact Caisse)</option>
+                  <option value="Banque">Virement / Carte</option>
+                  <option value="Mobile Money">Mobile Money (OM/Momo)</option>
+                </select>
               </div>
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 700, marginBottom: '0.6rem', display: 'block' }}>Notes & Justification</label>

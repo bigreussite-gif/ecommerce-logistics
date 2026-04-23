@@ -47,6 +47,8 @@ export interface Produit {
   image_url?: string;
   frais_installation?: number;
   images?: string[];
+  paye_par_id?: string;
+  mode_paiement?: string;
   categorie_id?: string;
   created_by?: string;
   created_at?: string;
@@ -186,4 +188,6 @@ export interface Depense {
   description?: string;
   piece_jointe_url?: string;
   paye_par_id?: string;
+  mode_paiement?: string;
+  created_at?: Date | any;
 }
