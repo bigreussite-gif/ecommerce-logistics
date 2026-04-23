@@ -26,6 +26,11 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
   const [dateLivraisonType, setDateLivraisonType] = useState<'today' | 'tomorrow' | 'custom'>('today');
   const [customDateValue, setCustomDateValue] = useState('');
   const [communesDb, setCommunesDb] = useState<Commune[]>([]);
+
+  // Remise (Discount) state
+  const [remiseValue, setRemiseValue] = useState<number | ''>(commande.remise_totale || '');
+  const [remiseType, setRemiseType] = useState<'fixe' | 'pourcentage'>('fixe');
+
   
   // Articles adjustment state
   const [lignesLocal, setLignesLocal] = useState<Partial<LigneCommande>[]>(commande.lignes || []);
@@ -109,7 +114,12 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
     try {
       const subtotal = calculateSubtotal();
       const delivery = Number(fraisLivraison) || 0;
-      const total = subtotal + delivery;
+      
+      const discountAmount = remiseType === 'fixe' 
+        ? (Number(remiseValue) || 0) 
+        : Math.round(subtotal * (Number(remiseValue) || 0) / 100);
+
+      const total = Math.max(0, subtotal + delivery - discountAmount);
 
       // 1. Sync lines and stock
       await updateCommandeLignesAndStock(commande.id, commande.lignes || [], lignesLocal);
@@ -139,6 +149,7 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
         agent_appel_id: currentUser.id,
         montant_total: total,
         frais_livraison: delivery,
+        remise_totale: discountAmount,
         commune_livraison: communeLocal,
         adresse_livraison: adresseLocal
       };
@@ -183,13 +194,19 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
     const articlesList = lignesLocal.map(l => ` - *${l.quantite}x ${l.nom_produit}*`).join('\n');
     const subtotal = calculateSubtotal();
     const delivery = Number(fraisLivraison) || Number(commande.frais_livraison) || 0;
-    const total = subtotal + delivery;
+    
+    const discountAmount = remiseType === 'fixe' 
+      ? (Number(remiseValue) || 0) 
+      : Math.round(subtotal * (Number(remiseValue) || 0) / 100);
+
+    const total = Math.max(0, subtotal + delivery - discountAmount);
 
     const bSubtotal = `*${subtotal.toLocaleString()} CFA*`;
     const bDelivery = `*${delivery > 0 ? delivery.toLocaleString() + " CFA" : "À définir"}*`;
+    const bDiscount = discountAmount > 0 ? `\n- Remise : *-${discountAmount.toLocaleString()} CFA*` : "";
     const bTotal = `*${total.toLocaleString()} CFA*`;
 
-    const summary = `\n\n*Résumé de votre commande :*\n${articlesList}\n\n- Articles : ${bSubtotal}\n- Livraison : ${bDelivery}\n*Total à payer : ${bTotal}*`;
+    const summary = `\n\n*Résumé de votre commande :*\n${articlesList}\n\n- Articles : ${bSubtotal}\n- Livraison : ${bDelivery}${bDiscount}\n*Total à payer : ${bTotal}*`;
 
     let text = "";
 
@@ -370,6 +387,56 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
             </div>
           </div>
 
+          {/* Discount Section */}
+          <div style={{ padding: '1.25rem', background: '#f0fdf4', borderRadius: '20px', border: '1px solid #bbf7d0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <h3 style={{ fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', color: '#166534', margin: 0 }}>
+                🏷️ Remise / Réduction
+              </h3>
+              <div style={{ display: 'flex', gap: '4px', background: 'white', padding: '0.2rem', borderRadius: '10px', border: '1px solid #dcfce7' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setRemiseType('fixe')}
+                  style={{ 
+                    padding: '0.3rem 0.6rem', fontSize: '0.7rem', fontWeight: 800, border: 'none', borderRadius: '6px', cursor: 'pointer',
+                    background: remiseType === 'fixe' ? '#166534' : 'transparent',
+                    color: remiseType === 'fixe' ? 'white' : '#166534'
+                  }}
+                >Fixe (CFA)</button>
+                <button 
+                  type="button" 
+                  onClick={() => setRemiseType('pourcentage')}
+                  style={{ 
+                    padding: '0.3rem 0.6rem', fontSize: '0.7rem', fontWeight: 800, border: 'none', borderRadius: '6px', cursor: 'pointer',
+                    background: remiseType === 'pourcentage' ? '#166534' : 'transparent',
+                    color: remiseType === 'pourcentage' ? 'white' : '#166534'
+                  }}
+                >%</button>
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <input 
+                  type="number"
+                  placeholder={remiseType === 'fixe' ? "Montant (ex: 2000)" : "Pourcentage (ex: 10)"}
+                  value={remiseValue}
+                  onChange={e => setRemiseValue(e.target.value === '' ? '' : Number(e.target.value))}
+                  style={{ width: '100%', padding: '0.6rem 1rem', borderRadius: '12px', border: '1px solid #dcfce7', fontSize: '0.9rem', fontWeight: 700, outline: 'none' }}
+                />
+                <span style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, fontSize: '0.8rem', color: '#166534' }}>
+                  {remiseType === 'fixe' ? 'CFA' : '%'}
+                </span>
+              </div>
+              
+              {remiseValue !== '' && Number(remiseValue) > 0 && (
+                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#166534' }}>
+                  Économie: -{Math.round(remiseType === 'fixe' ? Number(remiseValue) : (calculateSubtotal() * Number(remiseValue) / 100)).toLocaleString()} CFA
+                </div>
+              )}
+            </div>
+          </div>
+
           <div>
             <label className="form-label" style={{ fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.75rem', display: 'block' }}>Résultat de l'échange</label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem' }}>
@@ -498,7 +565,7 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
           <div style={{ padding: '1.25rem', background: 'var(--primary)', borderRadius: '20px', color: 'white' }}>
              <div style={{ fontSize: '0.75rem', fontWeight: 700, opacity: 0.9, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Total à encaisser</div>
              <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>
-               {(calculateSubtotal() + (Number(fraisLivraison) || 0)).toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span>
+               {Math.max(0, calculateSubtotal() + (Number(fraisLivraison) || 0) - (remiseType === 'fixe' ? (Number(remiseValue) || 0) : Math.round(calculateSubtotal() * (Number(remiseValue) || 0) / 100))).toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span>
              </div>
           </div>
 

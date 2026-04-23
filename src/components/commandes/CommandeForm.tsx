@@ -28,7 +28,8 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
   
   const [communesDb, setCommunesDb] = useState<Commune[]>([]);
   const [fraisLivraison, setFraisLivraison] = useState(0);
-  const [remiseTotale, setRemiseTotale] = useState(0);
+  const [remiseValue, setRemiseValue] = useState<number | ''>(0);
+  const [remiseType, setRemiseType] = useState<'fixe' | 'pourcentage'>('fixe');
 
   useEffect(() => {
     getCommunes().then(setCommunesDb);
@@ -48,7 +49,8 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
       setModePaiement(editingCommande.mode_paiement || 'Cash à la livraison');
       setNotes(editingCommande.notes_client || '');
       setFraisLivraison(editingCommande.frais_livraison || 0);
-      setRemiseTotale(editingCommande.remise_totale || 0);
+      setRemiseValue(editingCommande.remise_totale || 0);
+      setRemiseType('fixe'); // We store fixed in DB, so default to fixe on edit
       setClientId(editingCommande.client_id);
     }
     if (originalLines) {
@@ -156,7 +158,11 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
     setLignes(newLignes);
   };
 
-  const totalMontant = (lignes.reduce((acc, l) => acc + Number(l.montant_ligne || 0), 0) + fraisLivraison) - (Number(remiseTotale) || 0);
+  const subtotal = lignes.reduce((acc, l) => acc + Number(l.montant_ligne || 0), 0);
+  const discountAmount = remiseType === 'fixe' 
+    ? (Number(remiseValue) || 0) 
+    : Math.round(subtotal * (Number(remiseValue) || 0) / 100);
+  const totalMontant = Math.max(0, (subtotal + fraisLivraison) - discountAmount);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,7 +210,7 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
           quartier_livraison: clientRecherche.quartier || '',
           adresse_livraison: clientRecherche.adresse || '',
           notes_client: notes,
-          remise_totale: Number(remiseTotale) || 0,
+          remise_totale: discountAmount,
         };
         await updateCommandeBase(editingCommande.id, updateData, originalLines || [], lignes as any[]);
         showToast("Commande mise à jour avec succès !", "success");
@@ -219,7 +225,7 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
           quartier_livraison: clientRecherche.quartier || '',
           adresse_livraison: clientRecherche.adresse || '',
           notes_client: notes,
-          remise_totale: Number(remiseTotale) || 0,
+          remise_totale: discountAmount,
         };
 
         await createCommandeBase(newCommande as any, lignes as Omit<LigneCommande, 'id' | 'commande_id'>[]);
@@ -374,16 +380,38 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
                   <span>Frais de livraison ({clientRecherche.commune || 'Standard'})</span>
                   <span>{fraisLivraison.toLocaleString()} CFA</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', opacity: 0.9, fontWeight: 500 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span>Remise Exceptionnelle</span>
-                    <input type="number" className="form-input" style={{ width: '100px', height: '32px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', fontWeight: 800, borderRadius: '8px' }} value={remiseTotale} onChange={e => setRemiseTotale(Number(e.target.value))} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem', opacity: 0.9, fontWeight: 500, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Remise / Réduction</span>
+                    <div style={{ display: 'flex', gap: '2px', background: 'rgba(255,255,255,0.2)', padding: '0.2rem', borderRadius: '8px' }}>
+                      <button 
+                        type="button" 
+                        onClick={() => setRemiseType('fixe')}
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem', fontWeight: 800, border: 'none', borderRadius: '5px', cursor: 'pointer', background: remiseType === 'fixe' ? 'white' : 'transparent', color: remiseType === 'fixe' ? 'var(--primary)' : 'white' }}
+                      >CFA</button>
+                      <button 
+                        type="button" 
+                        onClick={() => setRemiseType('pourcentage')}
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.65rem', fontWeight: 800, border: 'none', borderRadius: '5px', cursor: 'pointer', background: remiseType === 'pourcentage' ? 'white' : 'transparent', color: remiseType === 'pourcentage' ? 'var(--primary)' : 'white' }}
+                      >%</button>
+                    </div>
                   </div>
-                  <span>-{remiseTotale.toLocaleString()} CFA</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      style={{ width: '90px', height: '36px', fontSize: '0.9rem', background: 'white', border: 'none', color: 'var(--primary)', fontWeight: 900, borderRadius: '10px', textAlign: 'center' }} 
+                      value={remiseValue} 
+                      onChange={e => setRemiseValue(e.target.value === '' ? '' : Number(e.target.value))} 
+                    />
+                    {discountAmount > 0 && (
+                      <span style={{ fontWeight: 800 }}>(-{discountAmount.toLocaleString()} CFA)</span>
+                    )}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '1rem', marginTop: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.3)', paddingTop: '1.25rem', marginTop: '0.5rem' }}>
                   <span style={{ fontSize: '1.2rem', fontWeight: 600 }}>Total à encaisser</span>
-                  <span style={{ fontSize: '2.2rem', fontWeight: 950 }}>{totalMontant.toLocaleString()} CFA</span>
+                  <span style={{ fontSize: '2.5rem', fontWeight: 950, letterSpacing: '-1px' }}>{totalMontant.toLocaleString()} CFA</span>
                 </div>
               </div>
             )}
