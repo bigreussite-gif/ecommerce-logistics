@@ -291,7 +291,7 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
 
   const { data: commandes, error: cmdError } = await insforge.database
     .from('commandes')
-    .select('id, montant_total, statut_commande, mode_paiement, frais_livraison, updated_at, date_creation, date_livraison_effective, total_primes_installation, clients(nom_complet, telephone_secondaire), lignes:lignes_commandes(*, produits(prix_achat_unitaire))')
+    .select('id, montant_total, statut_commande, mode_paiement, frais_livraison, updated_at, date_creation, date_livraison_effective, total_primes_installation, clients(nom_complet, telephone_secondaire), lignes:lignes_commandes(*, produits(prix_achat))')
     .or(filterStr);
 
   if (cmdError) throw cmdError;

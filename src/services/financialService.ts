@@ -125,7 +125,7 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
   terminalCmds.forEach(c => {
     if ((c as any).lignes) {
       (c as any).lignes.forEach((l: any) => {
-        const purchasePrice = l.prix_achat_unitaire || (l.produits?.prix_achat_unitaire) || 0;
+        const purchasePrice = l.prix_achat_unitaire || (l.produits?.prix_achat) || 0;
         cogs_total += (l.quantite * Number(purchasePrice));
       });
     }
@@ -241,7 +241,7 @@ export const analyzeGeographicalProfit = (commandes: (Commande & { lignes?: Lign
       const shipping = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
       const rev = (Number(c.montant_total) || 0) - shipping;
       const cost = (c as any).lignes?.reduce((sum: number, l: any) => {
-        const purchasePrice = l.prix_achat_unitaire || (l.produits?.prix_achat_unitaire) || 0;
+        const purchasePrice = l.prix_achat_unitaire || (l.produits?.prix_achat) || 0;
         return sum + (l.quantite * Number(purchasePrice));
       }, 0) || 0;
       
@@ -292,7 +292,7 @@ export const generateTimeSeriesData = (commandes: (Commande & { lignes?: LigneCo
     const shipping = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
     const rev = (Number(c.montant_total) || 0) - shipping;
     const cost = (c as any).lignes?.reduce((sum: number, l: any) => {
-      const purchasePrice = l.prix_achat_unitaire || (l.produits?.prix_achat_unitaire) || 0;
+      const purchasePrice = l.prix_achat_unitaire || (l.produits?.prix_achat) || 0;
       return sum + (l.quantite * Number(purchasePrice));
     }, 0) || 0;
 
@@ -334,7 +334,7 @@ export const calculateProductROI = (commandes: (Commande & { lignes?: LigneComma
         if (isSuccess) {
           p.ventes_reussies += l.quantite;
           p.ca_produits += (l.quantite * l.prix_unitaire);
-          const purchasePrice = l.prix_achat_unitaire || (l.produits?.prix_achat_unitaire) || 0;
+          const purchasePrice = l.prix_achat_unitaire || (l.produits?.prix_achat) || 0;
           p.cogs += (l.quantite * Number(purchasePrice));
           // Subtract primes if they were recorded on the line
           const primeVal = (l as any).frais_installation || 0;
