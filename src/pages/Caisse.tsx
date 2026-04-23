@@ -19,8 +19,8 @@ export const Caisse = () => {
   const [feuilles, setFeuilles] = useState<FeuilleRoute[]>([]);
   
   const [feuille, setFeuille] = useState<FeuilleRoute | null>(null);
-  const [commandes, setCommandes] = useState<Commande[]>([]);
-  const [resolutions, setResolutions] = useState<Record<string, { statut: string, mode_paiement: string }>>({});
+  const [commandes, setCommandes] = useState<(Commande & { lignes?: any[] })[]>([]);
+  const [resolutions, setResolutions] = useState<Record<string, { statut: string, mode_paiement: string, updatedLines?: any[] }>>({});
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(false);
@@ -68,7 +68,8 @@ export const Caisse = () => {
         
         newRes[c.id] = {
            statut: statutInit,
-           mode_paiement: c.mode_paiement || 'Cash à la livraison'
+           mode_paiement: c.mode_paiement || 'Cash à la livraison',
+           updatedLines: (c as any).lignes?.map((l: any) => ({ ...l }))
         };
       });
       setResolutions(newRes);
@@ -131,7 +132,8 @@ export const Caisse = () => {
         ...prev,
         [cmd.id]: {
           statut: 'livree',
-          mode_paiement: 'Cash à la livraison'
+          mode_paiement: 'Cash à la livraison',
+          updatedLines: (fullCmd as any).lignes?.map((l: any) => ({ ...l }))
         }
       }));
 
@@ -157,11 +159,26 @@ export const Caisse = () => {
     showToast("Toutes les commandes ont été marquées comme encaissées.", "success");
   };
 
+  const calculateOrderTotalLocally = (orderId: string) => {
+    const res = resolutions[orderId];
+    if (!res || !res.updatedLines) {
+      const cmd = commandes.find(c => c.id === orderId);
+      return Number(cmd?.montant_total) || 0;
+    }
+    const cmd = commandes.find(c => c.id === orderId);
+    const shipping = Number(cmd?.frais_livraison) || 0;
+    const remise = Number(cmd?.remise_totale) || 0;
+    const linesSum = res.updatedLines.reduce((sum: number, l: any) => 
+      sum + (Number(l.prix_unitaire) * Number(l.quantite)) + (l.choix_installation ? (Number(l.frais_installation) * Number(l.quantite)) : 0), 0
+    );
+    return linesSum + shipping - remise;
+  };
+
   const getMontantCashAttendu = () => {
     try {
       return commandes
         .filter(c => resolutions[c.id]?.statut === 'livree' && ['Cash à la livraison', 'Cash'].includes(resolutions[c.id]?.mode_paiement || ''))
-        .reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
+        .reduce((acc, c) => acc + calculateOrderTotalLocally(c.id), 0);
     } catch(e) { return 0; }
   };
   
@@ -169,8 +186,25 @@ export const Caisse = () => {
     try {
       return commandes
         .filter(c => resolutions[c.id]?.statut === 'livree' && !['Cash à la livraison', 'Cash'].includes(resolutions[c.id]?.mode_paiement || ''))
-        .reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
+        .reduce((acc, c) => acc + calculateOrderTotalLocally(c.id), 0);
     } catch(e) { return 0; }
+  };
+
+  const toggleInstallation = (orderId: string, lineId: string) => {
+    const res = resolutions[orderId];
+    if (!res || !res.updatedLines) return;
+    
+    const newLines = res.updatedLines.map(l => {
+      if (l.id === lineId) {
+        return { ...l, choix_installation: !l.choix_installation };
+      }
+      return l;
+    });
+    
+    setResolutions({
+      ...resolutions,
+      [orderId]: { ...res, updatedLines: newLines }
+    });
   };
 
   const updateResolution = (id: string, key: string, value: string) => {
@@ -189,7 +223,8 @@ export const Caisse = () => {
     const resArray = Object.keys(resolutions).map(id => ({
        id,
        statut: resolutions[id].statut,
-       mode_paiement: resolutions[id].mode_paiement
+       mode_paiement: resolutions[id].mode_paiement,
+       updatedLines: resolutions[id].updatedLines
     }));
 
     setLoading(true);
@@ -374,7 +409,9 @@ export const Caisse = () => {
                           <div style={{ fontWeight: 800, color: 'var(--text-main)' }}>{c.nom_client || `Anonyme`}</div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>{c.commune_livraison}</div>
                         </td>
-                        <td style={{ fontWeight: 900, textAlign: 'right', fontSize: '1.05rem' }}>{Number(c.montant_total).toLocaleString()}</td>
+                        <td style={{ fontWeight: 900, textAlign: 'right', fontSize: '1.05rem' }}>
+                          {calculateOrderTotalLocally(c.id).toLocaleString()}
+                        </td>
                         <td>
                           <select 
                             className="form-select" 
@@ -415,6 +452,26 @@ export const Caisse = () => {
                           )}
                         </td>
                       </tr>
+                      {resolutions[c.id]?.statut === 'livree' && resolutions[c.id]?.updatedLines?.some(l => Number(l.frais_installation) > 0) && (
+                        <tr style={{ background: 'rgba(99, 102, 255, 0.03)' }}>
+                          <td colSpan={5} style={{ padding: '0.75rem 2.5rem', borderTop: 'none' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>Vérification Installations :</span>
+                              {resolutions[c.id].updatedLines?.filter(l => Number(l.frais_installation) > 0).map(l => (
+                                <label key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', background: 'white', padding: '0.3rem 0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 700 }}>
+                                   <input 
+                                     type="checkbox" 
+                                     checked={l.choix_installation} 
+                                     onChange={() => toggleInstallation(c.id, l.id)}
+                                     style={{ width: '16px', height: '16px' }}
+                                   />
+                                   {l.nom_produit} ({(Number(l.frais_installation) || 0).toLocaleString()} F)
+                                </label>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                     ))}
                   </tbody>
                 </table>
