@@ -6,13 +6,14 @@ import {
   calculateLogisticalStats, 
   calculateProductROI,
   addDepense,
+  deleteDepense,
   EXTRACTION_LOGISTIQUE,
   EXTRACTION_ENTRETIEN,
   EXTRACTION_INTERNET,
   TOTAL_EXTRACTION_PER_UNIT,
   RETENUE_PERCENT
 } from '../services/financialService';
-import { TrendingUp, TrendingDown, Compass, PieChart, Calendar, BarChart2, Clock, Package } from 'lucide-react';
+import { TrendingUp, TrendingDown, Compass, PieChart, Calendar, BarChart2, Clock, Package, Trash2 } from 'lucide-react';
 import { generateAnalyticalReportPDF } from '../services/pdfService';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -108,6 +109,17 @@ export const FinancialReport = () => {
       showToast("Erreur lors de l'enregistrement", "error");
     } finally {
       setSavingPrime(false);
+    }
+  };
+
+  const handleDeleteDepense = async (id: string) => {
+    if (!window.confirm("Supprimer cette dépense ?")) return;
+    try {
+      await deleteDepense(id);
+      showToast("Dépense supprimée", "success");
+      refreshData();
+    } catch (e) {
+      showToast("Erreur lors de la suppression", "error");
     }
   };
 
@@ -558,6 +570,36 @@ export const FinancialReport = () => {
                 TÉLÉCHARGER PDF
               </button>
             </div>
+          </div>
+
+          <div className="card" style={{ padding: '2rem' }}>
+             <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '1.5rem' }}>Charges de la Période</h3>
+             <div style={{ maxHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {(data?.depenses || []).length === 0 ? (
+                  <p style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', padding: '2rem 0' }}>Aucune charge enregistrée</p>
+                ) : (
+                  data.depenses.map((d: any) => (
+                    <div key={d.id} style={{ padding: '1rem', background: '#f8fafc', borderRadius: '14px', border: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                       <div>
+                          <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{d.categorie}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{d.description || 'Sans description'}</div>
+                          <div style={{ fontSize: '0.7rem', marginTop: '0.2rem', color: 'var(--primary)', fontWeight: 700 }}>{safeFormat(d.date, 'dd/MM/yyyy')}</div>
+                       </div>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <div style={{ fontWeight: 900, color: '#f43f5e' }}>-{d.montant?.toLocaleString()}</div>
+                          <button 
+                            onClick={() => handleDeleteDepense(d.id)}
+                            style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#cbd5e1', padding: '0.4rem', borderRadius: '8px', transition: 'all 0.2s' }}
+                            onMouseOver={e => e.currentTarget.style.color = '#ef4444'}
+                            onMouseOut={e => e.currentTarget.style.color = '#cbd5e1'}
+                          >
+                             <Trash2 size={16} />
+                          </button>
+                       </div>
+                    </div>
+                  ))
+                )}
+             </div>
           </div>
         </div>
       </div>
