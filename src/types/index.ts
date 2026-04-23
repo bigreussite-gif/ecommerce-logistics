@@ -122,6 +122,9 @@ export interface LigneCommande {
   choix_installation?: boolean;
   frais_installation?: number;
   montant_ligne: number;
+  // Joins / Snapshots
+  produits?: { prix_achat: number } | { prix_achat: number }[];
+  prix_achat_unitaire?: number;
 }
 
 export interface AppelCommande {
