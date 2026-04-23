@@ -123,10 +123,10 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
   // Calculate COGS (Cost of Goods Sold)
   let cogs_total = 0;
   terminalCmds.forEach(c => {
-    if (c.lignes) {
-      c.lignes.forEach(l => {
-        // Fallback to 0 if prix_achat_unitaire is missing (legacy field)
-        cogs_total += (l.quantite * ((l as any).prix_achat_unitaire || 0));
+    if ((c as any).lignes) {
+      (c as any).lignes.forEach((l: any) => {
+        const purchasePrice = l.prix_achat_unitaire || (l.produits?.prix_achat_unitaire) || 0;
+        cogs_total += (l.quantite * Number(purchasePrice));
       });
     }
   });
@@ -240,14 +240,17 @@ export const analyzeGeographicalProfit = (commandes: (Commande & { lignes?: Lign
       g.livrees++;
       const shipping = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
       const rev = (Number(c.montant_total) || 0) - shipping;
-      let cost = 0;
-      (c.lignes || []).forEach(l => { cost += (l.quantite * ((l as any).prix_achat_unitaire || 0)); });
+      const cost = (c as any).lignes?.reduce((sum: number, l: any) => {
+        const purchasePrice = l.prix_achat_unitaire || (l.produits?.prix_achat_unitaire) || 0;
+        return sum + (l.quantite * Number(purchasePrice));
+      }, 0) || 0;
       
       const extractions = TOTAL_EXTRACTION_PER_UNIT;
       const retenue = Math.round(rev * RETENUE_PERCENT);
+      const primes = Number(c.total_primes_installation) || 0;
 
       g.ca_net += rev;
-      g.profit_net += (rev - cost - extractions - retenue);
+      g.profit_net += (rev - cost - extractions - retenue - primes);
     } else {
       // Failed delivery still costs us something
       const loss = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
@@ -288,10 +291,10 @@ export const generateTimeSeriesData = (commandes: (Commande & { lignes?: LigneCo
 
     const shipping = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
     const rev = (Number(c.montant_total) || 0) - shipping;
-    let cost = 0;
-    (c.lignes || []).forEach(l => {
-      cost += (l.quantite * ((l as any).prix_achat_unitaire || 0));
-    });
+    const cost = (c as any).lignes?.reduce((sum: number, l: any) => {
+      const purchasePrice = l.prix_achat_unitaire || (l.produits?.prix_achat_unitaire) || 0;
+      return sum + (l.quantite * Number(purchasePrice));
+    }, 0) || 0;
 
     const extractions = TOTAL_EXTRACTION_PER_UNIT;
     const retenue = Math.round(rev * RETENUE_PERCENT);
@@ -331,7 +334,13 @@ export const calculateProductROI = (commandes: (Commande & { lignes?: LigneComma
         if (isSuccess) {
           p.ventes_reussies += l.quantite;
           p.ca_produits += (l.quantite * l.prix_unitaire);
-          p.cogs += (l.quantite * ((l as any).prix_achat_unitaire || 0));
+          const purchasePrice = l.prix_achat_unitaire || (l.produits?.prix_achat_unitaire) || 0;
+          p.cogs += (l.quantite * Number(purchasePrice));
+          // Subtract primes if they were recorded on the line
+          const primeVal = (l as any).frais_installation || 0;
+          if (l.choix_installation && primeVal) {
+            p.profit_net -= (l.quantite * Number(primeVal));
+          }
         } else if (isFailure) {
           p.echecs += l.quantite;
           // Loss estimate: if it failed, we likely paid delivery estimated at DEFAULT_SHIPPING_FEE CFA or the order's delivery fee
@@ -345,7 +354,7 @@ export const calculateProductROI = (commandes: (Commande & { lignes?: LigneComma
 
   return Object.values(productMap).map(p => {
     // Basic profit before extractions and retenue per product (hard to split retenue perfectly per line without rounding noise)
-    p.profit_net = p.ca_produits - p.cogs - p.frais_perte_livraison;
+    p.profit_net += p.ca_produits - p.cogs - p.frais_perte_livraison;
     // Apply average extractions per unit sold
     p.profit_net -= (p.ventes_reussies * TOTAL_EXTRACTION_PER_UNIT);
     // Apply retention

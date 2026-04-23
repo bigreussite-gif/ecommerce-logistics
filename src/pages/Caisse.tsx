@@ -28,6 +28,7 @@ export const Caisse = () => {
 
   // Form State
   const [montantRemisStr, setMontantRemisStr] = useState<string>('');
+  const [primeLivreurStr, setPrimeLivreurStr] = useState<string>('');
   const [commentaire, setCommentaire] = useState('');
 
   useEffect(() => {
@@ -75,6 +76,7 @@ export const Caisse = () => {
       setResolutions(newRes);
       
       setMontantRemisStr('');
+      setPrimeLivreurStr('');
       setCommentaire('');
     } catch(e) {
       console.error(e);
@@ -214,8 +216,12 @@ export const Caisse = () => {
   const montantAttendu = Number(getMontantCashAttendu()) || 0;
   const montantMobileMoney = Number(getMontantMobileMoney()) || 0;
   const montantRemisParsed = isNaN(parseFloat(montantRemisStr)) ? 0 : parseFloat(montantRemisStr);
+  const primeLivreurParsed = isNaN(parseFloat(primeLivreurStr)) ? 0 : parseFloat(primeLivreurStr);
+  
   const isMontantValide = montantRemisStr.trim() !== '';
-  const ecart = isMontantValide ? montantRemisParsed - montantAttendu : 0;
+  // Ecart is positive if livreur gave more than expected, negative if less.
+  // We subtract the prime from the expected amount because the livreur kept it.
+  const ecart = isMontantValide ? montantRemisParsed - (montantAttendu - primeLivreurParsed) : 0;
 
   const handleCloture = async () => {
     if (!feuille || !isMontantValide) return;
@@ -239,7 +245,8 @@ export const Caisse = () => {
         ecart, 
         commentaire,
         currentUser.id,
-        selectedLivreur
+        selectedLivreur,
+        primeLivreurParsed
       );
       
       showToast("Feuille de route clôturée avec succès.", "success");
@@ -525,6 +532,34 @@ export const Caisse = () => {
                   />
                   <div style={{ position: 'absolute', right: '1.25rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#94a3b8', fontSize: '1rem' }}>CFA</div>
                 </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label className="form-label" style={{ fontWeight: 800, fontSize: '0.85rem', color: '#6366f1' }}>Prime / Bonus Agent (Optionnel)</label>
+                <div style={{ position: 'relative' }}>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                    min="0"
+                    placeholder="Bonus prélevé..."
+                    style={{ 
+                      fontSize: '1.2rem', 
+                      fontWeight: 800, 
+                      padding: '0.75rem', 
+                      textAlign: 'center', 
+                      height: '52px', 
+                      borderRadius: '16px', 
+                      border: '2px solid rgba(99, 102, 255, 0.2)', 
+                      color: '#4f46e5',
+                      background: 'rgba(255,255,255,0.6)',
+                      width: '100%'
+                    }}
+                    value={primeLivreurStr}
+                    onChange={e => setPrimeLivreurStr(e.target.value)}
+                  />
+                  <div style={{ position: 'absolute', right: '1.25rem', top: '50%', transform: 'translateY(-50%)', fontWeight: 800, color: '#94a3b8', fontSize: '0.9rem' }}>CFA</div>
+                </div>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.4rem', fontWeight: 600 }}>Sera enregistré comme une dépense "Personnel / Prime".</p>
               </div>
 
               {isMontantValide && (

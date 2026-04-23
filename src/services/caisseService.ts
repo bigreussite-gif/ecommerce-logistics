@@ -81,8 +81,24 @@ export const processCaisse = async (
   ecart: number, 
   commentaire: string,
   caissiereId: string,
-  livreurId: string
+  livreurId: string,
+  primeLivreur: number = 0
 ): Promise<void> => {
+  // 0. Record Prime as Expense if > 0
+  if (primeLivreur > 0) {
+    // Get Livreur name for description
+    const { data: livreur } = await insforge.database.from('users').select('nom_complet').eq('id', livreurId).single();
+    
+    await insforge.database.from('depenses').insert([{
+      date: new Date().toISOString(),
+      categorie: 'Personnel / Prime',
+      description: `Prime Livreur : ${livreur?.nom_complet || 'Agent'} - Feuille #${feuilleRouteId.slice(0,8)}`,
+      montant: primeLivreur,
+      mode_paiement: 'Espèces',
+      valide: true, // Auto-validated as it's part of caisse process
+      cree_par: caissiereId
+    }]);
+  }
   // 1. Update Feuille Route status and summary financials
   const { error: frError } = await insforge.database
     .from('feuilles_route')
@@ -275,7 +291,7 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
 
   const { data: commandes, error: cmdError } = await insforge.database
     .from('commandes')
-    .select('id, montant_total, statut_commande, mode_paiement, frais_livraison, updated_at, date_creation, date_livraison_effective, clients(nom_complet, telephone_secondaire), lignes:lignes_commandes(*)')
+    .select('id, montant_total, statut_commande, mode_paiement, frais_livraison, updated_at, date_creation, date_livraison_effective, total_primes_installation, clients(nom_complet, telephone_secondaire), lignes:lignes_commandes(*, produits(prix_achat_unitaire))')
     .or(filterStr);
 
   if (cmdError) throw cmdError;
