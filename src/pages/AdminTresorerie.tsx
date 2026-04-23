@@ -660,7 +660,6 @@ export const AdminTresorerie = () => {
             </table>
           </div>
         </div>
-      </div>
 
       {/* NEW: SECTION PRODUCT ROI (IDEA 6) */}
       <div style={{ marginTop: '4rem', marginBottom: '4rem' }}>

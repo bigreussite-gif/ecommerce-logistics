@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { getAvailableLivreurs } from '../services/logistiqueService';
 import { getFeuillesEnCours, getCommandesConcernees, processCaisse } from '../services/caisseService';
 import { insforge } from '../lib/insforge';
@@ -392,86 +392,88 @@ export const Caisse = () => {
                   </thead>
                   <tbody>
                     {commandes.map(c => (
-                      <tr key={c.id}>
-                        <td>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <button 
-                              className="btn btn-outline" 
-                              style={{ padding: '0.4rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}
-                              onClick={() => setSelectedOrderId(c.id)}
-                            >
-                              <Eye size={14} />
-                            </button>
-                            <span style={{ fontWeight: 800, color: 'var(--text-muted)' }}>#{c.id.slice(0, 5).toUpperCase()}</span>
-                          </div>
-                        </td>
-                        <td>
-                          <div style={{ fontWeight: 800, color: 'var(--text-main)' }}>{c.nom_client || `Anonyme`}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>{c.commune_livraison}</div>
-                        </td>
-                        <td style={{ fontWeight: 900, textAlign: 'right', fontSize: '1.05rem' }}>
-                          {calculateOrderTotalLocally(c.id).toLocaleString()}
-                        </td>
-                        <td>
-                          <select 
-                            className="form-select" 
-                            style={{ 
-                              padding: '0.4rem 0.75rem', 
-                              borderRadius: '10px',
-                              fontWeight: 700,
-                              fontSize: '0.85rem',
-                              backgroundColor: resolutions[c.id]?.statut === 'livree' ? '#dcfce7' : resolutions[c.id]?.statut === 'retour_livreur' ? '#fee2e2' :resolutions[c.id]?.statut === 'a_rappeler' ? '#fef3c7' : '#f3f4f6',
-                              border: 'none'
-                            }}
-                            value={resolutions[c.id]?.statut || 'retour_livreur'}
-                            onChange={(e) => updateResolution(c.id, 'statut', e.target.value)}
-                          >
-                            <option value="livree">Encaissé ✅</option>
-                            <option value="retour_livreur">Retour 🔙</option>
-                            <option value="echouee">Échec de livraison ❌</option>
-                            <option value="a_rappeler">Reprog. 🔄</option>
-                            <option value="annulee">Annulé 🚫</option>
-                          </select>
-                        </td>
-                        <td>
-                          {resolutions[c.id]?.statut === 'livree' ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                              <select 
-                                className="form-select" 
-                                style={{ padding: '0.4rem 0.75rem', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700 }}
-                                value={resolutions[c.id]?.mode_paiement}
-                                onChange={(e) => updateResolution(c.id, 'mode_paiement', e.target.value)}
+                      <Fragment key={c.id}>
+                        <tr>
+                          <td>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                              <button 
+                                className="btn btn-outline" 
+                                style={{ padding: '0.4rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                                onClick={() => setSelectedOrderId(c.id)}
                               >
-                                <option value="Cash à la livraison">CASH</option>
-                                <option value="Mobile Money">MOBILE</option>
-                                <option value="Carte">AUTRE</option>
-                              </select>
-                            </div>
-                          ) : (
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>N/A</span>
-                          )}
-                        </td>
-                      </tr>
-                      {resolutions[c.id]?.statut === 'livree' && resolutions[c.id]?.updatedLines?.some(l => Number(l.frais_installation) > 0) && (
-                        <tr style={{ background: 'rgba(99, 102, 255, 0.03)' }}>
-                          <td colSpan={5} style={{ padding: '0.75rem 2.5rem', borderTop: 'none' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>Vérification Installations :</span>
-                              {resolutions[c.id].updatedLines?.filter(l => Number(l.frais_installation) > 0).map(l => (
-                                <label key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', background: 'white', padding: '0.3rem 0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 700 }}>
-                                   <input 
-                                     type="checkbox" 
-                                     checked={l.choix_installation} 
-                                     onChange={() => toggleInstallation(c.id, l.id)}
-                                     style={{ width: '16px', height: '16px' }}
-                                   />
-                                   {l.nom_produit} ({(Number(l.frais_installation) || 0).toLocaleString()} F)
-                                </label>
-                              ))}
+                                <Eye size={14} />
+                              </button>
+                              <span style={{ fontWeight: 800, color: 'var(--text-muted)' }}>#{c.id.slice(0, 5).toUpperCase()}</span>
                             </div>
                           </td>
+                          <td>
+                            <div style={{ fontWeight: 800, color: 'var(--text-main)' }}>{c.nom_client || `Anonyme`}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>{c.commune_livraison}</div>
+                          </td>
+                          <td style={{ fontWeight: 900, textAlign: 'right', fontSize: '1.05rem' }}>
+                            {calculateOrderTotalLocally(c.id).toLocaleString()}
+                          </td>
+                          <td>
+                            <select 
+                              className="form-select" 
+                              style={{ 
+                                padding: '0.4rem 0.75rem', 
+                                borderRadius: '10px',
+                                fontWeight: 700,
+                                fontSize: '0.85rem',
+                                backgroundColor: resolutions[c.id]?.statut === 'livree' ? '#dcfce7' : resolutions[c.id]?.statut === 'retour_livreur' ? '#fee2e2' :resolutions[c.id]?.statut === 'a_rappeler' ? '#fef3c7' : '#f3f4f6',
+                                border: 'none'
+                              }}
+                              value={resolutions[c.id]?.statut || 'retour_livreur'}
+                              onChange={(e) => updateResolution(c.id, 'statut', e.target.value)}
+                            >
+                              <option value="livree">Encaissé ✅</option>
+                              <option value="retour_livreur">Retour 🔙</option>
+                              <option value="echouee">Échec de livraison ❌</option>
+                              <option value="a_rappeler">Reprog. 🔄</option>
+                              <option value="annulee">Annulé 🚫</option>
+                            </select>
+                          </td>
+                          <td>
+                            {resolutions[c.id]?.statut === 'livree' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <select 
+                                  className="form-select" 
+                                  style={{ padding: '0.4rem 0.75rem', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 700 }}
+                                  value={resolutions[c.id]?.mode_paiement}
+                                  onChange={(e) => updateResolution(c.id, 'mode_paiement', e.target.value)}
+                                >
+                                  <option value="Cash à la livraison">CASH</option>
+                                  <option value="Mobile Money">MOBILE</option>
+                                  <option value="Carte">AUTRE</option>
+                                </select>
+                              </div>
+                            ) : (
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>N/A</span>
+                            )}
+                          </td>
                         </tr>
-                      )}
+                        {resolutions[c.id]?.statut === 'livree' && resolutions[c.id]?.updatedLines?.some(l => Number(l.frais_installation) > 0) && (
+                          <tr style={{ background: 'rgba(99, 102, 255, 0.03)' }}>
+                            <td colSpan={5} style={{ padding: '0.75rem 2.5rem', borderTop: 'none' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>Vérification Installations :</span>
+                                {resolutions[c.id].updatedLines?.filter(l => Number(l.frais_installation) > 0).map(l => (
+                                  <label key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', background: 'white', padding: '0.3rem 0.8rem', borderRadius: '10px', border: '1px solid #e2e8f0', fontSize: '0.8rem', fontWeight: 700 }}>
+                                     <input 
+                                       type="checkbox" 
+                                       checked={l.choix_installation} 
+                                       onChange={() => toggleInstallation(c.id, l.id)}
+                                       style={{ width: '16px', height: '16px' }}
+                                     />
+                                     {l.nom_produit} ({(Number(l.frais_installation) || 0).toLocaleString()} F)
+                                  </label>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
