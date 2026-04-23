@@ -118,7 +118,6 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
       quartier_livraison: commande.quartier_livraison || '',
       adresse_livraison: commande.adresse_livraison || '',
       notes_client: commande.notes_client || '',
-      remise_totale: Number(commande.remise_totale) || 0,
       date_creation: (commande.date_creation instanceof Date ? commande.date_creation.toISOString() : commande.date_creation)
     }])
     .select();
