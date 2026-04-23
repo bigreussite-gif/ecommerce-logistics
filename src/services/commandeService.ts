@@ -31,7 +31,7 @@ export const getCommandeWithLines = async (id: string): Promise<Commande & { lig
 export const getCommandes = async (): Promise<Commande[]> => {
   const { data, error } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone, telephone_secondaire)')
+    .select('*, clients(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*, produits(*))')
     .order('date_creation', { ascending: false });
   
   if (error) throw error;

@@ -57,6 +57,7 @@ export interface ProfitStats {
   benefice_caisse?: number;
   ads_spend?: number;
   total_installation_primes?: number;
+  flux_tresorerie?: number;
   roas?: number;
   cac?: number;
 }
@@ -181,7 +182,8 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     total_sorties: total_sorties_cash,
     cout_achat_total: cogs_total,
     total_installation_primes: installation_primes_total,
-    benefice_caisse: profit_net_reel
+    benefice_caisse: profit_net_reel,
+    flux_tresorerie: ca_brut - total_sorties_cash
   };
 };
 
@@ -318,7 +320,11 @@ export const calculateProductROI = (commandes: (Commande & { lignes?: LigneComma
     const isSuccess = ['livree', 'terminee'].includes(s);
     const isFailure = ['echouee', 'retour_livreur', 'retour_stock'].includes(s);
 
-    if (c.lignes) {
+    if (c.lignes && c.lignes.length > 0) {
+      // Calculate order-level discount to distribute
+      const orderSubtotal = c.lignes.reduce((sum, l) => sum + (l.quantite * l.prix_unitaire), 0);
+      const orderRemise = Number(c.remise_totale || 0);
+
       c.lignes.forEach(l => {
         if (!productMap[l.produit_id]) {
           productMap[l.produit_id] = {
@@ -337,7 +343,13 @@ export const calculateProductROI = (commandes: (Commande & { lignes?: LigneComma
         const p = productMap[l.produit_id];
         if (isSuccess) {
           p.ventes_reussies += l.quantite;
-          p.ca_produits += (l.quantite * l.prix_unitaire);
+          
+          // Apply proportional discount to product revenue
+          const lineBrut = l.quantite * l.prix_unitaire;
+          const lineRemise = orderSubtotal > 0 ? (lineBrut / orderSubtotal) * orderRemise : 0;
+          const lineNet = lineBrut - lineRemise;
+          
+          p.ca_produits += lineNet;
           
           const prodData = Array.isArray(l.produits) ? l.produits[0] : l.produits;
           const purchasePrice = l.prix_achat_unitaire || prodData?.prix_achat || 0;

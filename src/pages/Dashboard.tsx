@@ -21,6 +21,7 @@ export const Dashboard = () => {
   const [categoryStats, setCategoryStats] = useState<any[]>([]);
   const [globalMetrics, setGlobalMetrics] = useState<any>(null);
   const [stockVal, setStockVal] = useState(0);
+  const [expenses, setExpenses] = useState<any[]>([]);
 
   const fetchTop = useCallback(async (p: Period, start?: string, end?: string) => {
     try {
@@ -48,10 +49,7 @@ export const Dashboard = () => {
           getDepenses(),
           getProduits()
         ]);
-        if (commandes.length > 0) {
-           const gMetrics = calculateProfitMetrics(commandes, allExpenses);
-           setGlobalMetrics(gMetrics);
-        }
+        setExpenses(allExpenses);
         const sVal = calculateStockValue(allProds);
         setStockVal(sVal);
       } catch (err) { console.error(err); }
@@ -111,6 +109,40 @@ export const Dashboard = () => {
       return createdInRange || deliveredInRange;
     });
   }, [commandes, period, startDate, endDate]);
+
+  const filteredExpenses = useMemo(() => {
+    const now = new Date();
+    if (period === 'all') return expenses;
+
+    const start = new Date();
+    
+    if (period === 'custom') {
+      const s = new Date(startDate);
+      s.setHours(0,0,0,0);
+      const e = new Date(endDate);
+      e.setHours(23,59,59,999);
+      return expenses.filter(exp => {
+        const d = new Date(exp.date);
+        return d >= s && d <= e;
+      });
+    }
+
+    if (period === 'today') start.setHours(0, 0, 0, 0);
+    else if (period === '7d') start.setDate(now.getDate() - 7);
+    else if (period === '30d') start.setDate(now.getDate() - 30);
+
+    return expenses.filter(exp => {
+      const d = new Date(exp.date);
+      return d.getTime() >= start.getTime();
+    });
+  }, [expenses, period, startDate, endDate]);
+
+  useEffect(() => {
+    if (filteredCommandes.length > 0 || filteredExpenses.length > 0) {
+      const gMetrics = calculateProfitMetrics(filteredCommandes, filteredExpenses);
+      setGlobalMetrics(gMetrics);
+    }
+  }, [filteredCommandes, filteredExpenses]);
 
   const memoizedAnalytics = useMemo(() => {
     const getFrais = (c: Commande) => {
@@ -317,7 +349,7 @@ export const Dashboard = () => {
       <div style={{ marginBottom: '2.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
         <div className="card glass-effect" style={{ padding: '1.25rem', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: 'white', border: 'none' }}>
            <p style={{ opacity: 0.6, fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Chiffre d'Affaires Global</p>
-           <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{globalMetrics?.ca_global_vendu?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{globalMetrics?.ca_brut?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
         </div>
         <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
            <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Sorties / Charges Totales</p>
@@ -328,8 +360,14 @@ export const Dashboard = () => {
            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--primary)' }}>{globalMetrics?.cout_achat_total?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
         </div>
         <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
-           <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Solde Caisse Estimé</p>
+           <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Profit Net Estimé</p>
            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#10b981' }}>{globalMetrics?.benefice_caisse?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+        </div>
+        <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
+           <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Flux de Trésorerie Réel</p>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: (globalMetrics?.flux_tresorerie || 0) >= 0 ? '#10b981' : '#ef4444' }}>
+             {globalMetrics?.flux_tresorerie?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span>
+           </div>
         </div>
         <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
            <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Valeur du Stock (Prix Achat)</p>
