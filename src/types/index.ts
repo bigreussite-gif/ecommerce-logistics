@@ -44,8 +44,9 @@ export interface Produit {
   stock_actuel: number;
   stock_minimum: number;
   actif: boolean;
-  images?: string[];
   image_url?: string;
+  frais_installation?: number;
+  images?: string[];
   categorie_id?: string;
   created_by?: string;
   created_at?: string;
@@ -93,6 +94,8 @@ export interface Commande {
   agent_appel_id?: string;
   livreur_id?: string;
   feuille_route_id?: string;
+  remise_totale?: number;
+  total_primes_installation?: number;
   updated_at?: Date | any;
   date_validation_appel?: Date | any;
   date_livraison_prevue?: Date | string;
@@ -114,6 +117,8 @@ export interface LigneCommande {
   nom_produit: string;
   quantite: number;
   prix_unitaire: number;
+  choix_installation?: boolean;
+  frais_installation?: number;
   montant_ligne: number;
 }
 

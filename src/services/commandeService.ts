@@ -101,6 +101,8 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
      } catch (e) { console.error("Could not fetch commune fee during creation", e); }
   }
 
+  const totalPrimes = (lignes || []).reduce((acc, l) => acc + (!!l.choix_installation ? (Number(l.frais_installation) || 0) : 0), 0);
+
   const { data: cmdData, error: cmdError } = await insforge.database
     .from('commandes')
     .insert([{
@@ -109,11 +111,14 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
       statut_commande: commande.statut_commande,
       montant_total: Number(commande.montant_total) || 0,
       frais_livraison: Number(commande.frais_livraison) || 0,
+      remise_totale: Number(commande.remise_totale) || 0,
+      total_primes_installation: totalPrimes,
       mode_paiement: commande.mode_paiement || 'Cash à la livraison',
       commune_livraison: commande.commune_livraison || '',
       quartier_livraison: commande.quartier_livraison || '',
       adresse_livraison: commande.adresse_livraison || '',
       notes_client: commande.notes_client || '',
+      remise_totale: Number(commande.remise_totale) || 0,
       date_creation: (commande.date_creation instanceof Date ? commande.date_creation.toISOString() : commande.date_creation)
     }])
     .select();
@@ -135,6 +140,8 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
         nom_produit: l.nom_produit,
         quantite: l.quantite,
         prix_unitaire: l.prix_unitaire,
+        choix_installation: !!l.choix_installation,
+        frais_installation: l.frais_installation || 0,
         montant_ligne: l.montant_ligne
       }]);
     
@@ -491,6 +498,8 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
         .from('lignes_commandes')
         .insert([{
           ...newLine,
+          choix_installation: !!newLine.choix_installation,
+          frais_installation: newLine.frais_installation || 0,
           commande_id: commandeId
         }])
         .select()
@@ -515,6 +524,8 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
             .from('lignes_commandes')
             .update({
               quantite: newLine.quantite,
+              choix_installation: !!newLine.choix_installation,
+              frais_installation: newLine.frais_installation || 0,
               montant_ligne: newLine.montant_ligne,
             })
             .eq('id', newLine.id);
@@ -722,7 +733,9 @@ export const updateCommandeBase = async (id: string, commande: Partial<Commande>
       commune_livraison: commande.commune_livraison,
       quartier_livraison: commande.quartier_livraison,
       adresse_livraison: commande.adresse_livraison,
-      notes_client: commande.notes_client
+      notes_client: commande.notes_client,
+      remise_totale: commande.remise_totale,
+      total_primes_installation: (newLines || []).reduce((acc, l) => acc + (!!l.choix_installation ? (Number(l.frais_installation) || 0) : 0), 0)
     })
     .eq('id', id);
 

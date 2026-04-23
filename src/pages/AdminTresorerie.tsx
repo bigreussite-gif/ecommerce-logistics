@@ -238,9 +238,9 @@ export const AdminTresorerie = () => {
         </div>
 
         <div className="card" style={{ padding: '1.5rem', borderLeft: '4px solid #ef4444' }}>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Extractions & Frais</p>
-          <h2 style={{ fontSize: '1.8rem', margin: 0, fontWeight: 800, color: '#ef4444' }}>{(totalExtractions + metrics.depenses_fixes_total).toLocaleString()} F</h2>
-          <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.5rem' }}>Extractions: {totalExtractions.toLocaleString()} F</p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Extractions & Commissions</p>
+          <h2 style={{ fontSize: '1.8rem', margin: 0, fontWeight: 800, color: '#ef4444' }}>{(totalExtractions + metrics.depenses_fixes_total + (metrics.total_installation_primes || 0)).toLocaleString()} F</h2>
+          <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.5rem' }}>Extr: {totalExtractions.toLocaleString()} F | Primes Inst: {(metrics.total_installation_primes || 0).toLocaleString()} F</p>
         </div>
 
         <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', border: 'none' }}>

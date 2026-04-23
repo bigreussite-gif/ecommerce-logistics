@@ -264,13 +264,20 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem' }}>
               {(commande.lignes || []).map((l: LigneCommande, idx: number) => (
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'white', border: '1px solid #f1f5f9', borderRadius: '12px' }}>
-                  <div style={{ fontWeight: 700 }}>{l.nom_produit} <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>x{l.quantite}</span></div>
+                  <div style={{ fontWeight: 700 }}>
+                    {l.nom_produit} <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>x{l.quantite}</span>
+                    {l.choix_installation && (
+                      <div style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 800, marginTop: '2px' }}>
+                        + Installation incluse ({(Number(l.frais_installation) * l.quantite).toLocaleString()} F)
+                      </div>
+                    )}
+                  </div>
                   <div style={{ fontWeight: 800 }}>{l.montant_ligne?.toLocaleString()} F</div>
                 </div>
               ))}
             </div>
 
-            <div style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+            <div style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem' }}>
               <div>
                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Sous-total</div>
                  <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>{subtotal.toLocaleString()} F</div>
@@ -279,6 +286,17 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Livraison</div>
                  <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>{commande.frais_livraison?.toLocaleString()} F</div>
               </div>
+              {commande.remise_totale ? (
+                <div>
+                   <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#f43f5e', textTransform: 'uppercase' }}>Remise</div>
+                   <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#f43f5e' }}>-{commande.remise_totale.toLocaleString()} F</div>
+                </div>
+              ) : (
+                <div>
+                   <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Remise</div>
+                   <div style={{ fontSize: '1.1rem', fontWeight: 900 }}>0 F</div>
+                </div>
+              )}
               <div style={{ background: 'var(--primary)', color: 'white', padding: '1rem', borderRadius: '18px', textAlign: 'center' }}>
                  <div style={{ fontSize: '0.7rem', fontWeight: 800, opacity: 0.9, textTransform: 'uppercase' }}>Total Net</div>
                  <div style={{ fontSize: '1.4rem', fontWeight: 950 }}>{commande.montant_total?.toLocaleString()} F</div>

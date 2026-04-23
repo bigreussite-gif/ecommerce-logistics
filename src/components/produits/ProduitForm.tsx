@@ -27,6 +27,7 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
     stock_minimum: 5,
     actif: true,
     image_url: '',
+    frais_installation: 0,
     categorie_id: ''
   });
   const [categories, setCategories] = useState<Categorie[]>([]);
@@ -238,8 +239,16 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
                 <input type="number" className="form-input" required min="1" style={{ height: '52px', borderRadius: '14px', fontWeight: 800, color: '#ef4444', borderColor: '#fee2e2' }} value={formData.stock_minimum} onChange={e => setFormData({...formData, stock_minimum: Number(e.target.value)})} />
               </div>
             </div>
+            
+            <div className="form-group" style={{ marginTop: '1.5rem' }}>
+              <label className="form-label" style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Prime d'installation (Livreur)
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 500 }}>(Montant versé au livreur si l'option est choisie)</span>
+              </label>
+              <input type="number" className="form-input" min="0" style={{ height: '52px', borderRadius: '14px', fontWeight: 800, color: 'var(--primary)' }} value={formData.frais_installation || 0} onChange={e => setFormData({...formData, frais_installation: Number(e.target.value)})} placeholder="0" />
+            </div>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', marginTop: '1rem', padding: '1.25rem', borderRadius: '18px', background: formData.actif ? 'rgba(16, 185, 129, 0.05)' : '#f8fafc', border: `1px solid ${formData.actif ? '#10b981' : '#e2e8f0'}`, transition: 'all 0.3s ease' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', marginTop: '1.5rem', padding: '1.25rem', borderRadius: '18px', background: formData.actif ? 'rgba(16, 185, 129, 0.05)' : '#f8fafc', border: `1px solid ${formData.actif ? '#10b981' : '#e2e8f0'}`, transition: 'all 0.3s ease' }}>
               <input type="checkbox" style={{ width: '22px', height: '22px', accentColor: '#10b981' }} checked={formData.actif} onChange={e => setFormData({...formData, actif: e.target.checked})} />
               <div>
                 <div style={{ fontWeight: 900, color: formData.actif ? '#059669' : 'var(--text-muted)' }}>Produit Actif / En Vente</div>

@@ -95,7 +95,7 @@ export const StaffPerformance = () => {
           
           const logStats = calculateLogisticalStats(lCmds);
           const ca_livraison = lCmds.reduce((acc, c) => 
-            acc + (['livree', 'terminee'].includes(c.statut_commande) ? (Number(c.frais_livraison) || 0) : 0)
+            acc + (['livree', 'terminee'].includes(c.statut_commande) ? (Number(c.frais_livraison) || 0) + (Number(c.total_primes_installation) || 0) : 0)
           , 0);
 
           return {

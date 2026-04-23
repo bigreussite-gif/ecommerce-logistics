@@ -56,6 +56,7 @@ export interface ProfitStats {
   valeur_stock?: number;
   benefice_caisse?: number;
   ads_spend?: number;
+  total_installation_primes?: number;
   roas?: number;
   cac?: number;
 }
@@ -130,10 +131,16 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     }
   });
 
-  const depenses_fixes_total = (depenses || []).reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
+  const depenses_fixes_total = (depenses || [])
+    .filter(d => d.categorie !== 'Achat Stock / Fournisseur')
+    .reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
+  
+  const total_sorties_cash = (depenses || []).reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
+  
   
   // CA Net = Total received - Shipping Fees
   const ca_net_produits = ca_brut - frais_livraison_reussis;
+  const installation_primes_total = terminalCmds.reduce((acc, c) => acc + (Number(c.total_primes_installation) || 0), 0);
   
   // Extractions based on number of successful deliveries
   const total_extractions = terminalCmds.length * TOTAL_EXTRACTION_PER_UNIT;
@@ -141,8 +148,8 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
   // Retenue based on percentage of net revenue
   const retenue_charges = ca_net_produits > 0 ? Math.round(ca_net_produits * RETENUE_PERCENT) : 0;
 
-  // Profit Net Brut = CA Net - COGS - Dépenses Fixes - Pertes Logistiques
-  const profit_net_brut = ca_net_produits - cogs_total - depenses_fixes_total - pertes_livraison;
+  // Profit Net Brut = CA Net - COGS - Dépenses Fixes - Pertes Logistiques - Primes Installation
+  const profit_net_brut = ca_net_produits - cogs_total - depenses_fixes_total - pertes_livraison - installation_primes_total;
   
   // Profit Net Réel = Profit Net Brut - Extractions - Retenue
   const profit_net_reel = profit_net_brut - total_extractions - retenue_charges;
@@ -168,8 +175,9 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     marge_brute_percent,
     marge_nette_percent,
     ca_global_vendu: ca_net_produits,
-    total_sorties: depenses_fixes_total,
+    total_sorties: total_sorties_cash,
     cout_achat_total: cogs_total,
+    total_installation_primes: installation_primes_total,
     benefice_caisse: profit_net_reel
   };
 };

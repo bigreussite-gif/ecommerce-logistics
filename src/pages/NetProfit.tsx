@@ -17,7 +17,7 @@ import { fr } from 'date-fns/locale';
 
 export const NetProfit = () => {
   const { showToast } = useToast();
-  const { hasPermission } = useAuth();
+  const { hasPermission, currentUser } = useAuth();
   
   const [loading, setLoading] = useState(true);
   const [depenses, setDepenses] = useState<Depense[]>([]);
@@ -32,7 +32,7 @@ export const NetProfit = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newDepense, setNewDepense] = useState({
-    categorie: 'Marketing',
+    categorie: 'Marketing / ADS',
     montant: 0,
     description: '',
     date: new Date().toISOString().split('T')[0]
@@ -57,9 +57,13 @@ export const NetProfit = () => {
         getFinancialData(start, end),
         getDepenses().catch(() => [])
       ]);
+      const filteredExpenses = (depenseData || []).filter(d => {
+        const dDate = new Date(d.date);
+        return dDate >= new Date(start) && dDate <= new Date(end);
+      });
       setAllCommandes(orderData || []);
-      setDepenses(depenseData || []);
-      setMetrics(calculateProfitMetrics(orderData, depenseData || []));
+      setDepenses(filteredExpenses);
+      setMetrics(calculateProfitMetrics(orderData, filteredExpenses));
     } catch (error) {
       console.error(error);
       showToast("Erreur lors du chargement des données financières.", "error");
@@ -85,12 +89,16 @@ export const NetProfit = () => {
     e.preventDefault();
     if (newDepense.montant <= 0) return showToast("Montant invalide", "error");
     try {
-      await addDepense(newDepense);
+      await addDepense({
+        ...newDepense,
+        paye_par_id: currentUser?.id
+      });
       showToast("Dépense enregistrée !", "success");
       setIsModalOpen(false);
       fetchData();
-    } catch (error) {
-      showToast("Erreur lors de l'enregistrement", "error");
+    } catch (error: any) {
+      console.error("Error saving expense:", error);
+      showToast(error.message || "Erreur lors de l'enregistrement", "error");
     }
   };
 
@@ -278,6 +286,7 @@ export const NetProfit = () => {
                 <label className="form-label" style={{ fontWeight: 700, marginBottom: '0.6rem', display: 'block' }}>Type de Charge</label>
                 <select className="form-select" style={{ height: '54px', borderRadius: '14px', fontWeight: 600 }} value={newDepense.categorie} onChange={e => setNewDepense({...newDepense, categorie: e.target.value})}>
                   <option>Marketing / ADS</option>
+                  <option>Achat Stock / Fournisseur</option>
                   <option>Salaires & Primes</option>
                   <option>Loyer & Charges</option>
                   <option>Transport & Logistique</option>

@@ -28,6 +28,7 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
   
   const [communesDb, setCommunesDb] = useState<Commune[]>([]);
   const [fraisLivraison, setFraisLivraison] = useState(0);
+  const [remiseTotale, setRemiseTotale] = useState(0);
 
   useEffect(() => {
     getCommunes().then(setCommunesDb);
@@ -47,6 +48,7 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
       setModePaiement(editingCommande.mode_paiement || 'Cash à la livraison');
       setNotes(editingCommande.notes_client || '');
       setFraisLivraison(editingCommande.frais_livraison || 0);
+      setRemiseTotale(editingCommande.remise_totale || 0);
       setClientId(editingCommande.client_id);
     }
     if (originalLines) {
@@ -85,7 +87,7 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
   };
 
   const addLigne = () => {
-    setLignes([...lignes, { produit_id: '', quantite: 1, prix_unitaire: 0 }]);
+    setLignes([...lignes, { produit_id: '', quantite: 1, prix_unitaire: 0, choix_installation: false, frais_installation: 0 }]);
   };
 
   const parsePrice = (p: any): number => {
@@ -126,21 +128,35 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
         produit_id: value, 
         nom_produit: prod.nom, 
         prix_unitaire: prixActif, 
+        choix_installation: false,
+        frais_installation: prod.frais_installation || 0,
         montant_ligne: prixActif * (newLignes[index].quantite || 1) 
       };
     } else if (field === 'quantite') {
       const qte = Math.max(1, Number(value));
       const prix = Number(newLignes[index].prix_unitaire) || 0;
+      const avecInstal = !!newLignes[index].choix_installation;
+      const frais = Number(newLignes[index].frais_installation) || 0;
       newLignes[index] = { 
         ...newLignes[index], 
         quantite: qte, 
-        montant_ligne: prix * qte 
+        montant_ligne: (prix * qte) + (avecInstal ? (frais * qte) : 0)
+      };
+    } else if (field === 'choix_installation') {
+      const qte = Number(newLignes[index].quantite) || 1;
+      const prix = Number(newLignes[index].prix_unitaire) || 0;
+      const choix = !!value;
+      const frais = Number(newLignes[index].frais_installation) || 0;
+      newLignes[index] = { 
+        ...newLignes[index], 
+        choix_installation: choix,
+        montant_ligne: (prix * qte) + (choix ? (frais * qte) : 0)
       };
     }
     setLignes(newLignes);
   };
 
-  const totalMontant = lignes.reduce((acc, l) => acc + Number(l.montant_ligne || 0), 0) + fraisLivraison;
+  const totalMontant = (lignes.reduce((acc, l) => acc + Number(l.montant_ligne || 0), 0) + fraisLivraison) - (Number(remiseTotale) || 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,6 +204,7 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
           quartier_livraison: clientRecherche.quartier || '',
           adresse_livraison: clientRecherche.adresse || '',
           notes_client: notes,
+          remise_totale: Number(remiseTotale) || 0,
         };
         await updateCommandeBase(editingCommande.id, updateData, originalLines || [], lignes as any[]);
         showToast("Commande mise à jour avec succès !", "success");
@@ -202,6 +219,7 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
           quartier_livraison: clientRecherche.quartier || '',
           adresse_livraison: clientRecherche.adresse || '',
           notes_client: notes,
+          remise_totale: Number(remiseTotale) || 0,
         };
 
         await createCommandeBase(newCommande as any, lignes as Omit<LigneCommande, 'id' | 'commande_id'>[]);
@@ -333,6 +351,14 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
                     <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Qté</label>
                     <input type="number" className="form-input" min="1" value={l.quantite} onChange={e => updateLigne(idx, 'quantite', e.target.value)} style={{ background: 'white', textAlign: 'center', fontWeight: 700 }} />
                   </div>
+                  {l.frais_installation ? (
+                    <div style={{ padding: '0.5rem', background: l.choix_installation ? 'rgba(16, 185, 129, 0.1)' : 'white', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+                        <input type="checkbox" checked={l.choix_installation} onChange={e => updateLigne(idx, 'choix_installation', e.target.checked)} />
+                        Installation (+{(l.frais_installation * (l.quantite || 1)).toLocaleString()})
+                      </label>
+                    </div>
+                  ) : null}
                   <div style={{ flex: '1', textAlign: 'right' }}>
                     <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Sous-total</label>
                     <div className="brand-glow" style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>{(l.montant_ligne || 0).toLocaleString()} <span style={{ fontSize: '0.75rem' }}>CFA</span></div>
@@ -348,9 +374,16 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
                   <span>Frais de livraison ({clientRecherche.commune || 'Standard'})</span>
                   <span>{fraisLivraison.toLocaleString()} CFA</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '1.1rem', fontWeight: 600 }}>Total à encaisser</span>
-                  <span style={{ fontSize: '2rem', fontWeight: 900 }}>{totalMontant.toLocaleString()} CFA</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', opacity: 0.9, fontWeight: 500 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span>Remise Exceptionnelle</span>
+                    <input type="number" className="form-input" style={{ width: '100px', height: '32px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', fontWeight: 800, borderRadius: '8px' }} value={remiseTotale} onChange={e => setRemiseTotale(Number(e.target.value))} />
+                  </div>
+                  <span>-{remiseTotale.toLocaleString()} CFA</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: '1rem', marginTop: '1rem' }}>
+                  <span style={{ fontSize: '1.2rem', fontWeight: 600 }}>Total à encaisser</span>
+                  <span style={{ fontSize: '2.2rem', fontWeight: 950 }}>{totalMontant.toLocaleString()} CFA</span>
                 </div>
               </div>
             )}
