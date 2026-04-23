@@ -184,6 +184,7 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   // Map only allowed fields from additionalData to correct DB columns
   // REMOVED 'notes' to avoid PGRST204 cache error
   if (additionalData.notes_client !== undefined) updatePayload.notes_client = additionalData.notes_client;
+  if (additionalData.notes_livreur !== undefined) updatePayload.notes_livreur = additionalData.notes_livreur;
   if (additionalData.commentaire_agent !== undefined) updatePayload.commentaire_agent = additionalData.commentaire_agent;
   if (additionalData.livreur_id !== undefined) updatePayload.livreur_id = additionalData.livreur_id;
   if (additionalData.feuille_route_id !== undefined) updatePayload.feuille_route_id = additionalData.feuille_route_id;
@@ -191,6 +192,9 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   if (additionalData.montant_total !== undefined) updatePayload.montant_total = additionalData.montant_total;
   if (additionalData.commune_livraison !== undefined) updatePayload.commune_livraison = additionalData.commune_livraison;
   if (additionalData.adresse_livraison !== undefined) updatePayload.adresse_livraison = additionalData.adresse_livraison;
+  if (additionalData.date_livraison_effective !== undefined) updatePayload.date_livraison_effective = additionalData.date_livraison_effective;
+  if (additionalData.date_livraison_prevue !== undefined) updatePayload.date_livraison_prevue = additionalData.date_livraison_prevue;
+  if (additionalData.date_validation_appel !== undefined) updatePayload.date_validation_appel = additionalData.date_validation_appel;
   if (additionalData.frais_livraison !== undefined) {
     updatePayload.frais_livraison = additionalData.frais_livraison;
   } else if (additionalData.commune_livraison) {
@@ -218,7 +222,7 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
 
   // 3. Stock management state machine
   // activeStates means the products are "out" of the main warehouse stock
-  const activeStates = ['en_attente_appel', 'validee', 'en_cours_livraison', 'livree', 'terminee', 'retour_livreur', 'absent', 'echouee'];
+  const activeStates = ['en_attente_appel', 'validee', 'en_cours_livraison', 'livree', 'terminee'];
 
   const wasActive = activeStates.includes(prevStatus?.toLowerCase());
   const isNowActive = activeStates.includes(nextStatus?.toLowerCase());

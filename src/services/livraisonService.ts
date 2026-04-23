@@ -1,3 +1,4 @@
+import { updateCommandeStatus } from './commandeService';
 import { Commande, FeuilleRoute } from '../types';
 import { insforge } from '../lib/insforge';
 
@@ -32,26 +33,14 @@ export const getCommandesForFeuille = async (feuilleRouteId: string): Promise<Co
 };
 
 export const markCommandeLivre = async (commandeId: string, notesRetours: string): Promise<void> => {
-  const { error } = await insforge.database
-    .from('commandes')
-    .update({ 
-      statut_commande: 'livree', 
-      date_livraison_effective: new Date(), 
-      notes_livreur: notesRetours 
-    })
-    .eq('id', commandeId);
-  
-  if (error) throw error;
+  await updateCommandeStatus(commandeId, 'livree', {
+    date_livraison_effective: new Date(),
+    notes_livreur: notesRetours
+  });
 };
 
 export const markCommandeEchouee = async (commandeId: string, motif: string): Promise<void> => {
-  const { error } = await insforge.database
-    .from('commandes')
-    .update({ 
-      statut_commande: 'echouee', 
-      notes_livreur: motif 
-    })
-    .eq('id', commandeId);
-  
-  if (error) throw error;
+  await updateCommandeStatus(commandeId, 'echouee', {
+    notes_livreur: motif
+  });
 };

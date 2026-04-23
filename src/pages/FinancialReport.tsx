@@ -5,6 +5,7 @@ import {
   calculateProfitMetrics, 
   calculateLogisticalStats, 
   calculateProductROI,
+  addDepense,
   EXTRACTION_LOGISTIQUE,
   EXTRACTION_ENTRETIEN,
   EXTRACTION_INTERNET,
@@ -14,15 +15,38 @@ import {
 import { TrendingUp, TrendingDown, Compass, PieChart, Calendar, BarChart2, Clock, Package } from 'lucide-react';
 import { generateAnalyticalReportPDF } from '../services/pdfService';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Commande, LigneCommande } from '../types';
 import { startOfMonth, endOfMonth, subDays, format } from 'date-fns';
 
 export const FinancialReport = () => {
   const { showToast } = useToast();
-  const [data, setData] = useState<{ retours: any[], commandes: (Commande & { lignes?: LigneCommande[] })[] } | null>(null);
+  const { currentUser } = useAuth();
+  const [data, setData] = useState<{ retours: any[], commandes: (Commande & { lignes?: LigneCommande[] })[], depenses: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+
+  // Prime Modal State
+  const [showPrimeModal, setShowPrimeModal] = useState(false);
+  const [primeAmount, setPrimeAmount] = useState('');
+  const [primeDescription, setPrimeDescription] = useState('Prime Installation');
+  const [primeDate, setPrimeDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [savingPrime, setSavingPrime] = useState(false);
+
+  const refreshData = async () => {
+    if (!startDate || !endDate) return;
+    setLoading(true);
+    try {
+      const res = await getRangeFinancials(startDate, endDate);
+      setData(res);
+    } catch (e) {
+      console.error(e);
+      showToast("Erreur de chargement", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const safeFormat = (dateStr: string, formatStr: string) => {
     try {
@@ -55,26 +79,42 @@ export const FinancialReport = () => {
   };
 
   useEffect(() => {
-    const load = async () => {
-      if (!startDate || !endDate) return;
-      setLoading(true);
-      try {
-        const res = await getRangeFinancials(startDate, endDate);
-        setData(res);
-      } catch (e) {
-        console.error(e);
-        showToast("Erreur de chargement", "error");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
+    refreshData();
   }, [startDate, endDate]);
+
+  const handleSavePrime = async () => {
+    if (!primeAmount || isNaN(Number(primeAmount))) {
+      showToast("Veuillez saisir un montant valide", "error");
+      return;
+    }
+
+    setSavingPrime(true);
+    try {
+      await addDepense({
+        date: primeDate,
+        categorie: 'Personnel / Prime',
+        montant: Number(primeAmount),
+        description: primeDescription,
+        mode_paiement: 'Espèces',
+        paye_par_id: currentUser?.id
+      });
+      
+      showToast("Prime enregistrée avec succès", "success");
+      setShowPrimeModal(false);
+      setPrimeAmount('');
+      refreshData();
+    } catch (e) {
+      console.error(e);
+      showToast("Erreur lors de l'enregistrement", "error");
+    } finally {
+      setSavingPrime(false);
+    }
+  };
 
   // Calculations
   const stats = useMemo(() => {
     if (!data) return null;
-    return calculateProfitMetrics(data.commandes, []);
+    return calculateProfitMetrics(data.commandes, data.depenses || []);
   }, [data]);
 
   const diffDays = useMemo(() => {
@@ -218,8 +258,96 @@ export const FinancialReport = () => {
               style={{ border: 'none', fontWeight: 700, outline: 'none', fontSize: '0.85rem' }} 
             />
           </div>
+
+          <button 
+            onClick={() => setShowPrimeModal(true)}
+            className="btn btn-primary"
+            style={{ 
+              padding: '0.6rem 1.2rem', 
+              borderRadius: '12px', 
+              fontWeight: 800, 
+              fontSize: '0.8rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              boxShadow: '0 4px 12px rgba(99, 102, 241, 0.2)'
+            }}
+          >
+            <TrendingDown size={16} /> AJOUTER PRIME
+          </button>
         </div>
       </div>
+
+      {showPrimeModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15, 23, 42, 0.7)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000, animation: 'fadeIn 0.3s ease'
+        }}>
+          <div className="card" style={{ width: '90%', maxWidth: '450px', padding: '2rem', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 900, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <TrendingDown size={24} style={{ color: 'var(--primary)' }} /> Enregistrer une Prime
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+              Utilisez ce formulaire pour enregistrer une prime d'installation oubliée.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Montant (CFA)</label>
+                <input 
+                  type="number"
+                  value={primeAmount}
+                  onChange={(e) => setPrimeAmount(e.target.value)}
+                  placeholder="Ex: 2000"
+                  style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.1rem', fontWeight: 700, outline: 'none' }}
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Description / Agent</label>
+                <input 
+                  type="text"
+                  value={primeDescription}
+                  onChange={(e) => setPrimeDescription(e.target.value)}
+                  placeholder="Ex: Prime d'installation - Livreur Alpha"
+                  style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '0.9rem', fontWeight: 600, outline: 'none' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase' }}>Date de la Prime</label>
+                <input 
+                  type="date"
+                  value={primeDate}
+                  onChange={(e) => setPrimeDate(e.target.value)}
+                  style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '0.9rem', fontWeight: 600, outline: 'none' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button 
+                  onClick={() => setShowPrimeModal(false)}
+                  className="btn"
+                  style={{ flex: 1, background: '#f1f5f9', color: '#64748b', fontWeight: 700, borderRadius: '12px' }}
+                >
+                  ANNULER
+                </button>
+                <button 
+                  onClick={handleSavePrime}
+                  className="btn btn-primary"
+                  disabled={savingPrime}
+                  style={{ flex: 2, fontWeight: 800, borderRadius: '12px' }}
+                >
+                  {savingPrime ? 'ENREGISTREMENT...' : 'ENREGISTRER LA PRIME'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
         <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>

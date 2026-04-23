@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { insforge } from '../lib/insforge';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentFeuilleRoute, getCommandesForFeuille, markCommandeLivre, markCommandeEchouee } from '../services/livraisonService';
+import { updateCommandeStatus } from '../services/commandeService';
 import type { Commande, FeuilleRoute } from '../types';
 import { 
   MapPin, CheckCircle, XCircle, Truck, 
@@ -102,10 +103,7 @@ export const Livraison = () => {
       setLoading(true);
       
       if (manualStatus) {
-        await insforge.database
-          .from('commandes')
-          .update({ statut_commande: manualStatus })
-          .eq('id', targetId);
+        await updateCommandeStatus(targetId, manualStatus);
       } else if (selectedCommande) {
         if (statusAction === 'livree') {
           await markCommandeLivre(selectedCommande.id, noteForm);

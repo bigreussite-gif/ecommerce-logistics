@@ -296,5 +296,12 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
 
   if (cmdError) throw cmdError;
 
-  return { retours, commandes };
+  // 3. Get Depenses in range
+  const { data: depenses } = await insforge.database
+    .from('depenses')
+    .select('*')
+    .gte('date', startStr)
+    .lte('date', endStr);
+
+  return { retours, commandes: commandes || [], depenses: depenses || [] };
 };
