@@ -128,14 +128,32 @@ export const AdminTresorerie = () => {
       .filter(d => d.mode_paiement === 'Espèces')
       .reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
     
+    // Multi-account tracking
+    const mmInflow = data.orders
+      .filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase()) && (c.mode_paiement?.toLowerCase().includes('mobile') || c.mode_paiement?.toLowerCase().includes('momo') || c.mode_paiement?.toLowerCase().includes('orange')))
+      .reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
+    const mmOutflow = data.expenses
+      .filter(d => d.mode_paiement === 'Mobile Money')
+      .reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
+
+    const bankInflow = data.orders
+      .filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase()) && (c.mode_paiement?.toLowerCase().includes('banque') || c.mode_paiement?.toLowerCase().includes('virement') || c.mode_paiement?.toLowerCase().includes('carte')))
+      .reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
+    const bankOutflow = data.expenses
+      .filter(d => d.mode_paiement === 'Banque')
+      .reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
+
     return { 
       totalEcart, 
       totalRemis, 
       totalAttendu,
       totalCashExpenses,
-      netCashBalance: totalRemis - totalCashExpenses
+      netCashBalance: totalRemis - totalCashExpenses,
+      mmBalance: mmInflow - mmOutflow,
+      bankBalance: bankInflow - bankOutflow,
+      mmInflow, mmOutflow, bankInflow, bankOutflow
     };
-  }, [data.retours, data.expenses]);
+  }, [data.retours, data.expenses, data.orders]);
 
   // AI Health Score Calculation
   const healthScore = useMemo(() => {
@@ -411,10 +429,29 @@ export const AdminTresorerie = () => {
               <span style={{ fontWeight: 800, color: '#f43f5e' }}>-{cashStats.totalCashExpenses.toLocaleString()} F</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-              <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)' }}>SOLDE EN CAISSE</span>
-              <span style={{ fontWeight: 950, color: 'var(--primary)', fontSize: '1.2rem' }}>{cashStats.netCashBalance.toLocaleString()} F</span>
+              <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)' }}>SOLDE PHYSIQUE</span>
+              <span style={{ fontWeight: 950, color: '#10b981', fontSize: '1.2rem' }}>{cashStats.netCashBalance.toLocaleString()} F</span>
             </div>
           </div>
+
+          <div className="card" style={{ padding: '1.5rem', background: '#f8fafc' }}>
+            <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>Situation par Canal</h4>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Mobile Money (Solde)</span>
+                  <span style={{ fontWeight: 800, color: cashStats.mmBalance >= 0 ? '#10b981' : '#f43f5e' }}>{cashStats.mmBalance.toLocaleString()} F</span>
+               </div>
+               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>Banque (Solde)</span>
+                  <span style={{ fontWeight: 800, color: cashStats.bankBalance >= 0 ? '#10b981' : '#f43f5e' }}>{cashStats.bankBalance.toLocaleString()} F</span>
+               </div>
+               <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>TRS GLOBALE</span>
+                  <span style={{ fontWeight: 900, color: 'var(--primary)' }}>{(cashStats.netCashBalance + cashStats.mmBalance + cashStats.bankBalance).toLocaleString()} F</span>
+               </div>
+            </div>
+          </div>
+        </div>
         </div>
 
         {/* AI HEALTH SCORE BANNER */}
