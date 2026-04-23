@@ -57,6 +57,7 @@ export interface ProfitStats {
   benefice_caisse?: number;
   ads_spend?: number;
   total_installation_primes?: number;
+  total_achats_stock?: number;
   flux_tresorerie?: number;
   roas?: number;
   cac?: number;
@@ -139,6 +140,10 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     .filter(d => d.categorie !== 'Achat Stock / Fournisseur')
     .reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
   
+  const total_achats_stock = (depenses || [])
+    .filter(d => d.categorie === 'Achat Stock / Fournisseur')
+    .reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
+  
   const total_sorties_cash = (depenses || []).reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
   
   
@@ -182,6 +187,7 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     total_sorties: total_sorties_cash,
     cout_achat_total: cogs_total,
     total_installation_primes: installation_primes_total,
+    total_achats_stock,
     benefice_caisse: profit_net_reel,
     flux_tresorerie: ca_brut - total_sorties_cash
   };

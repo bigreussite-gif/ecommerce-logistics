@@ -249,8 +249,8 @@ export const AuditTresorerie = () => {
                <div style={{ fontSize: '1.8rem', fontWeight: 950, color: '#ef4444' }}>{globalMetrics?.total_sorties?.toLocaleString() || 0} F</div>
             </div>
             <div>
-               <p style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Payé Fournisseurs</p>
-               <div style={{ fontSize: '1.8rem', fontWeight: 950, color: 'var(--primary)' }}>{globalMetrics?.cout_achat_total?.toLocaleString() || 0} F</div>
+               <p style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Total Payé Fournisseurs</p>
+               <div style={{ fontSize: '1.8rem', fontWeight: 950, color: 'var(--primary)' }}>{globalMetrics?.total_achats_stock?.toLocaleString() || 0} F</div>
             </div>
             <div>
                <p style={{ color: '#10b981', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Bénéfice Net Cash</p>
@@ -302,7 +302,13 @@ export const AuditTresorerie = () => {
             <div className="card" style={{ padding: '2rem' }}>
                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Charges Fixes</p>
                <h2 style={{ fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 800, color: '#ef4444' }}>{financials.depenses_fixes_total.toLocaleString()} F</h2>
-               <p style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: 600 }}>Total dépenses opérationnelles</p>
+               <p style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: 600 }}>Dépenses opérationnelles</p>
+            </div>
+
+            <div className="card" style={{ padding: '2rem' }}>
+               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700, textTransform: 'uppercase' }}>Paiements Fournisseurs</p>
+               <h2 style={{ fontSize: '2.2rem', margin: '0.5rem 0', fontWeight: 800, color: '#f59e0b' }}>{financials.total_achats_stock?.toLocaleString()} F</h2>
+               <p style={{ fontSize: '0.9rem', color: '#94a3b8', fontWeight: 600 }}>Achats de stock / Fournisseurs</p>
             </div>
           </div>
 
