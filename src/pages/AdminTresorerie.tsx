@@ -375,23 +375,9 @@ export const AdminTresorerie = () => {
                 </div>
                 <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {(livreesCount * EXTRACTION_LOGISTIQUE).toLocaleString()} F</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f8fafc', borderRadius: '12px' }}>
-                <div>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Frais Internet</span>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>{EXTRACTION_INTERNET} F × {livreesCount} livrés</span>
-                </div>
-                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {(livreesCount * EXTRACTION_INTERNET).toLocaleString()} F</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#fef2f2', borderRadius: '12px' }}>
-                <div>
-                  <span style={{ fontSize: '0.8rem', color: '#ef4444', display: 'block', fontWeight: 700 }}>Retenu pour charge</span>
-                  <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 600 }}>{(RETENUE_PERCENT * 100).toFixed(0)}% des ventes nettes</span>
-                </div>
-                <span style={{ fontWeight: 800, fontSize: '0.95rem', color: '#ef4444' }}>- {metrics.retenue_charges.toLocaleString()} F</span>
-              </div>
             </div>
             <p style={{ marginTop: '1rem', fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-              * Les extractions sont appliquées par colis livré et déduites de la balance. 5% des ventes nettes sont retenus pour charges.
+              * Les extractions sont appliquées par colis livré et déduites du CA Net pour obtenir l'Argent Enveloppe.
             </p>
           </div>
         </div>
