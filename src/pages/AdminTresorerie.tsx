@@ -10,6 +10,7 @@ import {
   generateTimeSeriesData,
   GeoProfit,
   DEFAULT_SHIPPING_FEE,
+  RETENUE_PERCENT,
   EXTRACTION_LOGISTIQUE,
   EXTRACTION_ENTRETIEN
 } from '../services/financialService';
@@ -337,6 +338,27 @@ export const AdminTresorerie = () => {
           <span style={{ color: '#6d28d9', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ARGENT ENVELOPPE</span>
           <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#4c1d95' }}>
             {(netRevenue - (livreesCount * (EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN))).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #ef4444' }}>
+          <span style={{ color: '#ef4444', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>RETENUE (-5%)</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#ef4444' }}>
+            {Math.round(netRevenue * RETENUE_PERCENT).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '1.5rem', background: '#ecfdf5', borderLeft: '4px solid #059669' }}>
+          <span style={{ color: '#047857', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>BALANCE RÉELLE</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#065f46' }}>
+            {(netRevenue - (livreesCount * (EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN)) - Math.round(netRevenue * RETENUE_PERCENT)).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', border: 'none', boxShadow: '0 10px 20px rgba(16, 185, 129, 0.2)' }}>
+          <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>BÉNÉFICE RÉEL</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem' }}>
+            {(netRevenue - (livreesCount * (EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN)) - Math.round(netRevenue * RETENUE_PERCENT) - metrics.cogs_total).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
           </div>
         </div>
 
