@@ -3,7 +3,7 @@ import { getAchatsStock, registerAchatStock } from '../services/achatService';
 import { getFournisseurs, Fournisseur } from '../services/fournisseurService';
 import { getProduits } from '../services/produitService';
 import { Produit } from '../types';
-import { Plus, Search, Calendar, Package, ArrowRight, CreditCard, DollarSign, X, Filter, ShoppingBag, ArrowUpRight } from 'lucide-react';
+import { Plus, Search, Calendar, Package, ArrowRight, CreditCard, DollarSign, X, Filter, ShoppingBag, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -86,119 +86,129 @@ export const Approvisionnement = () => {
         <div>
           <h1 className="text-premium" style={{ fontSize: '2.4rem', fontWeight: 900, margin: 0, letterSpacing: '-0.03em' }}>Approvisionnement</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginTop: '0.4rem', fontWeight: 500 }}>
-            Tracez vos entrées en stock et gérez vos coûts d'achat.
+            Tracez vos entrées en stock et gérez vos flux financiers partenaires.
           </p>
         </div>
-        <button className="btn btn-primary btn-premium-shadow" onClick={() => setIsModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.8rem 1.5rem', borderRadius: '16px' }}>
-          <Plus size={22} strokeWidth={3} /> Nouvel Achat
+        <button className="btn btn-primary btn-premium-shadow" onClick={() => setIsModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.8rem 1.8rem', borderRadius: '18px' }}>
+          <Plus size={22} strokeWidth={3} /> Nouvel Approvisionnement
         </button>
       </div>
 
+      {/* Stats Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <div className="card glass-effect" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #fff, #f8fafc)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-            <div style={{ padding: '0.75rem', background: 'var(--primary-light)', borderRadius: '12px', color: 'var(--primary)' }}>
+        <div className="card glass-effect hover-card" style={{ padding: '1.75rem', borderLeft: '5px solid var(--primary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div style={{ padding: '0.75rem', background: 'var(--primary-light)', borderRadius: '14px', color: 'var(--primary)' }}>
               <ShoppingBag size={24} />
             </div>
-            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Volume Total Achats</span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total des Achats</span>
           </div>
-          <span style={{ fontSize: '2rem', fontWeight: 900 }}>{stats.total.toLocaleString()} F</span>
+          <span style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--text-main)' }}>{stats.total.toLocaleString()} <span style={{ fontSize: '1rem', opacity: 0.6 }}>F</span></span>
         </div>
-        <div className="card glass-effect" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #fff, #f0fdf4)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-            <div style={{ padding: '0.75rem', background: '#dcfce7', borderRadius: '12px', color: '#10b981' }}>
+        <div className="card glass-effect hover-card" style={{ padding: '1.75rem', borderLeft: '5px solid #10b981' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div style={{ padding: '0.75rem', background: '#dcfce7', borderRadius: '14px', color: '#10b981' }}>
               <DollarSign size={24} />
             </div>
-            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Paiements Cash</span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Règlements Cash</span>
           </div>
-          <span style={{ fontSize: '2rem', fontWeight: 900, color: '#10b981' }}>{stats.cash.toLocaleString()} F</span>
+          <span style={{ fontSize: '2.2rem', fontWeight: 900, color: '#10b981' }}>{stats.cash.toLocaleString()} <span style={{ fontSize: '1rem', opacity: 0.6 }}>F</span></span>
         </div>
-        <div className="card glass-effect" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #fff, #fef3c7)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-            <div style={{ padding: '0.75rem', background: '#fef3c7', borderRadius: '12px', color: '#f59e0b' }}>
+        <div className="card glass-effect hover-card" style={{ padding: '1.75rem', borderLeft: '5px solid #f59e0b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div style={{ padding: '0.75rem', background: '#fef3c7', borderRadius: '14px', color: '#f59e0b' }}>
               <CreditCard size={24} />
             </div>
-            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Achats à Crédit</span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Engagement Crédit</span>
           </div>
-          <span style={{ fontSize: '2rem', fontWeight: 900, color: '#f59e0b' }}>{stats.credit.toLocaleString()} F</span>
+          <span style={{ fontSize: '2.2rem', fontWeight: 900, color: '#f59e0b' }}>{stats.credit.toLocaleString()} <span style={{ fontSize: '1rem', opacity: 0.6 }}>F</span></span>
         </div>
       </div>
 
-      <div className="card glass-effect" style={{ padding: '1.25rem', marginBottom: '2rem', borderRadius: '20px', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+      {/* Filter Row */}
+      <div className="card glass-effect" style={{ padding: '1.25rem', marginBottom: '2.5rem', borderRadius: '22px', display: 'flex', gap: '1rem', alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: 1 }}>
-          <Search style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} size={20} />
+          <Search style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} size={22} />
           <input 
             type="text" 
-            placeholder="Rechercher par produit ou fournisseur..." 
-            className="input"
-            style={{ paddingLeft: '3.5rem', fontSize: '1.05rem', height: '3.2rem', borderRadius: '14px' }}
+            placeholder="Rechercher par produit ou par fournisseur..." 
+            className="form-input"
+            style={{ paddingLeft: '3.75rem', height: '3.5rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <button className="btn btn-outline" style={{ height: '3.2rem', borderRadius: '14px', padding: '0 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Filter size={18} /> Filtres
+        <button className="btn btn-outline" style={{ height: '3.5rem', borderRadius: '16px', padding: '0 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 700 }}>
+          <Filter size={20} /> Filtres Avancés
         </button>
       </div>
 
       {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '5rem' }}><div className="spinner"></div></div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '10rem 0', gap: '1.5rem' }}>
+          <div className="spinner"></div>
+          <p style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Synchronisation des stocks...</p>
+        </div>
       ) : (
-        <div className="card glass-effect" style={{ padding: 0, overflow: 'hidden', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.8)' }}>
+        <div className="card glass-effect" style={{ padding: 0, overflow: 'hidden', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 20px 40px -15px rgba(0,0,0,0.05)' }}>
           <div className="table-container">
             <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
                 <tr style={{ background: '#f8fafc' }}>
-                  <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', textAlign: 'left' }}>Date & Heure</th>
-                  <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', textAlign: 'left' }}>Désignation Produit</th>
-                  <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', textAlign: 'left' }}>Fournisseur</th>
-                  <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', textAlign: 'center' }}>Qté</th>
-                  <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', textAlign: 'right' }}>Prix Unit.</th>
-                  <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', textAlign: 'right' }}>Montant Total</th>
-                  <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', textAlign: 'center' }}>Mode</th>
-                  <th style={{ padding: '1.25rem 1.5rem', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', textAlign: 'center' }}>Paiement</th>
+                  <th style={{ padding: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'left', letterSpacing: '0.05em' }}>Horodatage</th>
+                  <th style={{ padding: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'left', letterSpacing: '0.05em' }}>Article / Référence</th>
+                  <th style={{ padding: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'left', letterSpacing: '0.05em' }}>Fournisseur</th>
+                  <th style={{ padding: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.05em' }}>Quantité</th>
+                  <th style={{ padding: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'right', letterSpacing: '0.05em' }}>P.U. Achat</th>
+                  <th style={{ padding: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'right', letterSpacing: '0.05em' }}>Investissement</th>
+                  <th style={{ padding: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.05em' }}>Méthode</th>
+                  <th style={{ padding: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.05em' }}>État</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredAchats.length === 0 ? (
-                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)', fontWeight: 500 }}>Aucune opération d'approvisionnement trouvée.</td></tr>
+                  <tr><td colSpan={8} style={{ textAlign: 'center', padding: '6rem', color: 'var(--text-muted)', fontWeight: 600 }}>Aucune trace d'approvisionnement détectée.</td></tr>
                 ) : (
                   filteredAchats.map(a => (
                     <tr key={a.id} className="table-row-hover">
-                      <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <Calendar size={14} />
-                          {format(new Date(a.date_achat), 'dd MMM yyyy HH:mm', { locale: fr })}
+                      <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                          <Calendar size={15} opacity={0.6} />
+                          {format(new Date(a.date_achat), 'dd MMM yyyy • HH:mm', { locale: fr })}
                         </div>
                       </td>
                       <td style={{ padding: '1.25rem 1.5rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div style={{ padding: '0.5rem', background: '#f1f5f9', borderRadius: '8px', color: 'var(--primary)' }}><Package size={16} /></div>
-                          <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1rem' }}>{a.produits?.nom || 'Produit inconnu'}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <div style={{ padding: '0.6rem', background: 'var(--primary-light)', borderRadius: '10px', color: 'var(--primary)' }}><Package size={18} /></div>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: 900, color: 'var(--text-main)', fontSize: '1.05rem' }}>{a.produits?.nom || 'Produit inconnu'}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>REF-{a.id.slice(0, 8).toUpperCase()}</span>
+                          </div>
                         </div>
                       </td>
-                      <td style={{ padding: '1.25rem 1.5rem', fontWeight: 600 }}>{a.fournisseurs?.nom || 'Fournisseur inconnu'}</td>
+                      <td style={{ padding: '1.25rem 1.5rem', fontWeight: 700, color: 'var(--text-main)' }}>{a.fournisseurs?.nom || 'Partenaire Inconnu'}</td>
                       <td style={{ padding: '1.25rem 1.5rem', textAlign: 'center' }}>
-                        <span style={{ padding: '0.35rem 0.75rem', background: 'var(--primary-light)', color: 'var(--primary)', borderRadius: '8px', fontWeight: 900, fontSize: '0.95rem' }}>{a.quantite}</span>
+                        <span style={{ padding: '0.4rem 0.8rem', background: '#f1f5f9', color: 'var(--text-main)', borderRadius: '10px', fontWeight: 900, fontSize: '1rem' }}>{a.quantite}</span>
                       </td>
-                      <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', fontWeight: 600 }}>{Number(a.prix_achat_unitaire).toLocaleString()} F</td>
-                      <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', fontWeight: 900, fontSize: '1.1rem', color: 'var(--primary)' }}>{Number(a.montant_total).toLocaleString()} F</td>
+                      <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', fontWeight: 700, color: 'var(--text-muted)' }}>{Number(a.prix_achat_unitaire).toLocaleString()} F</td>
+                      <td style={{ padding: '1.25rem 1.5rem', textAlign: 'right', fontWeight: 900, fontSize: '1.15rem', color: 'var(--primary)' }}>{Number(a.montant_total).toLocaleString()} F</td>
                       <td style={{ padding: '1.25rem 1.5rem', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.4rem 0.75rem', borderRadius: '10px', background: a.mode_paiement === 'Cash' ? '#ecfdf5' : '#fffbeb', border: '1px solid', borderColor: a.mode_paiement === 'Cash' ? '#10b981' : '#f59e0b' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.75rem', borderRadius: '12px', background: a.mode_paiement === 'Cash' ? '#ecfdf5' : '#fffbeb', border: '1px solid', borderColor: a.mode_paiement === 'Cash' ? '#10b981' : '#f59e0b' }}>
                           {a.mode_paiement === 'Cash' ? <DollarSign size={14} color="#10b981" /> : <CreditCard size={14} color="#f59e0b" />}
-                          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: a.mode_paiement === 'Cash' ? '#065f46' : '#92400e' }}>{a.mode_paiement}</span>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 900, color: a.mode_paiement === 'Cash' ? '#065f46' : '#92400e' }}>{a.mode_paiement.toUpperCase()}</span>
                         </div>
                       </td>
                       <td style={{ padding: '1.25rem 1.5rem', textAlign: 'center' }}>
                         <span style={{ 
-                          padding: '0.4rem 0.85rem', 
-                          borderRadius: '20px', 
+                          padding: '0.4rem 1rem', 
+                          borderRadius: '12px', 
                           fontSize: '0.7rem', 
                           fontWeight: 900, 
                           textTransform: 'uppercase',
                           letterSpacing: '0.05em',
-                          background: a.statut_paiement === 'Payé' ? '#d1fae5' : '#fef3c7',
-                          color: a.statut_paiement === 'Payé' ? '#065f46' : '#92400e'
+                          background: a.statut_paiement === 'Payé' ? '#d1fae5' : '#fee2e2',
+                          color: a.statut_paiement === 'Payé' ? '#065f46' : '#991b1b',
+                          border: '1px solid',
+                          borderColor: a.statut_paiement === 'Payé' ? '#10b981' : '#fecaca'
                         }}>
                           {a.statut_paiement}
                         </span>
@@ -212,79 +222,86 @@ export const Approvisionnement = () => {
         </div>
       )}
 
-      {/* Modal d'achat */}
+      {/* Modal d'achat Refined */}
       {isModalOpen && (
-        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(8px)', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-          <div className="modal-content card" style={{ width: '100%', maxWidth: '700px', padding: 0, borderRadius: '28px', overflow: 'hidden', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-            <div style={{ background: 'linear-gradient(135deg, var(--primary), var(--primary-glow))', padding: '2.5rem', color: 'white', position: 'relative' }}>
-              <button onClick={() => setIsModalOpen(false)} style={{ position: 'absolute', right: '1.5rem', top: '1.5rem', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.5rem', borderRadius: '12px', cursor: 'pointer' }}><X size={20} /></button>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.2)', borderRadius: '16px' }}><ShoppingBag size={32} /></div>
+        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(12px)', backgroundColor: 'rgba(15, 23, 42, 0.6)' }}>
+          <div className="modal-content card" style={{ width: '100%', maxWidth: '750px', padding: 0, borderRadius: '32px', overflow: 'hidden', border: 'none', boxShadow: '0 30px 60px -15px rgba(0,0,0,0.3)' }}>
+            
+            {/* Header with Gradient */}
+            <div style={{ background: 'linear-gradient(135deg, var(--primary), #4f46e5)', padding: '3rem 2.5rem', color: 'white', position: 'relative' }}>
+              <button onClick={() => setIsModalOpen(false)} style={{ position: 'absolute', right: '1.75rem', top: '1.75rem', background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', padding: '0.6rem', borderRadius: '14px', cursor: 'pointer', transition: 'all 0.2s' }} className="hover-scale"><X size={22} /></button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.2)', borderRadius: '22px', backdropFilter: 'blur(10px)', boxShadow: '0 10px 20px rgba(0,0,0,0.1)' }}><ShoppingBag size={40} /></div>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 900 }}>Nouvel Achat</h2>
-                  <p style={{ margin: '0.25rem 0 0 0', opacity: 0.8, fontSize: '1rem' }}>Enregistrez une entrée de stock fournisseur.</p>
+                  <h2 style={{ margin: 0, fontSize: '2.2rem', fontWeight: 900, letterSpacing: '-0.02em' }}>Nouvel Approvisionnement</h2>
+                  <p style={{ margin: '0.4rem 0 0 0', opacity: 0.9, fontSize: '1.1rem', fontWeight: 500 }}>Enregistrez une entrée de stock et gérez le flux financier.</p>
                 </div>
               </div>
             </div>
+
             <form onSubmit={handleSubmit} style={{ padding: '2.5rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '1.75rem' }}>
                 <div className="form-group">
-                  <label style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.6rem', display: 'block' }}>Produit à approvisionner *</label>
-                  <select className="input" required value={formData.produit_id} onChange={e => setFormData({...formData, produit_id: e.target.value})} style={{ borderRadius: '14px', height: '3.5rem' }}>
-                    <option value="">Choisir un produit...</option>
-                    {produits.map(p => <option key={p.id} value={p.id}>{p.nom} (Stock act: {p.stock_actuel})</option>)}
+                  <label className="form-label">Produit à approvisionner *</label>
+                  <select className="form-select" required value={formData.produit_id} onChange={e => setFormData({...formData, produit_id: e.target.value})} style={{ borderRadius: '16px', height: '3.8rem', fontWeight: 600 }}>
+                    <option value="">Sélectionnez un produit...</option>
+                    {produits.map(p => <option key={p.id} value={p.id}>{p.nom} (Stock actuel : {p.stock_actuel})</option>)}
                   </select>
                 </div>
                 <div className="form-group">
-                  <label style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.6rem', display: 'block' }}>Fournisseur partenaire *</label>
-                  <select className="input" required value={formData.fournisseur_id} onChange={e => setFormData({...formData, fournisseur_id: e.target.value})} style={{ borderRadius: '14px', height: '3.5rem' }}>
-                    <option value="">Choisir un fournisseur...</option>
+                  <label className="form-label">Fournisseur Partenaire *</label>
+                  <select className="form-select" required value={formData.fournisseur_id} onChange={e => setFormData({...formData, fournisseur_id: e.target.value})} style={{ borderRadius: '16px', height: '3.8rem', fontWeight: 600 }}>
+                    <option value="">Sélectionnez un fournisseur...</option>
                     {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
                   </select>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '1.75rem' }}>
                 <div className="form-group">
-                  <label style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.6rem', display: 'block' }}>Quantité d'unités *</label>
-                  <input type="number" className="input" required min="1" value={formData.quantite} onChange={e => setFormData({...formData, quantite: Number(e.target.value)})} style={{ borderRadius: '14px', height: '3.5rem', fontWeight: 700 }} />
+                  <label className="form-label">Quantité Reçue *</label>
+                  <input type="number" className="form-input" required min="1" value={formData.quantite} onChange={e => setFormData({...formData, quantite: Number(e.target.value)})} style={{ borderRadius: '16px', height: '3.8rem', fontWeight: 800, fontSize: '1.2rem', textAlign: 'center' }} />
                 </div>
                 <div className="form-group">
-                  <label style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.6rem', display: 'block' }}>Prix d'achat unitaire (F) *</label>
-                  <input type="number" className="input" required min="0" value={formData.prix_achat_unitaire} onChange={e => setFormData({...formData, prix_achat_unitaire: Number(e.target.value)})} style={{ borderRadius: '14px', height: '3.5rem', fontWeight: 700 }} />
+                  <label className="form-label">Prix d'Achat Unitaire (F) *</label>
+                  <input type="number" className="form-input" required min="0" value={formData.prix_achat_unitaire} onChange={e => setFormData({...formData, prix_achat_unitaire: Number(e.target.value)})} style={{ borderRadius: '16px', height: '3.8rem', fontWeight: 800, fontSize: '1.2rem', textAlign: 'center' }} />
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '2.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2.5rem' }}>
                 <div className="form-group">
-                  <label style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.6rem', display: 'block' }}>Mode de règlement</label>
+                  <label className="form-label">Mode de Règlement</label>
                   <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button type="button" onClick={() => setFormData({...formData, mode_paiement: 'Cash', statut_paiement: 'Payé'})} style={{ flex: 1, height: '3.5rem', borderRadius: '14px', border: '2px solid', borderColor: formData.mode_paiement === 'Cash' ? 'var(--primary)' : '#e2e8f0', background: formData.mode_paiement === 'Cash' ? 'var(--primary-light)' : 'white', color: formData.mode_paiement === 'Cash' ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}>Cash</button>
-                    <button type="button" onClick={() => setFormData({...formData, mode_paiement: 'Crédit', statut_paiement: 'En attente'})} style={{ flex: 1, height: '3.5rem', borderRadius: '14px', border: '2px solid', borderColor: formData.mode_paiement === 'Crédit' ? '#f59e0b' : '#e2e8f0', background: formData.mode_paiement === 'Crédit' ? '#fef3c7' : 'white', color: formData.mode_paiement === 'Crédit' ? '#92400e' : 'var(--text-muted)', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s' }}>Crédit</button>
+                    <button type="button" onClick={() => setFormData({...formData, mode_paiement: 'Cash', statut_paiement: 'Payé'})} style={{ flex: 1, height: '3.8rem', borderRadius: '16px', border: '2px solid', borderColor: formData.mode_paiement === 'Cash' ? 'var(--primary)' : '#e2e8f0', background: formData.mode_paiement === 'Cash' ? 'var(--primary-light)' : 'white', color: formData.mode_paiement === 'Cash' ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s', fontSize: '1rem' }}>CASH</button>
+                    <button type="button" onClick={() => setFormData({...formData, mode_paiement: 'Crédit', statut_paiement: 'En attente'})} style={{ flex: 1, height: '3.8rem', borderRadius: '16px', border: '2px solid', borderColor: formData.mode_paiement === 'Crédit' ? '#f59e0b' : '#e2e8f0', background: formData.mode_paiement === 'Crédit' ? '#fef3c7' : 'white', color: formData.mode_paiement === 'Crédit' ? '#92400e' : 'var(--text-muted)', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s', fontSize: '1rem' }}>CRÉDIT</button>
                   </div>
                 </div>
                 <div className="form-group">
-                  <label style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.6rem', display: 'block' }}>Statut de Paiement</label>
-                  <select className="input" value={formData.statut_paiement} onChange={e => setFormData({...formData, statut_paiement: e.target.value as any})} style={{ borderRadius: '14px', height: '3.5rem', background: '#f8fafc' }}>
-                    <option value="Payé">Payé / Réglé</option>
-                    <option value="En attente">En attente / Impayé</option>
+                  <label className="form-label">Statut de Paiement</label>
+                  <select className="form-select" value={formData.statut_paiement} onChange={e => setFormData({...formData, statut_paiement: e.target.value as any})} style={{ borderRadius: '16px', height: '3.8rem', background: '#f8fafc', fontWeight: 700 }}>
+                    <option value="Payé">✅ Entièrement réglé</option>
+                    <option value="En attente">⏳ Paiement en attente / Dette</option>
                   </select>
                 </div>
               </div>
 
-              <div style={{ padding: '2rem', background: 'linear-gradient(to right, var(--primary-light), #fff)', borderRadius: '24px', marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--primary-light)', boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.02)' }}>
+              {/* Total Card */}
+              <div style={{ padding: '2.5rem', background: 'linear-gradient(to right, #f1f5f9, #fff)', borderRadius: '28px', marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid #e2e8f0', boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.02)' }}>
                 <div>
-                  <span style={{ fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', fontSize: '0.85rem', letterSpacing: '0.05em' }}>Total à régler au fournisseur</span>
-                  <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--primary)', marginTop: '0.25rem' }}>{(formData.quantite * formData.prix_achat_unitaire).toLocaleString()} F</div>
+                  <span style={{ fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '0.08em' }}>Investissement Total</span>
+                  <div style={{ fontSize: '2.8rem', fontWeight: 950, color: 'var(--primary)', marginTop: '0.4rem', letterSpacing: '-0.02em' }}>{(formData.quantite * formData.prix_achat_unitaire).toLocaleString()} <span style={{ fontSize: '1.2rem', opacity: 0.7 }}>F</span></div>
                 </div>
-                <div style={{ width: '60px', height: '60px', borderRadius: '20px', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', boxShadow: '0 10px 20px -5px var(--primary-glow)' }}>
-                  <ArrowUpRight size={32} strokeWidth={3} />
+                <div style={{ width: '70px', height: '70px', borderRadius: '22px', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', boxShadow: '0 15px 30px -5px var(--primary-glow)' }}>
+                  <ArrowUpRight size={36} strokeWidth={3} />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '1.25rem' }}>
-                <button type="button" className="btn btn-outline" onClick={() => setIsModalOpen(false)} style={{ flex: 1, height: '4rem', borderRadius: '16px', fontWeight: 700, fontSize: '1.1rem' }}>Annuler</button>
-                <button type="submit" className="btn btn-primary btn-premium-shadow" style={{ flex: 1.5, height: '4rem', borderRadius: '16px', fontWeight: 900, fontSize: '1.1rem', letterSpacing: '0.02em' }}>Valider l'Approvisionnement</button>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '1.5rem' }}>
+                <button type="button" className="btn btn-outline" onClick={() => setIsModalOpen(false)} style={{ flex: 1, height: '4.2rem', borderRadius: '18px', fontWeight: 800, fontSize: '1.1rem' }}>Annuler</button>
+                <button type="submit" className="btn btn-primary btn-premium-shadow" style={{ flex: 1.8, height: '4.2rem', borderRadius: '18px', fontWeight: 900, fontSize: '1.2rem', letterSpacing: '0.02em' }}>
+                  <CheckCircle2 size={24} style={{ marginRight: '0.5rem' }} /> Valider l'Approvisionnement
+                </button>
               </div>
             </form>
           </div>
