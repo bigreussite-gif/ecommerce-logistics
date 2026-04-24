@@ -10,10 +10,8 @@ import {
   generateTimeSeriesData,
   GeoProfit,
   DEFAULT_SHIPPING_FEE,
-  RETENUE_PERCENT,
   EXTRACTION_LOGISTIQUE,
-  EXTRACTION_ENTRETIEN,
-  EXTRACTION_INTERNET
+  EXTRACTION_ENTRETIEN
 } from '../services/financialService';
 import { getRangeFinancials } from '../services/caisseService';
 import { Commande, LigneCommande, Depense, CaisseRetour } from '../types';

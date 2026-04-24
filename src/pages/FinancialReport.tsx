@@ -8,10 +8,7 @@ import {
   addDepense,
   deleteDepense,
   EXTRACTION_LOGISTIQUE,
-  EXTRACTION_ENTRETIEN,
-  EXTRACTION_INTERNET,
-  TOTAL_EXTRACTION_PER_UNIT,
-  RETENUE_PERCENT
+  EXTRACTION_ENTRETIEN
 } from '../services/financialService';
 import { TrendingUp, TrendingDown, Compass, PieChart, Calendar, BarChart2, Clock, Package, Trash2 } from 'lucide-react';
 import { generateAnalyticalReportPDF } from '../services/pdfService';
