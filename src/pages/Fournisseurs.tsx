@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getFournisseurs, createFournisseur, updateFournisseur, deleteFournisseur, Fournisseur } from '../services/fournisseurService';
-import { Building2, Plus, Search, Phone, Mail, MapPin, Trash2, Edit2, Wallet } from 'lucide-react';
+import { Building2, Plus, Search, Phone, MapPin, Trash2, Edit2, Wallet } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 
 export const Fournisseurs = () => {
@@ -121,7 +121,7 @@ export const Fournisseurs = () => {
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <button onClick={() => handleEdit(f)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><Edit2 size={18} /></button>
-                  <button onClick={() => handleDelete(f)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={18} /></button>
+                  <button onClick={() => handleDelete(f.id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}><Trash2 size={18} /></button>
                 </div>
               </div>
 

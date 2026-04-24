@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { getAchatsStock, registerAchatStock, AchatStock } from '../services/achatService';
+import { getAchatsStock, registerAchatStock } from '../services/achatService';
 import { getFournisseurs, Fournisseur } from '../services/fournisseurService';
 import { getProduits } from '../services/produitService';
 import { Produit } from '../types';
-import { ShoppingBag, Plus, Search, Calendar, Package, ArrowRight, CreditCard, DollarSign } from 'lucide-react';
+import { Plus, CreditCard, DollarSign } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
