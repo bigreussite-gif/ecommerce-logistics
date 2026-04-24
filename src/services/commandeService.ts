@@ -222,7 +222,8 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
 
   // 3. Stock management state machine
   // activeStates means the products are "out" of the main warehouse stock
-  const activeStates = ['en_attente_appel', 'validee', 'en_cours_livraison', 'livree', 'terminee'];
+  // We include 'echouee' and 'retour_livreur' because the physical products are still in the field/with courier
+  const activeStates = ['en_attente_appel', 'validee', 'en_cours_livraison', 'livree', 'terminee', 'echouee', 'retour_livreur'];
 
   const wasActive = activeStates.includes(prevStatus?.toLowerCase());
   const isNowActive = activeStates.includes(nextStatus?.toLowerCase());
@@ -247,6 +248,58 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
       }
     } catch (stockErr) {
       console.error("Erreur Stock Flow:", stockErr);
+    }
+  }
+};
+
+/**
+ * Confirme la réintégration en stock ou le retrait définitif (défaillant)
+ */
+export const confirmRMAMovement = async (id: string, choice: 'REUTILISABLE' | 'DEFAILLANT', notes: string = ''): Promise<void> => {
+  const { data: cmd, error: fetchErr } = await insforge.database
+    .from('commandes')
+    .select('*, lignes:lignes_commandes(*)')
+    .eq('id', id)
+    .single();
+
+  if (fetchErr || !cmd) throw new Error("Commande non trouvée");
+
+  // 1. Mettre à jour le statut de la commande
+  // Le passage à 'retour_stock' va déclencher l'auto-restock SI c'est REUTILISABLE.
+  // Mais attendez, si c'est DEFAILLANT, on veut AUSSI qu'elle soit inactive, mais on veut compenser la sortie.
+  
+  await updateCommandeStatus(id, 'retour_stock', {
+    notes_livreur: notes ? `${cmd.notes_livreur || ''} | RMA: ${choice} - ${notes}` : cmd.notes_livreur
+  });
+
+  // 2. Si c'est défaillant, on fait une sortie immédiate pour compenser le restock auto qui a eu lieu lors de updateCommandeStatus
+  if (choice === 'DEFAILLANT') {
+    if (cmd.lignes && cmd.lignes.length > 0) {
+      for (const l of cmd.lignes) {
+        await addMouvementStock({
+          produit_id: l.produit_id,
+          type_mouvement: 'sortie',
+          quantite: l.quantite,
+          reference: `Article Défaillant (Cmd #${id.slice(0,8)})`
+        } as any);
+      }
+    }
+  }
+
+  // 3. Enregistrer dans la table retours pour le suivi des défaillants
+  if (cmd.lignes && cmd.lignes.length > 0) {
+    for (const l of cmd.lignes) {
+      await insforge.database
+        .from('retours')
+        .insert([{
+          commande_id: id,
+          motif: choice === 'DEFAILLANT' ? 'Défaillant au retour' : 'Réintégré',
+          solution: choice === 'DEFAILLANT' ? 'Mis au rebut / Pertes' : 'Remis en vente',
+          notes: notes,
+          etat_produit: choice,
+          produit_id: l.produit_id,
+          quantite: l.quantite
+        }]);
     }
   }
 };
