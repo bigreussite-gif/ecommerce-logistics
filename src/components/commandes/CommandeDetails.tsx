@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { X, ShoppingBag, User, MapPin, Receipt, Phone, RefreshCw, RotateCcw, PackageX, MessageCircle, AlertCircle } from 'lucide-react';
 import { getCommandeWithLines, updateCommandeStatus, reactivateFailedCommande, registerReturn, logWhatsAppMessage } from '../../services/commandeService';
 import { useToast } from '../../contexts/ToastContext';

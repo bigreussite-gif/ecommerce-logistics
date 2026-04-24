@@ -170,10 +170,6 @@ export const FinancialReport = () => {
   // SOURCE DE VÉRITÉ POUR LA CAISSE (PHYSIQUE)
   const isCash = (c: Commande) => ['Cash à la livraison', 'Cash'].includes(c.mode_paiement || '');
   
-  const totalEncaisseCash = (data.commandes || [])
-    .filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase()) && isCash(c))
-    .reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
-
   const totalMobileMoney = (data.commandes || [])
     .filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase()) && !isCash(c))
     .reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);

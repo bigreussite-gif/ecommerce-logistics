@@ -22,7 +22,6 @@ import {
   Download, 
   Filter, 
   Wallet,
-  TrendingUp,
   History,
   ShieldCheck,
   Package,
@@ -96,8 +95,7 @@ export const AdminTresorerie = () => {
   const activeOrders = data.orders || [];
   const netRevenue = metrics.ca_net_produits; // Unified Revenue from items
   
-  // Extraction Logic from metrics
-  const totalExtractions = metrics.total_extractions;
+  // livreesCount for deductions
   const livreesCount = data.orders.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).length;
   
   // Final Profit after COGS and Extractions
