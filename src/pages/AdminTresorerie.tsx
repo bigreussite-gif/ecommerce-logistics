@@ -251,33 +251,63 @@ export const AdminTresorerie = () => {
         </div>
       </div>
 
-      {/* Stats Grid - PRIVATE DASHBOARD */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <div className="card" style={{ padding: '1.5rem', borderLeft: '4px solid var(--primary)' }}>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Ventes Nettes</p>
-          <h2 style={{ fontSize: '1.8rem', margin: 0, fontWeight: 800 }}>{netRevenue.toLocaleString()} F</h2>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Excluant {metrics.frais_livraison_total.toLocaleString()} F de livraison</p>
-        </div>
-
-        <div className="card" style={{ padding: '1.5rem', borderLeft: '4px solid #f59e0b' }}>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Coût Achat (COGS)</p>
-          <h2 style={{ fontSize: '1.8rem', margin: 0, fontWeight: 800, color: '#d97706' }}>{metrics.cogs_total.toLocaleString()} F</h2>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Valeur stock vendu</p>
-        </div>
-
-        <div className="card" style={{ padding: '1.5rem', borderLeft: '4px solid #ef4444' }}>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Extractions & Commissions</p>
-          <h2 style={{ fontSize: '1.8rem', margin: 0, fontWeight: 800, color: '#ef4444' }}>{(totalExtractions + metrics.depenses_fixes_total + (metrics.total_installation_primes || 0)).toLocaleString()} F</h2>
-          <p style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.5rem' }}>Extr: {totalExtractions.toLocaleString()} F | Primes Inst: {(metrics.total_installation_primes || 0).toLocaleString()} F</p>
-        </div>
-
-        <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', border: 'none' }}>
-          <p style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.8)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Profit Réel Net</p>
-          <h2 style={{ fontSize: '1.8rem', margin: 0, fontWeight: 800 }}>{realProfit.toLocaleString()} F</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-            <TrendingUp size={14} />
-            <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>{metrics.marge_nette_percent}% de marge</span>
+      {/* Stats Grid - PRIVATE DASHBOARD (DEDUCTION FLOW) */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
+          <span style={{ color: '#059669', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CA NET PRODUITS</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem' }}>
+            {netRevenue.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
           </div>
+        </div>
+
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #ef4444' }}>
+          <span style={{ color: '#ef4444', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>RETENUE (5%)</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#ef4444' }}>
+            {Math.round(netRevenue * RETENUE_PERCENT).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #3b82f6' }}>
+          <span style={{ color: '#2563eb', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>FRAIS INTERNET</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#2563eb' }}>
+            {(livreesCount * EXTRACTION_INTERNET).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #f97316' }}>
+          <span style={{ color: '#ea580c', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>EXTRACTIONS (COMM/ADM)</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#ea580c' }}>
+            {(livreesCount * (EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN)).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '1.5rem', background: '#fcfaff', borderLeft: '4px solid #8b5cf6', boxShadow: '0 10px 15px -3px rgba(139, 92, 246, 0.1)' }}>
+          <span style={{ color: '#6d28d9', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ARGENT ENVELOPPE</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#4c1d95' }}>
+            {(netRevenue - Math.round(netRevenue * RETENUE_PERCENT) - (livreesCount * (EXTRACTION_INTERNET + EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN))).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #64748b' }}>
+          <span style={{ color: '#475569', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>COÛT ACHAT (COGS)</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#475569' }}>
+            {metrics.cogs_total.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', border: 'none', boxShadow: '0 10px 20px rgba(16, 185, 129, 0.2)' }}>
+          <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>MARGE NETTE RÉSULTANTE</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem' }}>
+            {(netRevenue - Math.round(netRevenue * RETENUE_PERCENT) - (livreesCount * (EXTRACTION_INTERNET + EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN)) - metrics.cogs_total).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '1.5rem', background: '#0f172a', color: 'white', border: 'none' }}>
+          <span style={{ color: 'rgba(255,255,255,0.6)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TAUX DE SUCCÈS</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#10b981' }}>
+            {metrics.taux_succes}%
+          </div>
+          <div style={{ fontSize: '0.7rem', marginTop: '0.5rem', opacity: 0.8 }}>{livreesCount} livraisons réussies</div>
         </div>
       </div>
 
