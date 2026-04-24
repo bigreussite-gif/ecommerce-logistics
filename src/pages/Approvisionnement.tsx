@@ -3,7 +3,7 @@ import { getAchatsStock, registerAchatStock } from '../services/achatService';
 import { getFournisseurs, Fournisseur } from '../services/fournisseurService';
 import { getProduits } from '../services/produitService';
 import { Produit } from '../types';
-import { Plus, Search, Calendar, Package, ArrowRight, CreditCard, DollarSign, X, Filter, ShoppingBag, ArrowUpRight, CheckCircle2 } from 'lucide-react';
+import { Plus, Search, Calendar, Package, CreditCard, DollarSign, X, Filter, ShoppingBag, ArrowUpRight, CheckCircle2 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
