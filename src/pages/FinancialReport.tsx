@@ -354,59 +354,68 @@ export const FinancialReport = () => {
         </div>
       )}
 
+      {/* Main Stats Grid - REORDERED */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
         <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
-          <span style={{ color: '#059669', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CA NET PRODUITS</span>
+          <span style={{ color: '#059669', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ESPÈCES ENCAISSÉES (CASH)</span>
           <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-            {totalProduitsNet.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
+            {cashPhysiqueRecus.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
           </div>
         </div>
+
         <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid var(--primary)' }}>
           <span style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>FRAIS DE LIVRAISON</span>
           <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
             {totalFraisLivraisonSuccess.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
           </div>
         </div>
-        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #f59e0b' }}>
-          <span style={{ color: '#d97706', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>MARGE BRUTE (EST)</span>
+
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #f43f5e' }}>
+          <span style={{ color: '#e11d48', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PRIMES D'INSTALLATION</span>
           <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-            {(stats?.profit_net_brut || 0).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
+            {(stats?.total_installation_primes || 0).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
           </div>
         </div>
-        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #6366f1' }}>
-          <span style={{ color: '#4f46e5', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TAUX DE SUCCESS</span>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem' }}>{successRate.toFixed(1)}%</div>
-          <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.5rem', fontSize: '0.65rem', fontWeight: 700 }}>
-            <span style={{ color: '#10b981' }}>{logStats?.livrees} Livré</span>
-            <span style={{ color: 'var(--primary)' }}>{logStats?.retours} Ret</span>
-            <span style={{ color: '#f59e0b' }}>{logStats?.reportees} Rep</span>
+
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #3b82f6' }}>
+          <span style={{ color: '#2563eb', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CA NET PRODUITS</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+            {totalProduitsNet.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
+          </div>
+        </div>
+
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #f97316' }}>
+          <span style={{ color: '#ea580c', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>EXTRACTION (COMMISSION)</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+            {((logStats?.livrees || 0) * EXTRACTION_LOGISTIQUE).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
+          </div>
+        </div>
+
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #64748b' }}>
+          <span style={{ color: '#475569', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>EXTRACTION (ADMIN)</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+            {((logStats?.livrees || 0) * EXTRACTION_ENTRETIEN).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
+          </div>
+        </div>
+
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #8b5cf6', backgroundColor: '#fcfaff', boxShadow: '0 10px 15px -3px rgba(139, 92, 246, 0.1)' }}>
+          <span style={{ color: '#6d28d9', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ARGENT ENVELOPPE</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px', color: '#4c1d95' }}>
+            {(totalProduitsNet - ((logStats?.livrees || 0) * (EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN))).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
           </div>
         </div>
       </div>
 
       <div style={{ marginBottom: '2.5rem' }}>
         <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-main)' }}>
-           Point Caissière (Rapprochement Physique)
+           Analyse Complémentaire
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
           
-          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
-            <span style={{ color: '#059669', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ESPÈCES REMISES (CASH)</span>
-            <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-              {cashPhysiqueRecus.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
-            </div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-              Cash physique collecté 
-            </div>
-          </div>
-
           <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #3b82f6', background: 'rgba(59, 130, 246, 0.05)' }}>
-            <span style={{ color: '#2563eb', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PAIEMENTS DIGITAUX (MM/WAVE)</span>
+            <span style={{ color: '#2563eb', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PAIEMENTS DIGITAUX</span>
             <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
               {(totalMobileMoney || 0).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
-            </div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-              Argent déjà en banque / compte
             </div>
           </div>
 
@@ -415,41 +424,11 @@ export const FinancialReport = () => {
             <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px', color: totalEcartCaisse < 0 ? '#ef4444' : 'inherit' }}>
               {totalEcartCaisse.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
             </div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-              Différence liquidité vs théorique
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem' }}>
-          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #f97316' }}>
-            <span style={{ color: '#ea580c', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>EXTRACTION (COMMISSION)</span>
-            <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-              {((logStats?.livrees || 0) * EXTRACTION_LOGISTIQUE).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
-            </div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-              {logStats?.livrees || 0} livrées × {EXTRACTION_LOGISTIQUE} F
-            </div>
           </div>
 
-          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #64748b' }}>
-            <span style={{ color: '#475569', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>EXTRACTION (ADMIN)</span>
-            <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
-              {((logStats?.livrees || 0) * EXTRACTION_ENTRETIEN).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
-            </div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-              {logStats?.livrees || 0} livrées × {EXTRACTION_ENTRETIEN} F
-            </div>
-          </div>
-
-          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #8b5cf6', backgroundColor: '#fcfaff', boxShadow: '0 10px 15px -3px rgba(139, 92, 246, 0.1)' }}>
-            <span style={{ color: '#6d28d9', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ARGENT ENVELOPPE</span>
-            <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px', color: '#4c1d95' }}>
-              {(totalProduitsNet - ((logStats?.livrees || 0) * (EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN))).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>CFA</span>
-            </div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-              CA Net Produits - Commission - Admin
-            </div>
+          <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #6366f1' }}>
+            <span style={{ color: '#4f46e5', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TAUX DE SUCCESS</span>
+            <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem' }}>{successRate.toFixed(1)}%</div>
           </div>
         </div>
       </div>
