@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { X, Search, Trash2, Plus } from 'lucide-react';
 import type { Produit, Client, LigneCommande, Commande } from '../../types';
 import { subscribeToProduits } from '../../services/produitService';
-import { searchClientByPhone, createClient } from '../../services/clientService';
+import { searchClientByPhone, createClient, updateClient } from '../../services/clientService';
 import { createCommandeBase, updateCommandeBase } from '../../services/commandeService';
 import { getCommunes } from '../../services/adminService';
 import { useToast } from '../../contexts/ToastContext';
@@ -212,8 +212,21 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
           notes_client: notes,
           remise_totale: discountAmount,
         };
+
+        if (finalClientId) {
+          await updateClient(finalClientId, {
+            nom_complet: clientRecherche.nom_complet,
+            telephone: clientRecherche.telephone,
+            telephone_secondaire: clientRecherche.telephone_secondaire || '',
+            commune: clientRecherche.commune || '',
+            quartier: clientRecherche.quartier || '',
+            adresse: clientRecherche.adresse || '',
+            email: clientRecherche.email || '',
+          });
+        }
+
         await updateCommandeBase(editingCommande.id, updateData, originalLines || [], lignes as any[]);
-        showToast("Commande mise à jour avec succès !", "success");
+        showToast("Commande et client mis à jour avec succès !", "success");
       } else {
         const newCommande: Omit<Commande, 'id' | 'date_creation' | 'statut_commande'> = {
           client_id: finalClientId,
