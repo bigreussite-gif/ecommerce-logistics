@@ -15,7 +15,7 @@ import {
 } from '../services/financialService';
 import { getRangeFinancials } from '../services/caisseService';
 import { Commande, LigneCommande, Depense, CaisseRetour } from '../types';
-import { format, startOfDay, endOfDay, subDays } from 'date-fns';
+import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { 
   Download, 
   Filter, 
@@ -47,6 +47,33 @@ export const AdminTresorerie = () => {
   const [startDate, setStartDate] = useState(format(subDays(new Date(), 30), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [adsSpend, setAdsSpend] = useState(150000); // Default example ads spend
+
+  const setRange = (range: 'today' | 'yesterday' | '7d' | '30d' | 'month') => {
+    const today = new Date();
+    switch (range) {
+      case 'today':
+        setStartDate(format(today, 'yyyy-MM-dd'));
+        setEndDate(format(today, 'yyyy-MM-dd'));
+        break;
+      case 'yesterday':
+        const yesterday = subDays(today, 1);
+        setStartDate(format(yesterday, 'yyyy-MM-dd'));
+        setEndDate(format(yesterday, 'yyyy-MM-dd'));
+        break;
+      case '7d':
+        setStartDate(format(subDays(today, 7), 'yyyy-MM-dd'));
+        setEndDate(format(today, 'yyyy-MM-dd'));
+        break;
+      case '30d':
+        setStartDate(format(subDays(today, 30), 'yyyy-MM-dd'));
+        setEndDate(format(today, 'yyyy-MM-dd'));
+        break;
+      case 'month':
+        setStartDate(format(startOfMonth(today), 'yyyy-MM-dd'));
+        setEndDate(format(endOfMonth(today), 'yyyy-MM-dd'));
+        break;
+    }
+  };
   
   const [data, setData] = useState<{
     orders: (Commande & { lignes: LigneCommande[] })[];
@@ -234,15 +261,58 @@ export const AdminTresorerie = () => {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'white', padding: '0.75rem 1.5rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Filter size={18} color="var(--primary)" />
-            <input type="date" className="form-input" style={{ width: '130px', padding: '0.4rem' }} value={startDate} onChange={e => setStartDate(e.target.value)} />
-            <span style={{ color: 'var(--text-muted)' }}>au</span>
-            <input type="date" className="form-input" style={{ width: '130px', padding: '0.4rem' }} value={endDate} onChange={e => setEndDate(e.target.value)} />
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.4rem', background: '#f1f5f9', padding: '0.4rem', borderRadius: '14px' }}>
+            {[
+              { id: 'today', label: 'Aujourd\'hui' },
+              { id: 'yesterday', label: 'Hier' },
+              { id: '7d', label: '7j' },
+              { id: '30d', label: '30j' },
+              { id: 'month', label: 'Mois' }
+            ].map(p => (
+              <button 
+                key={p.id}
+                onClick={() => setRange(p.id as any)}
+                style={{ 
+                  padding: '0.5rem 0.8rem', 
+                  borderRadius: '10px', 
+                  border: 'none', 
+                  background: 'transparent',
+                  fontSize: '0.8rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={e => e.currentTarget.style.background = 'white'}
+                onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+              >
+                {p.label}
+              </button>
+            ))}
           </div>
-          <button className="btn btn-outline" onClick={exportToExcel} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Download size={18} /> Excel
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: 'white', padding: '0.6rem 1rem', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+            <Calendar size={18} style={{ color: 'var(--primary)' }} />
+            <input 
+              type="date" 
+              value={startDate} 
+              onChange={(e) => setStartDate(e.target.value)}
+              style={{ border: 'none', fontWeight: 700, outline: 'none', fontSize: '0.85rem' }} 
+            />
+            <span style={{ color: '#cbd5e1' }}>/</span>
+            <input 
+              type="date" 
+              value={endDate} 
+              onChange={(e) => setEndDate(e.target.value)}
+              style={{ border: 'none', fontWeight: 700, outline: 'none', fontSize: '0.85rem' }} 
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button className="btn btn-secondary" onClick={exportToExcel} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Download size={18} /> Exporter Rapport
           </button>
         </div>
       </div>
