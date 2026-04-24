@@ -18,7 +18,7 @@ import { Commande, LigneCommande, Depense, CaisseRetour } from '../types';
 import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth } from 'date-fns';
 import { 
   Download, 
-  Filter, 
+  Calendar, 
   Wallet,
   History,
   ShieldCheck,
