@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { X, ShoppingBag, User, MapPin, Receipt, Phone, RefreshCw, RotateCcw, PackageX, MessageCircle } from 'lucide-react';
+import { X, ShoppingBag, User, MapPin, Receipt, Phone, RefreshCw, RotateCcw, PackageX, MessageCircle, AlertCircle } from 'lucide-react';
 import { getCommandeWithLines, updateCommandeStatus, reactivateFailedCommande, registerReturn, logWhatsAppMessage } from '../../services/commandeService';
 import { useToast } from '../../contexts/ToastContext';
 import type { Commande, LigneCommande } from '../../types';
@@ -191,6 +190,23 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
             </div>
           </div>
         </div>
+
+        {/* MOTIF D'ANNULATION OU RETOUR */}
+        {(commande.statut_commande.toLowerCase() === 'annulee' || commande.statut_commande.toLowerCase() === 'retour_client') && (
+          <div style={{ margin: '1.5rem 2rem 0', padding: '1.25rem', background: 'rgba(239, 68, 68, 0.05)', border: '1px dashed #fecaca', borderRadius: '18px', display: 'flex', gap: '1rem', alignItems: 'start' }}>
+            <div style={{ color: '#ef4444', marginTop: '2px' }}><AlertCircle size={20} /></div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#991b1b', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                {commande.statut_commande.toLowerCase() === 'annulee' ? "Motif de l'annulation" : "Détails du retour"}
+              </div>
+              <div style={{ fontSize: '0.95rem', color: '#7f1d1d', fontWeight: 600, lineHeight: 1.4 }}>
+                {commande.notes_client?.includes('Motif:') 
+                  ? commande.notes_client.split('Motif:')[1].split('\n')[0].trim() 
+                  : (commande.notes_client || 'Aucune information renseignée')}
+              </div>
+            </div>
+          </div>
+        )}
 
         <div style={{ padding: '2rem', display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
