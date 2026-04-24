@@ -142,7 +142,28 @@ export const Fournisseurs = () => {
                   <span style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: f.solde_dette > 0 ? '#be123c' : '#15803d', display: 'block' }}>Dette Actuelle</span>
                   <span style={{ fontSize: '1.3rem', fontWeight: 900, color: f.solde_dette > 0 ? '#be123c' : '#15803d' }}>{Number(f.solde_dette || 0).toLocaleString()} F</span>
                 </div>
-                <Wallet size={24} color={f.solde_dette > 0 ? '#be123c' : '#15803d'} />
+                {f.solde_dette > 0 && (
+                  <button 
+                    onClick={async () => {
+                      const amount = prompt(`Montant à régler pour ${f.nom} (Dette: ${f.solde_dette} F) :`, f.solde_dette.toString());
+                      if (amount && !isNaN(Number(amount))) {
+                        try {
+                          const { payDebt } = await import('../services/fournisseurService');
+                          await payDebt(f.id, Number(amount));
+                          showToast('Paiement enregistré', 'success');
+                          loadFournisseurs();
+                        } catch (e) {
+                          showToast('Erreur paiement', 'error');
+                        }
+                      }
+                    }}
+                    className="btn btn-primary" 
+                    style={{ padding: '0.5rem 0.75rem', fontSize: '0.75rem' }}
+                  >
+                    Régler
+                  </button>
+                )}
+                {!f.solde_dette || f.solde_dette <= 0 && <Wallet size={24} color="#15803d" />}
               </div>
             </div>
           ))}
