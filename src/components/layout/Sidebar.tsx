@@ -20,7 +20,9 @@ import {
   Wallet,
   ShieldCheck,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  ShoppingBag,
+  Building2
 } from 'lucide-react';
 
 export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
@@ -31,6 +33,8 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
     { path: '/', label: 'Accueil', icon: HomeIcon, permission: 'PROFIL' },
     { path: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard, permission: 'DASHBOARD' },
     { path: '/produits', label: 'Produits & Stock', icon: Package, permission: 'PRODUITS' },
+    { path: '/achats', label: 'Approvisionnements', icon: ShoppingBag, permission: 'PRODUITS' },
+    { path: '/fournisseurs', label: 'Fournisseurs', icon: Building2, permission: 'PRODUITS' },
     { path: '/commandes', label: 'Commandes', icon: ShoppingCart, permission: 'COMMANDES' },
     { path: '/centre-appel', label: 'Centre d\'Appel', icon: Headset, permission: 'CENTRE_APPEL' },
     { path: '/clients', label: 'CRM & Clients', icon: Users, permission: 'CLIENTS' },

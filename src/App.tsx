@@ -46,6 +46,8 @@ const AuditTresorerie = lazyWithRetry(() => import('./pages/AuditTresorerie').th
 const Retours = lazyWithRetry(() => import('./pages/Retours').then(m => ({ default: m.Retours })));
 const Defaillants = lazyWithRetry(() => import('./pages/Defaillants').then(m => ({ default: m.Defaillants })));
 const Landing = lazyWithRetry(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
+const Approvisionnement = lazyWithRetry(() => import('./pages/Approvisionnement').then(m => ({ default: m.Approvisionnement })));
+const Fournisseurs = lazyWithRetry(() => import('./pages/Fournisseurs').then(m => ({ default: m.Fournisseurs })));
 
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '5rem' }}>
@@ -109,6 +111,14 @@ const AppRoutes = () => {
         {/* Module 1: Produits */}
         <Route path="produits" element={
           <ProtectedRoute requiredPermission="PRODUITS"><Produits /></ProtectedRoute>
+        } />
+
+        <Route path="achats" element={
+          <ProtectedRoute requiredPermission="PRODUITS"><Approvisionnement /></ProtectedRoute>
+        } />
+
+        <Route path="fournisseurs" element={
+          <ProtectedRoute requiredPermission="PRODUITS"><Fournisseurs /></ProtectedRoute>
         } />
         
         {/* Module 2: Commandes */}
