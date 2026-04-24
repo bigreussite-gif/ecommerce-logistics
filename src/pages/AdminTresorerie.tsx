@@ -355,6 +355,13 @@ export const AdminTresorerie = () => {
           </div>
         </div>
 
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #64748b' }}>
+          <span style={{ color: '#475569', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>COÛT ACHAT (COGS)</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#475569' }}>
+            {metrics.cogs_total.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
         <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', border: 'none', boxShadow: '0 10px 20px rgba(16, 185, 129, 0.2)' }}>
           <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>BÉNÉFICE RÉEL</span>
           <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem' }}>
