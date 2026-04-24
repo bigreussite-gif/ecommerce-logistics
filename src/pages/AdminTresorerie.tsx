@@ -258,20 +258,6 @@ export const AdminTresorerie = () => {
           </div>
         </div>
 
-        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #ef4444' }}>
-          <span style={{ color: '#ef4444', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>RETENUE (5%)</span>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#ef4444' }}>
-            {Math.round(netRevenue * RETENUE_PERCENT).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
-          </div>
-        </div>
-
-        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #3b82f6' }}>
-          <span style={{ color: '#2563eb', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>FRAIS INTERNET</span>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#2563eb' }}>
-            {(livreesCount * EXTRACTION_INTERNET).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
-          </div>
-        </div>
-
         <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #f97316' }}>
           <span style={{ color: '#ea580c', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>EXTRACTIONS (COMM/ADM)</span>
           <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#ea580c' }}>
@@ -282,21 +268,7 @@ export const AdminTresorerie = () => {
         <div className="card" style={{ padding: '1.5rem', background: '#fcfaff', borderLeft: '4px solid #8b5cf6', boxShadow: '0 10px 15px -3px rgba(139, 92, 246, 0.1)' }}>
           <span style={{ color: '#6d28d9', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ARGENT ENVELOPPE</span>
           <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#4c1d95' }}>
-            {(netRevenue - Math.round(netRevenue * RETENUE_PERCENT) - (livreesCount * (EXTRACTION_INTERNET + EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN))).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
-          </div>
-        </div>
-
-        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #64748b' }}>
-          <span style={{ color: '#475569', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>COÛT ACHAT (COGS)</span>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#475569' }}>
-            {metrics.cogs_total.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', border: 'none', boxShadow: '0 10px 20px rgba(16, 185, 129, 0.2)' }}>
-          <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>MARGE NETTE RÉSULTANTE</span>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem' }}>
-            {(netRevenue - Math.round(netRevenue * RETENUE_PERCENT) - (livreesCount * (EXTRACTION_INTERNET + EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN)) - metrics.cogs_total).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+            {(netRevenue - (livreesCount * (EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN))).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
           </div>
         </div>
 
