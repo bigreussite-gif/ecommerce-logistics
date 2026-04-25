@@ -18,7 +18,7 @@ export const subscribeToProduits = (callback: (produits: Produit[]) => void) => 
     }
   };
   fetch();
-  const interval = setInterval(fetch, 20000);
+  const interval = setInterval(fetch, 5000);
   return () => clearInterval(interval);
 };
 

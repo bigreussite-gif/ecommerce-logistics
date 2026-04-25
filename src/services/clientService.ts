@@ -113,9 +113,10 @@ export interface ClientFidelityStats {
 }
 
 export const getClientsWithIntelligence = async (): Promise<(Client & ClientFidelityStats & { identities: string[], locations: string[] })[]> => {
+  // Optimisation : On ne récupère que les colonnes essentielles pour le calcul de l'intelligence
   const [clients, allOrdersResult] = await Promise.all([
     getAllClients(),
-    insforge.database.from('commandes').select('*')
+    insforge.database.from('commandes').select('id, client_id, montant_total, statut_commande, date_creation')
   ]);
 
   const orders = allOrdersResult.data || [];

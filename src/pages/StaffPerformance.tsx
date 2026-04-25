@@ -21,7 +21,8 @@ interface StaffStats {
   retours: number;
   annulees: number;
   reportees: number;
-  ca_livraison: number;
+  ca_total: number; // Chiffre d'Affaires total généré (Produits + Livraison)
+  primes: number;   // Primes d'installation gagnées par le staff
   taux_succes: number;
 }
 
@@ -35,7 +36,8 @@ interface AgentStats {
   echecs: number;
   reprogrammees: number;
   annulees: number;
-  taux_conversion: number; // livrees / total (vrai taux de succès)
+  ca_genere: number;      // CA Brut des commandes livrées
+  taux_conversion: number; // livrees / (livrees + annulees + retours)
   connexions: number;
 }
 
@@ -89,13 +91,20 @@ export const StaffPerformance = () => {
         const lStats: StaffStats[] = livreurs.map(l => {
           const lCmds = (ordersByLivreur[l.id] || []).filter(c => {
             const isSucces = ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase());
-            const activeDate = (isSucces && c.date_livraison_effective) ? new Date(c.date_livraison_effective) : new Date(c.date_creation);
+            // Pour la compta, on se base sur la date de livraison effective ou la dernière mise à jour
+            const activeDate = isSucces ? new Date(c.date_livraison_effective || c.updated_at) : new Date(c.date_creation);
             return isAfter(activeDate, startOfInterval);
           });
           
           const logStats = calculateLogisticalStats(lCmds);
-          const ca_livraison = lCmds.reduce((acc, c) => 
-            acc + (['livree', 'terminee'].includes(c.statut_commande) ? (Number(c.frais_livraison) || 0) + (Number(c.total_primes_installation) || 0) : 0)
+          
+          // CA Total = Montant Total (Produits + Livraison + Primes)
+          const ca_total = lCmds.reduce((acc, c) => 
+            acc + (['livree', 'terminee'].includes(c.statut_commande?.toLowerCase()) ? (Number(c.montant_total) || 0) : 0)
+          , 0);
+
+          const primes = lCmds.reduce((acc, c) => 
+            acc + (['livree', 'terminee'].includes(c.statut_commande?.toLowerCase()) ? (Number(c.total_primes_installation) || 0) : 0)
           , 0);
 
           return {
@@ -106,40 +115,36 @@ export const StaffPerformance = () => {
             retours: logStats.retours,
             annulees: logStats.annulees,
             reportees: logStats.reportees,
-            ca_livraison,
+            ca_total,
+            primes,
             taux_succes: logStats.taux_succes
           };
-        }).sort((a, b) => b.taux_succes - a.taux_succes);
+        }).sort((a, b) => b.ca_total - a.ca_total);
 
         // --- 2. Calculate Agent Stats ---
-        const agents = users_data.filter(u => u.role === 'AGENT_APPEL' || u.role === 'AGENT_MIXTE' || u.role === 'GESTIONNAIRE');
-        const ordersByAgent: Record<string, Commande[]> = {};
-        cmds_data.forEach(c => {
-          if (c.agent_appel_id) {
-            if (!ordersByAgent[c.agent_appel_id]) ordersByAgent[c.agent_appel_id] = [];
-            ordersByAgent[c.agent_appel_id].push(c);
-          }
-        });
-
         const aStats: AgentStats[] = agents.map(a => {
           const aCmds = (ordersByAgent[a.id] || []).filter(c => isAfter(new Date(c.date_creation), startOfInterval));
           const total = aCmds.length;
-          // Validées = agent a confirmé la commande avec le client
-          const validees = aCmds.filter(c => ['validee', 'en_cours_livraison', 'livree', 'terminee', 'retour_livreur', 'absent', 'echouee', 'retour_stock', 'retour_client'].includes(c.statut_commande?.toLowerCase())).length;
-          // Livrées = commande effectivement remise au client et payée
+          
+          const validees = aCmds.filter(c => !['en_attente_appel', 'annulee'].includes(c.statut_commande?.toLowerCase())).length;
           const livrees = aCmds.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).length;
-          // Retours = livreur a tenté mais n'a pas pu livrer
           const retours = aCmds.filter(c => ['retour_livreur', 'retour_stock', 'retour_client'].includes(c.statut_commande?.toLowerCase())).length;
-          // Echecs livraison
           const echecs = aCmds.filter(c => ['echouee', 'absent'].includes(c.statut_commande?.toLowerCase())).length;
-          // Reprogrammées = à rappeler
           const reprogrammees = aCmds.filter(c => c.statut_commande?.toLowerCase() === 'a_rappeler').length;
-          // Annulées = client a refusé ou injoignable définitivement
           const annulees = aCmds.filter(c => c.statut_commande?.toLowerCase() === 'annulee').length;
+          
           const userLogins = allLogins.filter(l => l.user_id === a.id && isAfter(new Date(l.login_time), startOfInterval)).length;
-          // Taux de conversion = livrees réelles / total des dossiers traités
-          const taux_conversion = total > 0 ? Math.round((livrees / total) * 100) : 0;
+          
+          // CA Brut Généré par l'agent
+          const ca_genere = aCmds.reduce((acc, c) => 
+            acc + (['livree', 'terminee'].includes(c.statut_commande?.toLowerCase()) ? (Number(c.montant_total) || 0) : 0)
+          , 0);
 
+          // Taux de conversion : Livrées / (Livrées + Retours + Annulées + Echecs)
+          // On exclut les "en attente" et "à rappeler" pour avoir le taux réel sur les dossiers clôturés
+          const totalClotures = livrees + retours + annulees + echecs;
+          const taux_conversion = totalClotures > 0 ? Math.round((livrees / totalClotures) * 100) : 0;
+          
           return {
             id: a.id,
             nom: a.nom_complet,
@@ -150,10 +155,11 @@ export const StaffPerformance = () => {
             echecs,
             reprogrammees,
             annulees,
+            ca_genere,
             taux_conversion,
             connexions: userLogins
           };
-        }).sort((a, b) => b.taux_conversion - a.taux_conversion);
+        }).sort((a, b) => b.ca_genere - a.ca_genere);
 
         // --- 3. Calculate Product Creator Stats ---
         const creators = users_data.filter(u => u.role !== 'LIVREUR' && u.role !== 'CAISSIERE');
@@ -214,7 +220,8 @@ export const StaffPerformance = () => {
             <th style={{ textAlign: 'center' }}>Retours</th>
             <th style={{ textAlign: 'center' }}>Annulés</th>
             <th style={{ textAlign: 'center' }}>Reports</th>
-            <th style={{ textAlign: 'right' }}>Gains Livr.</th>
+            <th style={{ textAlign: 'right' }}>CA Brut</th>
+            <th style={{ textAlign: 'right' }}>Primes</th>
           </tr>
         </thead>
         <tbody>
@@ -246,8 +253,11 @@ export const StaffPerformance = () => {
               <td style={{ textAlign: 'center' }}>
                 <span className="badge badge-warning" style={{ padding: '0.2rem 0.5rem', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>{s.reportees}</span>
               </td>
-              <td style={{ textAlign: 'right', fontWeight: 800 }}>
-                <div style={{ whiteSpace: 'nowrap' }}>{s.ca_livraison.toLocaleString()} CFA</div>
+              <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text-main)' }}>
+                <div style={{ whiteSpace: 'nowrap' }}>{s.ca_total.toLocaleString()} CFA</div>
+              </td>
+              <td style={{ textAlign: 'right', fontWeight: 700, color: '#10b981' }}>
+                <div style={{ whiteSpace: 'nowrap' }}>+{s.primes.toLocaleString()}</div>
               </td>
             </tr>
           ))}
@@ -269,6 +279,7 @@ export const StaffPerformance = () => {
             <th style={{ textAlign: 'center' }}>❌ Échecs</th>
             <th style={{ textAlign: 'center' }}>🔄 Reprog.</th>
             <th style={{ textAlign: 'center' }}>🚫 Annulées</th>
+            <th style={{ textAlign: 'right' }}>CA Généré</th>
             <th style={{ textAlign: 'center' }}>🔌 Connexions</th>
             <th style={{ textAlign: 'right' }}>Taux Conversion</th>
           </tr>
@@ -284,7 +295,7 @@ export const StaffPerformance = () => {
                   <div>
                     <p style={{ margin: 0, fontWeight: 700, fontSize: '0.9rem' }}>{s.nom}</p>
                     <p style={{ margin: 0, fontSize: '0.72rem', color: s.taux_conversion > 60 ? '#10b981' : '#f43f5e', fontWeight: 700 }}>
-                      {s.taux_conversion}% de conversion réelle
+                      {s.taux_conversion}% sur dossiers clos
                     </p>
                   </div>
                 </div>
@@ -307,6 +318,9 @@ export const StaffPerformance = () => {
               </td>
               <td style={{ textAlign: 'center' }}>
                 <span style={{ padding: '0.2rem 0.6rem', background: 'rgba(244, 63, 94, 0.07)', color: '#dc2626', fontWeight: 700, borderRadius: '8px', fontSize: '0.85rem' }}>{s.annulees}</span>
+              </td>
+              <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text-main)' }}>
+                <div style={{ whiteSpace: 'nowrap' }}>{s.ca_genere.toLocaleString()} CFA</div>
               </td>
               <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-muted)' }}>{s.connexions}</td>
               <td style={{ textAlign: 'right' }}>

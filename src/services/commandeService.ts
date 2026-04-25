@@ -48,11 +48,12 @@ export const getCommandes = async (limit = 50, offset = 0): Promise<Commande[]> 
 export const subscribeToCommandes = (callback: (commandes: Commande[]) => void) => {
   const fetch = () => {
     if (document.visibilityState === 'visible') {
-      getCommandes().then(callback);
+      getCommandes(100).then(callback); // Fetch top 100 for better performance
     }
   };
   fetch();
-  const interval = setInterval(fetch, 15000);
+  // Sync every 5 seconds for a more "real-time" feel
+  const interval = setInterval(fetch, 5000);
   return () => clearInterval(interval);
 };
 
@@ -81,7 +82,7 @@ export const subscribeToCommandesByStatus = (statusList: string[], callback: (co
     }
   };
   fetch();
-  const interval = setInterval(fetch, 15000);
+  const interval = setInterval(fetch, 5000);
   return () => clearInterval(interval);
 };
 
@@ -370,13 +371,13 @@ export const registerReturn = async (id: string, motif: string, solution: string
 };
 
 export const bulkUpdateCommandeStatus = async (ids: string[], status: string, additionalData: any = {}): Promise<void> => {
-  for (const id of ids) {
-    try {
-      await updateCommandeStatus(id, status, additionalData);
-    } catch (e) {
+  // Parallelize updates for massive speed boost
+  const updatePromises = ids.map(id => 
+    updateCommandeStatus(id, status, additionalData).catch(e => {
       console.error(`Error updating order ${id}:`, e);
-    }
-  }
+    })
+  );
+  await Promise.all(updatePromises);
 };
 
 export const getTopSellingProducts = async (limit = 10, days?: number, start?: string, end?: string): Promise<{ nom: string, nb_ventes: number, total_ca: number, total_sorties: number, taux_succes: number }[]> => {

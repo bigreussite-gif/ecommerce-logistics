@@ -120,7 +120,8 @@ export const processCaisse = async (
 
   if (linesError) throw linesError;
   
-  for (const res of resolutions) {
+  // Parallelize the resolution processing
+  const resolutionPromises = resolutions.map(async (res) => {
     let finalStatus = res.statut;
     if (res.statut === 'livree') finalStatus = 'terminee';
     if (res.statut === 'retour_livreur' || res.statut === 'echouee') finalStatus = 'retour_stock';
@@ -132,57 +133,42 @@ export const processCaisse = async (
       mode_paiement: res.mode_paiement 
     };
 
-    // If not delivered, clear the route sheet ID so it can be re-assigned in Logistics
     if (!isDelivered) {
       updateData.feuille_route_id = null;
     }
     
-    // CRITICAL FIX: Ensure date_livraison_effective is set if the command is successful
     if (isDelivered) {
       updateData.date_livraison_effective = new Date().toISOString();
     }
     
-    const { error: cmdUpdateError } = await insforge.database
+    await insforge.database
       .from('commandes')
       .update(updateData)
       .eq('id', res.id);
 
-    if (cmdUpdateError) throw cmdUpdateError;
-
-    // Handle installation updates if provided
     if (isDelivered && res.updatedLines) {
-      let newTotalPrimes = 0;
-      let newMontantTotal = 0;
-      
-      // We need shipping fee to recalculate total
+      // Recalculate total if lines changed
       const { data: cmdRef } = await insforge.database.from('commandes').select('frais_livraison, remise_totale').eq('id', res.id).single();
       const shipping = Number(cmdRef?.frais_livraison) || 0;
       const remise = Number(cmdRef?.remise_totale) || 0;
 
+      let newTotalPrimes = 0;
+      let newMontantTotal = 0;
+
       for (const l of res.updatedLines) {
         const lineTotal = (Number(l.prix_unitaire) * Number(l.quantite)) + (l.choix_installation ? (Number(l.frais_installation) * Number(l.quantite)) : 0);
         newMontantTotal += lineTotal;
-        
-        if (l.choix_installation) {
-          newTotalPrimes += (Number(l.frais_installation) * Number(l.quantite));
-        }
+        if (l.choix_installation) newTotalPrimes += (Number(l.frais_installation) * Number(l.quantite));
 
         await insforge.database
           .from('lignes_commandes')
-          .update({ 
-            choix_installation: !!l.choix_installation,
-            montant_ligne: lineTotal 
-          })
+          .update({ choix_installation: !!l.choix_installation, montant_ligne: lineTotal })
           .eq('id', l.id);
       }
 
-      // Update order final total and primes
       await insforge.database
         .from('commandes')
-        .update({ 
-          montant_total: newMontantTotal + shipping - remise,
-          total_primes_installation: newTotalPrimes 
-        })
+        .update({ montant_total: newMontantTotal + shipping - remise, total_primes_installation: newTotalPrimes })
         .eq('id', res.id);
     }
 
@@ -197,7 +183,9 @@ export const processCaisse = async (
         } as any);
       }
     }
-  }
+  });
+
+  await Promise.all(resolutionPromises);
   
   // 2. Log formal Caisse Retour
     const { error: retourError } = await insforge.database
