@@ -23,6 +23,7 @@ interface StaffStats {
   reportees: number;
   ca_total: number; // Chiffre d'Affaires total généré (Produits + Livraison)
   primes: number;   // Primes d'installation gagnées par le staff
+  paye: number;     // Paye totale (Frais livraison + Primes)
   taux_succes: number;
 }
 
@@ -106,6 +107,10 @@ export const StaffPerformance = () => {
             acc + (['livree', 'terminee'].includes(c.statut_commande?.toLowerCase()) ? (Number(c.total_primes_installation) || 0) : 0)
           , 0);
 
+          const frais_livraison = lCmds.reduce((acc: number, c: Commande) => 
+            acc + (['livree', 'terminee'].includes(c.statut_commande?.toLowerCase()) ? (Number(c.frais_livraison) || 0) : 0)
+          , 0);
+
           return {
             id: l.id,
             nom: l.nom_complet,
@@ -116,6 +121,7 @@ export const StaffPerformance = () => {
             reportees: logStats.reportees,
             ca_total,
             primes,
+            paye: frais_livraison + primes,
             taux_succes: logStats.taux_succes
           };
         }).sort((a: StaffStats, b: StaffStats) => b.ca_total - a.ca_total);
@@ -232,11 +238,11 @@ export const StaffPerformance = () => {
             <th style={{ textAlign: 'center' }}>Annulés</th>
             <th style={{ textAlign: 'center' }}>Reports</th>
             <th style={{ textAlign: 'right' }}>CA Brut</th>
-            <th style={{ textAlign: 'right' }}>Primes</th>
+            <th style={{ textAlign: 'right' }}>Paye Staff</th>
           </tr>
         </thead>
         <tbody>
-          {livreurStats.map((s) => (
+          {livreurStats.map((s: StaffStats) => (
             <tr key={s.id}>
               <td>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -267,8 +273,9 @@ export const StaffPerformance = () => {
               <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--text-main)' }}>
                 <div style={{ whiteSpace: 'nowrap' }}>{s.ca_total.toLocaleString()} CFA</div>
               </td>
-              <td style={{ textAlign: 'right', fontWeight: 700, color: '#10b981' }}>
-                <div style={{ whiteSpace: 'nowrap' }}>+{s.primes.toLocaleString()}</div>
+              <td style={{ textAlign: 'right', fontWeight: 800, color: '#10b981' }}>
+                <div style={{ whiteSpace: 'nowrap' }}>{s.paye.toLocaleString()} CFA</div>
+                {s.primes > 0 && <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>(incl. {s.primes} prime)</div>}
               </td>
             </tr>
           ))}

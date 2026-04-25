@@ -14,8 +14,11 @@ export const Admin = () => {
   const canManageCommunes = hasPermission('ADMIN') || hasPermission('COMMUNES');
   const canManageCategories = hasPermission('ADMIN') || hasPermission('PRODUITS');
 
-  const [activeTab, setActiveTab] = useState<'utilisateurs' | 'communes' | 'categories'>(
-    canManageUsers ? 'utilisateurs' : (canManageCommunes ? 'communes' : 'categories')
+  const canManageFournisseurs = hasPermission('ADMIN');
+  const canManageMarketing = hasPermission('ADMIN');
+
+  const [activeTab, setActiveTab] = useState<'utilisateurs' | 'communes' | 'categories' | 'fournisseurs' | 'marketing' | 'parametres'>(
+    canManageUsers ? 'utilisateurs' : (canManageCommunes ? 'communes' : (canManageCategories ? 'categories' : 'fournisseurs'))
   );
 
   return (
@@ -75,12 +78,29 @@ export const Admin = () => {
             <Plus size={18} strokeWidth={activeTab === 'categories' ? 2.5 : 2} /> Catégories
           </button>
         )}
+        {canManageFournisseurs && (
+          <button 
+            className="btn"
+            onClick={() => setActiveTab('fournisseurs')}
+            style={{ 
+              background: activeTab === 'fournisseurs' ? 'white' : 'transparent',
+              color: activeTab === 'fournisseurs' ? 'var(--primary)' : 'var(--text-muted)',
+              boxShadow: activeTab === 'fournisseurs' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
+              border: 'none', padding: '0.7rem 1.5rem', borderRadius: '12px', fontWeight: 700, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem'
+            }}
+          >
+            <UsersIcon size={18} strokeWidth={activeTab === 'fournisseurs' ? 2.5 : 2} /> Fournisseurs
+          </button>
+        )}
       </div>
 
       <div>
         {activeTab === 'utilisateurs' && <UsersManager showToast={showToast} />}
         {activeTab === 'communes' && <CommunesManager showToast={showToast} />}
         {activeTab === 'categories' && <CategoriesManager showToast={showToast} />}
+        {activeTab === 'fournisseurs' && <FournisseursManager showToast={showToast} />}
+        {activeTab === 'marketing' && <MarketingManager showToast={showToast} />}
+        {activeTab === 'parametres' && <ParametresManager showToast={showToast} />}
       </div>
     </div>
   );
@@ -560,6 +580,212 @@ const CategoriesManager = ({ showToast }: { showToast: any }) => {
             )}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+};
+
+// --- FOURNISSEURS MANAGER COMPONENT ---
+import { getFournisseurs, createFournisseur, updateFournisseur, deleteFournisseur, payDebt, Fournisseur } from '../services/fournisseurService';
+
+const FournisseursManager = ({ showToast }: { showToast: any }) => {
+  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<Partial<Fournisseur>>({});
+  const [payAmount, setPayAmount] = useState<number>(0);
+  const [payingId, setPayingId] = useState<string | null>(null);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const data = await getFournisseurs();
+      setFournisseurs(data || []);
+    } catch (e) {
+      showToast("Erreur chargement fournisseurs.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const handleSave = async () => {
+    if (!form.nom) return showToast("Le nom est requis.", "error");
+    setLoading(true);
+    try {
+      if (editingId === 'new') {
+        await createFournisseur({ nom: form.nom, telephone: form.telephone, adresse: form.adresse, contact: form.contact });
+      } else if (editingId) {
+        await updateFournisseur(editingId, form);
+      }
+      showToast("Enregistré.", "success");
+      setEditingId(null); setForm({}); loadData();
+    } catch (e: any) {
+      showToast(e.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePay = async (id: string) => {
+    if (payAmount <= 0) return;
+    setLoading(true);
+    try {
+      await payDebt(id, payAmount);
+      showToast("Paiement enregistré et déduit de la dette.", "success");
+      setPayingId(null); setPayAmount(0); loadData();
+    } catch (e: any) {
+      showToast(e.message, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="card table-responsive-cards" style={{ padding: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Gestion des Fournisseurs</h3>
+        <button className="btn btn-primary" onClick={() => { setEditingId('new'); setForm({}); }} disabled={loading}>
+          <Plus size={18} /> Ajouter un fournisseur
+        </button>
+      </div>
+
+      <div className="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Nom / Contact</th>
+              <th>Téléphone / Adresse</th>
+              <th>Solde Dette</th>
+              <th style={{ textAlign: 'right', width: '250px' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(editingId === 'new' || fournisseurs.some(f => f.id === editingId)) && editingId !== null && (
+              <tr style={{ background: '#f8fafc' }}>
+                <td colSpan={4}>
+                  <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                    <div className="form-group">
+                      <label className="form-label">Nom du fournisseur</label>
+                      <input className="form-input" placeholder="Nom du fournisseur" value={form.nom || ''} onChange={e => setForm({...form, nom: e.target.value})} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Personne de contact</label>
+                      <input className="form-input" placeholder="Personne de contact" value={form.contact || ''} onChange={e => setForm({...form, contact: e.target.value})} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Téléphone</label>
+                      <input className="form-input" placeholder="Téléphone" value={form.telephone || ''} onChange={e => setForm({...form, telephone: e.target.value})} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Adresse</label>
+                      <input className="form-input" placeholder="Adresse" value={form.adresse || ''} onChange={e => setForm({...form, adresse: e.target.value})} />
+                    </div>
+                    <div style={{ gridColumn: '1 / -1', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                      <button className="btn btn-primary" onClick={handleSave} disabled={loading}>Enregistrer</button>
+                      <button className="btn btn-outline" onClick={() => setEditingId(null)}>Annuler</button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            )}
+
+            {fournisseurs.filter(f => f.id !== editingId).map(f => (
+              <tr key={f.id}>
+                <td data-label="Nom">
+                  <div style={{ fontWeight: 700 }}>{f.nom}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{f.contact}</div>
+                </td>
+                <td data-label="Tel/Adresse">
+                  <div>{f.telephone}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{f.adresse}</div>
+                </td>
+                <td data-label="Dette">
+                  <span style={{ fontWeight: 900, color: f.solde_dette > 0 ? '#ef4444' : '#10b981' }}>
+                    {f.solde_dette.toLocaleString()} CFA
+                  </span>
+                </td>
+                <td style={{ textAlign: 'right' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                    {payingId === f.id ? (
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <input type="number" className="form-input" style={{ width: '100px', height: '32px' }} value={payAmount} onChange={e => setPayAmount(Number(e.target.value))} />
+                        <button className="btn btn-primary btn-sm" onClick={() => handlePay(f.id)}>Payer</button>
+                        <button className="btn btn-outline btn-sm" onClick={() => setPayingId(null)}>X</button>
+                      </div>
+                    ) : (
+                      <button className="btn btn-outline btn-sm" onClick={() => { setPayingId(f.id); setPayAmount(f.solde_dette); }}>Régler</button>
+                    )}
+                    <button className="btn btn-outline btn-sm" onClick={() => { setEditingId(f.id); setForm(f); }}>Modifier</button>
+                    <button className="btn btn-outline btn-sm" style={{ color: '#ef4444' }} onClick={async () => { if(confirm('Supprimer?')) { await deleteFournisseur(f.id); loadData(); } }}><Trash2 size={16} /></button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {fournisseurs.length === 0 && editingId === null && (
+              <tr>
+                <td colSpan={4} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                  Aucun fournisseur configuré.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+// --- MARKETING MANAGER COMPONENT ---
+const MarketingManager = ({ showToast }: { showToast: any }) => {
+  return (
+    <div className="card" style={{ padding: '2rem' }}>
+      <h3 style={{ marginBottom: '1.5rem', fontWeight: 800 }}>Gestion Marketing & Sources</h3>
+      <p style={{ color: 'var(--text-muted)' }}>Configuration des sources d'acquisition et des budgets publicitaires.</p>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginTop: '2rem' }}>
+        <div style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '18px' }}>
+          <h4 style={{ marginBottom: '1rem' }}>Sources de Vente</h4>
+          <ul style={{ listStyle: 'none', padding: 0 }}>
+            {['Facebook Ads', 'WhatsApp Business', 'Site Web', 'Appel Entrant', 'Snapchat'].map(s => (
+              <li key={s} style={{ padding: '0.75rem', background: 'white', marginBottom: '0.5rem', borderRadius: '10px', display: 'flex', justifyContent: 'space-between', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontWeight: 600 }}>{s}</span>
+                <span className="badge badge-info">Actif</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+        
+        <div style={{ padding: '1.5rem', background: '#fef3f2', borderRadius: '18px' }}>
+          <h4 style={{ marginBottom: '1rem', color: '#991b1b' }}>Dépenses Publicitaires</h4>
+          <p style={{ fontSize: '0.9rem' }}>Configurez vos budgets journaliers pour le calcul du ROAS.</p>
+          <button className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>Saisir Dépenses Pub</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- PARAMETRES MANAGER COMPONENT ---
+const ParametresManager = ({ showToast }: { showToast: any }) => {
+  return (
+    <div className="card" style={{ padding: '2rem' }}>
+      <h3 style={{ marginBottom: '1.5rem', fontWeight: 800 }}>Paramètres Généraux</h3>
+      <div style={{ display: 'grid', gap: '1.5rem', maxWidth: '500px' }}>
+        <div className="form-group">
+          <label className="form-label">Frais de livraison par défaut (CFA)</label>
+          <input className="form-input" defaultValue="1500" type="number" />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Devise de l'application</label>
+          <input className="form-input" defaultValue="CFA (XOF)" readOnly />
+        </div>
+        <div className="form-group">
+          <label className="form-label">Taux de retenue charges (%)</label>
+          <input className="form-input" defaultValue="5" type="number" />
+        </div>
+        <button className="btn btn-primary" onClick={() => showToast("Paramètres sauvegardés localement.")}>Sauvegarder</button>
       </div>
     </div>
   );
