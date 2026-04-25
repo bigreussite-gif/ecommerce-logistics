@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Search, 
   X, TrendingUp, Eye, Download, MessageCircle, MapPin, 
-  Calendar, ShoppingBag, CreditCard, ChevronRight, Filter
+  Calendar, ShoppingBag, CreditCard, ChevronRight
 } from 'lucide-react';
 import { getClientsWithIntelligence, getClientCommandes, ClientFidelityStats, updateClient } from '../services/clientService';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
