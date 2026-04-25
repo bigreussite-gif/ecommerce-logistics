@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, CheckCircle, Download, X, ShoppingBag, Clock, Truck, AlertCircle, Calendar, RotateCcw } from 'lucide-react';
+import { Plus, Search, CheckCircle, Download, X, ShoppingBag, Clock, Truck, AlertCircle, Calendar } from 'lucide-react';
 import { CommandeList } from '../components/commandes/CommandeList';
 import { CommandeForm } from '../components/commandes/CommandeForm';
 import { BulkImportModal } from '../components/commandes/BulkImportModal';
@@ -173,7 +173,7 @@ export const Commandes = () => {
     const cancelled = filteredByDateCommandes.filter((c: Commande) => ['annulee'].includes(c.statut_commande?.toLowerCase())).length;
     const retours = filteredByDateCommandes.filter((c: Commande) => c.statut_commande === 'retour_client').length;
     
-    const successRate = total > 0 ? Math.round((delivered / (delivered + failed)) * 100) || 0 : 0;
+    const successRate = total > 0 ? Math.round((delivered / (delivered + failed + delivered)) * 100) || 0 : 0;
 
     return { total, processing, inDelivery, delivered, failed, cancelled, retours, successRate };
   }, [filteredByDateCommandes]);
@@ -214,8 +214,6 @@ export const Commandes = () => {
     const file = e.dataTransfer.files[0];
     if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv'))) {
       setIsBulkOpen(true);
-      // We can pass the file to the modal, but for now we'll just open the modal.
-      // Better: trigger the file input in the modal if possible, but simplest is to just open the modal.
     } else {
       showToast("Veuillez déposer un fichier Excel ou CSV valide.", "error");
     }
@@ -226,7 +224,7 @@ export const Commandes = () => {
       onDragOver={handleDragOver} 
       onDragLeave={handleDragLeave} 
       onDrop={handleDrop}
-      style={{ position: 'relative', minHeight: '100vh' }}
+      style={{ position: 'relative', minHeight: '100vh', paddingBottom: '5rem' }}
     >
       {isDragging && (
         <div style={{
@@ -235,8 +233,8 @@ export const Commandes = () => {
           left: 0,
           right: 0,
           bottom: 0,
-          background: 'rgba(79, 70, 229, 0.1)',
-          backdropFilter: 'blur(8px)',
+          background: 'rgba(99, 102, 255, 0.1)',
+          backdropFilter: 'blur(12px)',
           border: '4px dashed var(--primary)',
           zIndex: 9999,
           display: 'flex',
@@ -247,39 +245,45 @@ export const Commandes = () => {
           pointerEvents: 'none',
           animation: 'fadeIn 0.2s ease'
         }}>
-          <div style={{ background: 'white', padding: '3rem', borderRadius: '40px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.2)', textAlign: 'center' }}>
-            <div style={{ background: 'var(--primary)', color: 'white', width: '80px', height: '80px', borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
-              <Download size={40} style={{ transform: 'rotate(180deg)' }} />
+          <div style={{ background: 'white', padding: '4rem', borderRadius: '48px', boxShadow: '0 30px 60px -12px rgba(99, 102, 255, 0.3)', textAlign: 'center', transform: 'scale(1.1)' }}>
+            <div style={{ background: 'var(--primary)', color: 'white', width: '100px', height: '100px', borderRadius: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem', boxShadow: '0 15px 30px rgba(99, 102, 255, 0.4)' }}>
+              <Download size={48} style={{ transform: 'rotate(180deg)' }} />
             </div>
-            <h2 style={{ fontSize: '2rem', fontWeight: 900 }}>Déposez pour importer</h2>
-            <p style={{ fontWeight: 600, opacity: 0.8 }}>Relâchez le fichier pour lancer l'importation Excel.</p>
+            <h2 style={{ fontSize: '2.5rem', fontWeight: 900, color: '#1e293b' }}>Importation Intelligente</h2>
+            <p style={{ fontWeight: 600, fontSize: '1.1rem', color: '#64748b', marginTop: '1rem' }}>Relâchez votre fichier Excel ou CSV pour traiter les commandes.</p>
           </div>
         </div>
       )}
 
       <div style={{ animation: 'pageEnter 0.6s ease' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
-          <div className="mobile-stack">
-            <h1 className="text-premium" style={{ fontSize: 'clamp(1.8rem, 5vw, 2.2rem)', fontWeight: 800, margin: 0 }}>Gestion des Commandes</h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginTop: '0.4rem', fontWeight: 500 }}>Suivi temps réel et pilotage de vos flux logistiques.</p>
+        {/* Header Section */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem', flexWrap: 'wrap', gap: '2rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+              <div style={{ padding: '0.75rem', background: 'var(--primary)', borderRadius: '16px', color: 'white' }}>
+                <ShoppingBag size={32} />
+              </div>
+              <h1 className="text-premium" style={{ fontSize: '2.5rem', fontWeight: 900, margin: 0 }}>Gestion Commandes</h1>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 600 }}>Pilotez vos flux logistiques et suivez vos performances en temps réel.</p>
           </div>
           
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <div style={{ display: 'flex', background: 'white', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '0.3rem', boxShadow: 'var(--shadow-premium)', position: 'relative' }}>
+            <div style={{ display: 'flex', background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '0.4rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
                {(['today', '7d', '30d', 'all'] as Period[]).map((p) => (
                  <button
                    key={p}
                    onClick={() => setPeriod(p)}
                    style={{
-                     padding: '0.4rem 0.8rem',
-                     borderRadius: '10px',
-                     fontSize: '0.75rem',
+                     padding: '0.6rem 1.2rem',
+                     borderRadius: '12px',
+                     fontSize: '0.8rem',
                      fontWeight: 800,
                      border: 'none',
                      background: period === p ? 'var(--primary)' : 'transparent',
                      color: period === p ? 'white' : '#64748b',
                      cursor: 'pointer',
-                     transition: 'all 0.2s'
+                     transition: 'all 0.2s ease'
                    }}
                  >
                    {p === 'today' ? "Aujourd'hui" : p === '7d' ? '7j' : p === '30d' ? '30j' : 'Tout'}
@@ -288,9 +292,9 @@ export const Commandes = () => {
                <button 
                  onClick={() => setPeriod('custom')}
                  style={{
-                   padding: '0.4rem 0.8rem',
-                   borderRadius: '10px',
-                   fontSize: '0.75rem',
+                   padding: '0.6rem 1.2rem',
+                   borderRadius: '12px',
+                   fontSize: '0.8rem',
                    fontWeight: 800,
                    border: 'none',
                    background: period === 'custom' ? 'var(--primary)' : 'transparent',
@@ -298,214 +302,184 @@ export const Commandes = () => {
                    cursor: 'pointer',
                    display: 'flex',
                    alignItems: 'center',
-                   gap: '0.3rem'
+                   gap: '0.5rem'
                  }}
                >
-                 <Calendar size={12} />
-                 Perso.
+                 <Calendar size={14} /> Custom
                </button>
             </div>
 
-            <button className="btn btn-outline" onClick={() => setIsBulkOpen(true)} style={{ padding: '0.8rem 1.5rem', borderRadius: '14px', fontSize: '0.95rem', fontWeight: 700, border: '1px solid #e2e8f0' }}>
+            <button className="btn btn-outline" onClick={() => setIsBulkOpen(true)} style={{ height: '52px', padding: '0 1.5rem', borderRadius: '16px', fontWeight: 800, border: '1px solid #e2e8f0', background: 'white' }}>
               <Download size={20} style={{ transform: 'rotate(180deg)' }} />
-              Importation Groupée
+              Import Bulk
             </button>
 
-            <button className="btn btn-primary" onClick={() => setIsFormOpen(true)} style={{ padding: '0.8rem 1.5rem', borderRadius: '14px', fontSize: '0.95rem', fontWeight: 700 }}>
-              <Plus size={20} />
-              Nouvelle Commande
+            <button className="btn btn-primary" onClick={() => setIsFormOpen(true)} style={{ height: '52px', padding: '0 1.5rem', borderRadius: '16px', fontWeight: 800, boxShadow: '0 10px 20px rgba(99, 102, 255, 0.2)' }}>
+              <Plus size={22} /> Nouvelle
             </button>
           </div>
         </div>
 
         {period === 'custom' && (
-          <div className="card" style={{ marginBottom: '2rem', padding: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', justifyContent: 'center', animation: 'slideDown 0.3s ease' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Du</span>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="form-input" style={{ width: 'auto', padding: '0.4rem' }} />
+          <div className="card glass-effect" style={{ marginBottom: '2.5rem', padding: '1.5rem', display: 'flex', gap: '2rem', alignItems: 'center', justifyContent: 'center', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)', animation: 'slideDown 0.3s ease' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)' }}>DU</span>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="form-input" style={{ width: 'auto', height: '40px', borderRadius: '10px' }} />
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Au</span>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="form-input" style={{ width: 'auto', padding: '0.4rem' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)' }}>AU</span>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="form-input" style={{ width: 'auto', height: '40px', borderRadius: '10px' }} />
             </div>
           </div>
         )}
 
-        {/* DASHBOARD STATS */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', 
-          gap: '1.25rem', 
-          marginBottom: '2.5rem' 
-        }}>
+        {/* Dashboard Analytics Cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
           {[
-            { label: 'Total Commandes', value: stats.total, color: 'var(--primary)', icon: <ShoppingBag size={24} />, shadow: 'var(--shadow-premium)' },
-            { label: 'En Traitement', value: stats.processing, color: '#f59e0b', icon: <Clock size={24} />, shadow: '0 10px 20px rgba(245, 158, 11, 0.15)' },
-            { label: 'En Livraison', value: stats.inDelivery, color: '#6366f1', icon: <Truck size={24} />, shadow: '0 10px 20px rgba(99, 102, 241, 0.15)' },
-            { label: 'Livrées', value: stats.delivered, color: '#10b981', icon: <CheckCircle size={24} />, shadow: '0 10px 20px rgba(16, 185, 129, 0.15)' },
-            { label: 'Échecs / Retours', value: stats.failed, color: '#ef4444', icon: <AlertCircle size={24} />, shadow: '0 10px 20px rgba(239, 68, 68, 0.15)' },
-            { label: 'Retours Client', value: stats.retours, color: '#f59e0b', icon: <RotateCcw size={24} />, shadow: '0 10px 20px rgba(245, 158, 11, 0.15)' },
-            { label: 'Annulées', value: stats.cancelled, color: '#94a3b8', icon: <X size={24} />, shadow: '0 10px 20px rgba(148, 163, 184, 0.15)' }
+            { label: 'Flux Total', value: stats.total, color: 'var(--primary)', icon: <ShoppingBag size={24} />, trend: 'Volume Global' },
+            { label: 'En Validation', value: stats.processing, color: '#f59e0b', icon: <Clock size={24} />, trend: 'Flux entrant' },
+            { label: 'Livraison', value: stats.inDelivery, color: '#6366f1', icon: <Truck size={24} />, trend: 'En transit' },
+            { label: 'Livrées', value: stats.delivered, color: '#10b981', icon: <CheckCircle size={24} />, trend: `${stats.successRate}% succès` },
+            { label: 'Échecs / Retours', value: stats.failed, color: '#ef4444', icon: <AlertCircle size={24} />, trend: 'À traiter' }
           ].map((item, idx) => (
-            <div 
-              key={idx} 
-              className="card glass-effect" 
-              style={{ 
-                padding: '1.5rem', 
-                borderRadius: '24px', 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '0.75rem',
-                border: '1px solid rgba(255,255,255,0.8)',
-                boxShadow: item.shadow,
-                transition: 'transform 0.3s ease',
-                cursor: 'default'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-5px)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div style={{ padding: '0.6rem', borderRadius: '14px', background: `${item.color}15`, color: item.color }}>
+            <div key={idx} className="card glass-effect" style={{ padding: '2rem', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: '1rem', transition: 'all 0.3s ease' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: `${item.color}15`, color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {item.icon}
+                </div>
+                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: item.color, padding: '0.3rem 0.6rem', background: `${item.color}10`, borderRadius: '8px', textTransform: 'uppercase' }}>
+                  {item.trend}
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--text-main)', marginBottom: '0.1rem' }}>{item.value}</div>
-                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{item.label}</div>
+                <div style={{ fontSize: '2rem', fontWeight: 900, color: '#1e293b' }}>{item.value.toLocaleString()}</div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{item.label}</div>
               </div>
             </div>
           ))}
         </div>
 
-        {/* BARRE DE RECHERCHE ET TABS */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2.5rem' }}>
-          <div style={{ position: 'relative', maxWidth: '600px', width: '100%' }}>
-            <div style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
-              <Search size={20} strokeWidth={2.5} />
-            </div>
-            <input 
-              type="text" 
-              placeholder="Rechercher un client, téléphone, ID ou zone..." 
-              className="form-input"
-              style={{ 
-                paddingLeft: '3.5rem', 
-                height: '56px',
-                fontSize: '1rem',
-                borderRadius: '18px', 
-                background: 'white',
-                boxShadow: 'var(--shadow-premium)',
-                border: '2px solid transparent',
-                transition: 'all 0.3s ease'
-              }}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+        {/* Filters & Actions Area */}
+        <div className="card glass-effect" style={{ padding: '2rem', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.1)', marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
+              <div style={{ position: 'relative', maxWidth: '500px', width: '100%' }}>
+                <Search size={20} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input 
+                  type="text" 
+                  placeholder="Rechercher par client, téléphone ou ID..." 
+                  className="form-input"
+                  style={{ paddingLeft: '3.5rem', height: '52px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', fontWeight: 600 }}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
 
-          <div style={{ display: 'flex', overflowX: 'auto', gap: '0.75rem', paddingBottom: '0.5rem', scrollbarWidth: 'none' }}>
-            {[
-              { id: 'to_process', label: 'À Traiter', color: '#f59e0b' },
-              { id: 'in_delivery', label: 'En Livraison', color: 'var(--primary)' },
-              { id: 'done', label: 'Terminées', color: '#10b981' },
-              { id: 'failed', label: 'Retours/Échecs', color: '#ef4444' },
-              { id: 'retours', label: 'Retours Client', color: '#f59e0b' },
-              { id: 'annulee', label: 'Annulées', color: '#94a3b8' },
-              { id: 'all', label: 'Tout', color: 'var(--primary)' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                style={{
-                  padding: '0.6rem 1.25rem',
-                  borderRadius: '12px',
-                  fontSize: '0.9rem',
-                  fontWeight: 700,
-                  whiteSpace: 'nowrap',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                  border: activeTab === tab.id ? 'none' : '1px solid #e2e8f0',
-                  background: activeTab === tab.id ? tab.color : 'white',
-                  color: activeTab === tab.id ? 'white' : '#64748b',
-                  boxShadow: activeTab === tab.id ? `0 8px 16px ${tab.color}33` : 'none',
-                  transform: activeTab === tab.id ? 'translateY(-1px)' : 'none'
-                }}
+              <div style={{ display: 'flex', overflowX: 'auto', gap: '6px', background: '#f1f5f9', padding: '6px', borderRadius: '16px', scrollbarWidth: 'none' }}>
+                {[
+                  { id: 'to_process', label: 'Flux', count: stats.processing },
+                  { id: 'in_delivery', label: 'En Livraison', count: stats.inDelivery },
+                  { id: 'done', label: 'Livrées', count: stats.delivered },
+                  { id: 'failed', label: 'Échecs', count: stats.failed },
+                  { id: 'all', label: 'Tout', count: stats.total }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    style={{
+                      padding: '0.6rem 1.25rem',
+                      borderRadius: '12px',
+                      fontSize: '0.85rem',
+                      fontWeight: 800,
+                      whiteSpace: 'nowrap',
+                      border: 'none',
+                      background: activeTab === tab.id ? 'white' : 'transparent',
+                      color: activeTab === tab.id ? 'var(--primary)' : '#64748b',
+                      boxShadow: activeTab === tab.id ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}
+                  >
+                    {tab.label}
+                    <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: activeTab === tab.id ? 'var(--primary)15' : '#e2e8f0', color: activeTab === tab.id ? 'var(--primary)' : '#64748b', borderRadius: '6px' }}>{tab.count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '6rem' }}>
+                <div className="loading-spinner" style={{ margin: '0 auto 1.5rem' }}></div>
+                <p style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Chargement de vos données logistiques...</p>
+              </div>
+            ) : (
+              <CommandeList 
+                commandes={filteredCommandes} 
+                selectedIds={selectedIds}
+                onSelectionChange={setSelectedIds}
+                onActionClick={(c) => setSelectedCommandeId(c.id)}
+                onDelete={handleDelete}
+                onInvoiceClick={handleInvoice}
+                onEditClick={handleEdit}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Floating Batch Action Bar */}
+        {selectedIds.length > 0 && (
+          <div 
+            style={{ 
+              position: 'fixed', 
+              bottom: '2.5rem', 
+              left: '50%', 
+              transform: 'translateX(-50%)', 
+              background: '#1e293b', 
+              padding: '1.25rem 2.5rem', 
+              borderRadius: '24px', 
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '2rem',
+              zIndex: 1000,
+              animation: 'slideUp 0.3s ease',
+              color: 'white'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderRight: '1px solid rgba(255,255,255,0.1)', paddingRight: '2rem' }}>
+              <div style={{ background: 'var(--primary)', color: 'white', width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 900 }}>
+                {selectedIds.length}
+              </div>
+              <span style={{ fontWeight: 700, fontSize: '1rem' }}>SÉLECTIONNÉS</span>
+              <button 
+                onClick={() => setSelectedIds([])}
+                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', display: 'flex', padding: '0.5rem' }}
               >
-                {tab.label}
+                <X size={20} />
               </button>
-            ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button 
+                className="btn btn-primary" 
+                onClick={handleBulkValidate}
+                style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, background: 'white', color: '#1e293b' }}
+              >
+                <CheckCircle size={20} /> Valider Groupée
+              </button>
+              <button 
+                className="btn btn-outline" 
+                onClick={handleLogisticsExport}
+                style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, border: '1px solid rgba(255,255,255,0.2)', color: 'white' }}
+              >
+                <Download size={20} /> Export Livreurs
+              </button>
+            </div>
           </div>
-        </div>
-
-        <div style={{ background: 'transparent', position: 'relative' }}>
-          {loading ? (
-            <div className="card" style={{ textAlign: 'center', padding: '5rem', color: 'var(--text-muted)' }}>
-              <div className="loading-spinner" style={{ margin: '0 auto 1.5rem' }}></div>
-              <p style={{ fontWeight: 600, fontSize: '1.1rem' }}>Synchronisation des flux en cours...</p>
-            </div>
-          ) : (
-            <CommandeList 
-              commandes={filteredCommandes} 
-              selectedIds={selectedIds}
-              onSelectionChange={setSelectedIds}
-              onActionClick={(c) => setSelectedCommandeId(c.id)}
-              onDelete={handleDelete}
-              onInvoiceClick={handleInvoice}
-              onEditClick={handleEdit}
-            />
-          )}
-
-          {/* Floating Batch Action Bar */}
-          {selectedIds.length > 0 && (
-            <div 
-              style={{ 
-                position: 'fixed', 
-                bottom: '2rem', 
-                left: '50%', 
-                transform: 'translateX(-50%)', 
-                background: 'var(--bg-card)', 
-                padding: '1rem 2rem', 
-                borderRadius: '24px', 
-                boxShadow: '0 20px 40px rgba(0,0,0,0.2)', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '1.5rem',
-                border: '1px solid var(--primary)',
-                zIndex: 1000,
-                transition: 'all 0.3s ease'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', borderRight: '1px solid #e2e8f0', paddingRight: '1.5rem' }}>
-                <span style={{ background: 'var(--primary)', color: 'white', width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 900 }}>
-                  {selectedIds.length}
-                </span>
-                <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>Sélectionnés</span>
-                <button 
-                  onClick={() => setSelectedIds([])}
-                  style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', display: 'flex' }}
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <button 
-                  className="btn btn-sm btn-primary" 
-                  onClick={handleBulkValidate}
-                  style={{ borderRadius: '12px', padding: '0.6rem 1.2rem' }}
-                >
-                  <CheckCircle size={18} /> Valider Groupée
-                </button>
-                <button 
-                  className="btn btn-sm btn-outline" 
-                  onClick={handleLogisticsExport}
-                  style={{ borderRadius: '12px', padding: '0.6rem 1.2rem', border: '1px solid #e2e8f0' }}
-                >
-                  <Download size={18} /> Export Livreurs
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {isFormOpen && (
@@ -530,6 +504,21 @@ export const Commandes = () => {
           onClose={() => setSelectedCommandeId(null)} 
         />
       )}
+
+      <style>{`
+        @keyframes pageEnter {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+          from { transform: translate(-50%, 100px); opacity: 0; }
+          to { transform: translate(-50%, 0); opacity: 1; }
+        }
+        @keyframes slideDown {
+          from { transform: translateY(-20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 };
