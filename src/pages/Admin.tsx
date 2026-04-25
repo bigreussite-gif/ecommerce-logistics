@@ -15,7 +15,6 @@ export const Admin = () => {
   const canManageCategories = hasPermission('ADMIN') || hasPermission('PRODUITS');
 
   const canManageFournisseurs = hasPermission('ADMIN');
-  const canManageMarketing = hasPermission('ADMIN');
 
   const [activeTab, setActiveTab] = useState<'utilisateurs' | 'communes' | 'categories' | 'fournisseurs' | 'marketing' | 'parametres'>(
     canManageUsers ? 'utilisateurs' : (canManageCommunes ? 'communes' : (canManageCategories ? 'categories' : 'fournisseurs'))
@@ -99,7 +98,7 @@ export const Admin = () => {
         {activeTab === 'communes' && <CommunesManager showToast={showToast} />}
         {activeTab === 'categories' && <CategoriesManager showToast={showToast} />}
         {activeTab === 'fournisseurs' && <FournisseursManager showToast={showToast} />}
-        {activeTab === 'marketing' && <MarketingManager showToast={showToast} />}
+        {activeTab === 'marketing' && <MarketingManager />}
         {activeTab === 'parametres' && <ParametresManager showToast={showToast} />}
       </div>
     </div>
@@ -738,7 +737,7 @@ const FournisseursManager = ({ showToast }: { showToast: any }) => {
 };
 
 // --- MARKETING MANAGER COMPONENT ---
-const MarketingManager = ({ showToast }: { showToast: any }) => {
+const MarketingManager = () => {
   return (
     <div className="card" style={{ padding: '2rem' }}>
       <h3 style={{ marginBottom: '1.5rem', fontWeight: 800 }}>Gestion Marketing & Sources</h3>
