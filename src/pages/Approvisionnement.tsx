@@ -3,7 +3,7 @@ import { getAchatsStock, registerBulkAchatsStock } from '../services/achatServic
 import { getFournisseurs, Fournisseur } from '../services/fournisseurService';
 import { getProduits } from '../services/produitService';
 import { Produit } from '../types';
-import { Plus, Search, Calendar, Package, CreditCard, DollarSign, X, Filter, ShoppingBag, ArrowUpRight, CheckCircle2, Trash2 } from 'lucide-react';
+import { Plus, Search, Calendar, Package, CreditCard, DollarSign, X, Filter, ShoppingBag, CheckCircle2, Trash2 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -306,7 +306,7 @@ export const Approvisionnement = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item, index) => (
+                  {items.map((item) => (
                     <tr key={item.id} style={{ background: '#f8fafc', borderRadius: '20px' }}>
                       <td style={{ padding: '1rem', borderRadius: '20px 0 0 20px' }}>
                         <select 
