@@ -54,18 +54,23 @@ export const CentreAppel = () => {
   const scriptsTemplates = [
     { 
       id: 'standard', 
-      title: "Confirmation Standard", 
-      text: "Bonjour [NOM_CLIENT], ici [OPERATEUR] de [BOUTIQUE]. Je vous appelle concernant votre commande. Nous aimerions confirmer votre adresse à [LOCALISATION] pour programmer la livraison. Êtes-vous disponible ?" 
+      title: "🚀 Closing de Livraison", 
+      text: "Bonjour [NOM_CLIENT], ici [OPERATEUR], responsable qualité chez [BOUTIQUE]. Je vous appelle pour sécuriser votre créneau de livraison prioritaire à [LOCALISATION]. Notre équipe logistique finalise le chargement pour votre zone. Je vous confirme que vous serez bien présent pour réceptionner votre colis aujourd'hui entre [HEURE] ? Excellent, je note que vous êtes prêt." 
     },
     { 
       id: 'recall', 
-      title: "Relance Injoignable", 
-      text: "Bonjour [NOM_CLIENT], ici [OPERATEUR] de [BOUTIQUE]. Nous avons tenté de vous joindre plusieurs fois sans succès pour votre livraison à [LOCALISATION]. Votre colis est prêt. Pourriez-vous nous confirmer que vous êtes toujours intéressé et nous donner un créneau de disponibilité ?" 
+      title: "⏳ Relance d'Urgence", 
+      text: "Bonjour [NOM_CLIENT], ici [OPERATEUR] de [BOUTIQUE]. Je reviens vers vous car votre colis est actuellement en attente sur le quai de chargement pour [LOCALISATION]. Nous avons énormément de demandes aujourd'hui et je souhaite vous garantir votre livraison. Si je valide maintenant, le livreur passe vous voir dans l'heure. On bloque ça ensemble ?" 
     },
     { 
       id: 'delay', 
-      title: "Absence / Contretemps", 
-      text: "Bonjour [NOM_CLIENT], ici [OPERATEUR] de [BOUTIQUE]. Notre livreur a eu un contretemps imprévu aujourd'hui pour votre colis à [LOCALISATION]. Nous tenons à nous en excuser et souhaitons reprogrammer pour demain. Est-ce que cela vous convient ?" 
+      title: "🛠️ Solution Prioritaire", 
+      text: "Bonjour [NOM_CLIENT], ici [OPERATEUR] de [BOUTIQUE]. Je vous appelle personnellement car j'ai mis votre colis en 'Priorité Alpha' pour demain matin à la première heure suite au léger contretemps d'aujourd'hui. Je veux m'assurer que vous serez la première personne livrée sur [LOCALISATION]. Vous me confirmez votre disponibilité pour que je bloque le livreur pour vous ?" 
+    },
+    {
+      id: 'marketing_recovery',
+      title: "💎 Reconquête Client",
+      text: "Bonjour [NOM_CLIENT], ici [OPERATEUR] de [BOUTIQUE]. Je vois que votre commande à [LOCALISATION] n'a pas pu être finalisée. C'est dommage car c'est l'un de nos articles les plus demandés. Exceptionnellement, je peux vous réactiver la livraison avec un petit cadeau de fidélité si nous bloquons un créneau ferme maintenant. Qu'en dites-vous ?"
     }
   ];
 
