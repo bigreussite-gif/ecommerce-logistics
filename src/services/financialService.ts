@@ -91,8 +91,9 @@ export const calculateLogisticalStats = (commandes: Commande[]): LogisticalStats
   const retours = filtered.filter(c => ['retour_livreur', 'retour_stock', 'retour_client'].includes(c.statut_commande?.toLowerCase())).length;
   const annulees = filtered.filter(c => c.statut_commande?.toLowerCase() === 'annulee').length;
   const reportees = filtered.filter(c => ['echouee', 'absent', 'a_rappeler'].includes(c.statut_commande?.toLowerCase())).length;
+  const en_cours = filtered.filter(c => c.statut_commande?.toLowerCase() === 'en_cours_livraison').length;
   
-  const total_sortis = livrees + retours + annulees + reportees;
+  const total_sortis = livrees + retours + annulees + reportees + en_cours;
   const taux_succes = total_sortis > 0 ? Math.round((livrees / total_sortis) * 100) : 0;
   
   return {

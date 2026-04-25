@@ -63,7 +63,7 @@ export const StaffPerformance = () => {
       try {
         const [users, allCmds, allProds, loginsRes] = await Promise.allSettled([
           getUtilisateurs(),
-          getCommandes(),
+          getCommandes(null),
           getProduits(),
           insforge.database.from('audit_logins').select('*')
         ]);
@@ -90,9 +90,8 @@ export const StaffPerformance = () => {
 
         const lStats: StaffStats[] = livreurs.map(l => {
           const lCmds = (ordersByLivreur[l.id] || []).filter((c: Commande) => {
-            const isSucces = ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase());
-            // Pour la compta, on se base sur la date de livraison effective ou la dernière mise à jour
-            const activeDate = isSucces ? new Date(c.date_livraison_effective || c.updated_at) : new Date(c.date_creation);
+            // Pour la performance, on prend la date d'activité la plus récente (livraison, mise à jour ou création)
+            const activeDate = new Date(c.date_livraison_effective || c.updated_at || c.date_creation);
             return isAfter(activeDate, startOfInterval);
           });
           
@@ -132,7 +131,10 @@ export const StaffPerformance = () => {
         });
 
         const aStats: AgentStats[] = agents.map((a: any) => {
-          const aCmds = (ordersByAgent[a.id] || []).filter((c: Commande) => isAfter(new Date(c.date_creation), startOfInterval));
+          const aCmds = (ordersByAgent[a.id] || []).filter((c: Commande) => {
+            const activeDate = new Date(c.updated_at || c.date_creation);
+            return isAfter(activeDate, startOfInterval);
+          });
           const total = aCmds.length;
           
           const validees = aCmds.filter((c: Commande) => !['en_attente_appel', 'annulee'].includes(c.statut_commande?.toLowerCase())).length;

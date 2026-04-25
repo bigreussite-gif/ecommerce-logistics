@@ -28,12 +28,17 @@ export const getCommandeWithLines = async (id: string): Promise<Commande & { lig
   };
 };
 
-export const getCommandes = async (limit = 50, offset = 0): Promise<Commande[]> => {
-  const { data, error } = await insforge.database
+export const getCommandes = async (limit: number | null = 1000, offset = 0): Promise<Commande[]> => {
+  let query = insforge.database
     .from('commandes')
     .select('*, clients(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*, produits(*))')
-    .order('date_creation', { ascending: false })
-    .range(offset, offset + limit - 1);
+    .order('date_creation', { ascending: false });
+  
+  if (limit !== null) {
+    query = query.range(offset, offset + limit - 1);
+  }
+  
+  const { data, error } = await query;
   
   if (error) throw error;
   
