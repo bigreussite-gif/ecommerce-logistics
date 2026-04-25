@@ -614,27 +614,32 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
     // 1. Charger tout le catalogue produits pour correspondance SKU
     const { data: products } = await insforge.database
       .from('produits')
-      .select('id, nom, sku, prix_vente, actif');
+      .select('id, nom, sku, prix_vente, stock_actuel');
     
     const productMap = new Map<string, any>();
+    const productById = new Map<string, any>();
     (products || []).forEach(p => {
       if (p.sku) productMap.set(String(p.sku).trim().toUpperCase(), p);
+      productById.set(p.id, p);
     });
 
     // 2. Gestion des clients en masse
     const cleanPhone = (p: any): string => String(p || '').replace(/\D/g, '').slice(-10);
     
-    // Charger les clients existants pour éviter les doublons
+    const phonesInFile = Array.from(new Set(data.map(item => cleanPhone(item.client.telephone)).filter(p => p.length >= 8)));
+    
+    // Charger UNIQUEMENT les clients existants concernés pour éviter les lenteurs sur gros catalogues
     const { data: existingClients } = await insforge.database
       .from('clients')
-      .select('id, telephone, telephone_secondaire');
+      .select('id, telephone, telephone_secondaire')
+      .or(`telephone.in.(${phonesInFile.join(',')}),telephone_secondaire.in.(${phonesInFile.join(',')})`);
     
     const clientMapByPhone = new Map<string, string>();
     (existingClients || []).forEach(c => {
       const p1 = cleanPhone(c.telephone);
       const p2 = cleanPhone(c.telephone_secondaire);
-      if (p1 && p1.length >= 8) clientMapByPhone.set(p1, c.id);
-      if (p2 && p2.length >= 8) clientMapByPhone.set(p2, c.id);
+      if (p1) clientMapByPhone.set(p1, c.id);
+      if (p2) clientMapByPhone.set(p2, c.id);
     });
 
     // Identifier les nouveaux clients à créer
@@ -731,6 +736,7 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
     // 5. Insertion groupée des lignes et mouvements de stock
     const linesToInsert: any[] = [];
     const stockMovesToInsert: any[] = [];
+    const stockUpdatesMap = new Map<string, number>();
 
     (createdCmds || []).forEach((cmd, idx) => {
       const sourceItem = itemsWithValidData[idx];
@@ -746,6 +752,9 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
           reference: `Import Cmd #${cmd.id.substring(0, 8)}`,
           date: now
         });
+        
+        const currentDelta = stockUpdatesMap.get(l.produit_id) || 0;
+        stockUpdatesMap.set(l.produit_id, currentDelta + l.quantite);
       });
     });
 
@@ -753,7 +762,7 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
       const { error: linesErr } = await insforge.database
         .from('lignes_commandes')
         .insert(linesToInsert);
-      if (linesErr) console.error("Erreur insertion lignes groupée:", linesErr);
+      if (linesErr) throw new Error(`Erreur lignes: ${linesErr.message}`);
     }
 
     if (stockMovesToInsert.length > 0) {
@@ -761,18 +770,20 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
         .from('mouvements_stock')
         .insert(stockMovesToInsert);
       
-      // Update product stocks
-      // Note: In a production environment with high volume, this should be done via a database trigger
-      // or a single stored procedure to ensure atomicity and speed.
-      for (const move of stockMovesToInsert) {
-        const prod = productMap.get(move.produit_id) || (products || []).find(p => p.id === move.produit_id);
-        if (prod) {
-          const currentStock = Number(prod.stock_actuel || 0);
-          await insforge.database
-            .from('produits')
-            .update({ stock_actuel: currentStock - move.quantite })
-            .eq('id', move.produit_id);
-        }
+      // Mise à jour groupée des stocks produits
+      const upsertData = Array.from(stockUpdatesMap.entries()).map(([prodId, delta]) => {
+        const prod = productById.get(prodId);
+        return {
+          id: prodId,
+          stock_actuel: (prod?.stock_actuel || 0) - delta
+        };
+      });
+
+      if (upsertData.length > 0) {
+        const { error: upsertErr } = await insforge.database
+          .from('produits')
+          .upsert(upsertData, { onConflict: 'id' });
+        if (upsertErr) console.error("Erreur mise à jour stocks bulk:", upsertErr);
       }
     }
 

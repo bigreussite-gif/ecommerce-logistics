@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Upload, AlertCircle, CheckCircle, Download } from 'lucide-react';
+import { X, Upload, CheckCircle, Download } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { insforge } from '../../lib/insforge';
 import { read, utils, writeFile } from 'xlsx';
@@ -9,7 +9,6 @@ export const BulkImportProduitModal = ({ onClose, onSave }: { onClose: () => voi
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<any[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -40,10 +39,9 @@ export const BulkImportProduitModal = ({ onClose, onSave }: { onClose: () => voi
         })).filter(p => p.nom && p.sku);
 
         setPreview(formatted);
-        setError(null);
       } catch (err) {
         console.error(err);
-        setError("Erreur lors de la lecture du fichier.");
+        showToast("Erreur lors de la lecture du fichier.", "error");
       }
     };
     reader.readAsArrayBuffer(file);
@@ -69,46 +67,54 @@ export const BulkImportProduitModal = ({ onClose, onSave }: { onClose: () => voi
     if (preview.length === 0) return;
     setLoading(true);
     try {
-      // 1. Get or create categories
-      const { data: categories } = await insforge.database.from('categories').select('*');
+      // 1. Gérer les catégories en masse
+      const uniqueCategoryNames = Array.from(new Set(
+        preview
+          .map(p => p.categorie_nom?.trim().toLowerCase())
+          .filter(Boolean)
+      ));
+
+      // Charger les catégories existantes
+      const { data: existingCategories } = await insforge.database
+        .from('categories')
+        .select('*');
+      
       const catMap = new Map<string, string>();
-      categories?.forEach(c => catMap.set(c.nom.toLowerCase(), c.id));
+      existingCategories?.forEach(c => catMap.set(c.nom.toLowerCase(), c.id));
 
-      const finalProducts: any[] = [];
-      for (const p of preview) {
-        let catId = catMap.get(p.categorie_nom.toLowerCase());
-        if (!catId && p.categorie_nom) {
-          const { data: newCat } = await insforge.database
-            .from('categories')
-            .insert([{ nom: p.categorie_nom }])
-            .select()
-            .single();
-          if (newCat) {
-            catId = newCat.id;
-            catMap.set(p.categorie_nom.toLowerCase(), catId);
-          }
-        }
-
-        finalProducts.push({
-          nom: p.nom,
-          sku: p.sku,
-          prix_achat: p.prix_achat,
-          prix_vente: p.prix_vente,
-          stock_actuel: p.stock_actuel,
-          stock_minimum: p.stock_minimum,
-          categorie_id: catId,
-          actif: true,
-          created_at: new Date().toISOString()
-        });
+      // Identifier et créer les catégories manquantes
+      const missingCats = uniqueCategoryNames.filter(name => !catMap.has(name));
+      if (missingCats.length > 0) {
+        const { data: newCats, error: catErr } = await insforge.database
+          .from('categories')
+          .insert(missingCats.map(name => ({ nom: name })))
+          .select();
+        
+        if (catErr) throw catErr;
+        newCats?.forEach(c => catMap.set(c.nom.toLowerCase(), c.id));
       }
 
+      // 2. Préparer les produits pour l'upsert
+      const finalProducts = preview.map(p => ({
+        nom: p.nom,
+        sku: p.sku,
+        prix_achat: p.prix_achat,
+        prix_vente: p.prix_vente,
+        stock_actuel: p.stock_actuel,
+        stock_minimum: p.stock_minimum,
+        categorie_id: p.categorie_nom ? catMap.get(p.categorie_nom.toLowerCase()) : null,
+        actif: true,
+        updated_at: new Date().toISOString()
+      }));
+
+      // 3. Upsert des produits en masse
       const { error: insertErr } = await insforge.database
         .from('produits')
         .upsert(finalProducts, { onConflict: 'sku' });
 
       if (insertErr) throw insertErr;
 
-      showToast(`${finalProducts.length} produits importés/mis à jour !`, "success");
+      showToast(`${finalProducts.length} produits importés/mis à jour avec succès !`, "success");
       onSave();
       onClose();
     } catch (err: any) {
