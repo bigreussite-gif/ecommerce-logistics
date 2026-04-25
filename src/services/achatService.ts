@@ -70,3 +70,47 @@ export const registerAchatStock = async (achat: Omit<AchatStock, 'id' | 'date_ac
     }
   }
 };
+export const registerBulkAchatsStock = async (achats: Omit<AchatStock, 'id' | 'date_achat'>[]): Promise<void> => {
+  const date_achat = new Date().toISOString();
+  
+  for (const achat of achats) {
+    // 1. Enregistrer l'achat individuel
+    const { data: achatData, error: achatError } = await insforge.database
+      .from('achats_stock')
+      .insert([{
+        ...achat,
+        date_achat
+      }])
+      .select();
+
+    if (achatError) throw achatError;
+
+    // 2. Mettre à jour le stock
+    await addMouvementStock({
+      produit_id: achat.produit_id,
+      type_mouvement: 'entree',
+      quantite: achat.quantite,
+      reference: `Achat Stock #${achatData[0].id.substring(0, 8)}`,
+      commentaire: `Approvisionnement (Bulk)`
+    } as any);
+
+    // 3. Gérer le flux financier
+    if (achat.mode_paiement === 'Cash') {
+      await addDepense({
+        date: date_achat,
+        categorie: 'Achat Stock',
+        montant: achat.montant_total,
+        description: `Paiement Cash Achat Stock #${achatData[0].id.substring(0, 8)}`,
+        mode_paiement: 'Cash'
+      });
+    } else {
+      const fournisseurs = await getFournisseurs();
+      const f = fournisseurs.find(item => item.id === achat.fournisseur_id);
+      if (f) {
+        await updateFournisseur(f.id, {
+          solde_dette: Number(f.solde_dette || 0) + Number(achat.montant_total)
+        });
+      }
+    }
+  }
+};
