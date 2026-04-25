@@ -381,6 +381,8 @@ export const Commandes = () => {
                   { id: 'in_delivery', label: 'En Livraison', count: stats.inDelivery },
                   { id: 'done', label: 'Livrées', count: stats.delivered },
                   { id: 'failed', label: 'Échecs', count: stats.failed },
+                  { id: 'annulee', label: 'Annulées', count: stats.cancelled },
+                  { id: 'retours', label: 'Retours', count: stats.retours },
                   { id: 'all', label: 'Tout', count: stats.total }
                 ].map(tab => (
                   <button
