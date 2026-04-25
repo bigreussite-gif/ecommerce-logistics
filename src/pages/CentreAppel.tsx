@@ -6,9 +6,13 @@ import {
 import { AppelForm } from '../components/centre-appel/AppelForm';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
 import { subscribeToCommandesByStatus } from '../services/commandeService';
+import { useAuth } from '../contexts/AuthContext';
 import type { Commande } from '../types';
 
+const SHOP_NAME = "Jachete Côte d'Ivoire";
+
 export const CentreAppel = () => {
+  const { currentUser } = useAuth();
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCommande, setSelectedCommande] = useState<Commande | null>(null);
@@ -47,15 +51,51 @@ export const CentreAppel = () => {
     });
   }, [commandes, searchTerm, statusFilter]);
 
-  const scripts = [
-    { id: 'standard', title: "Confirmation Standard", text: "Bonjour [Nom], je vous appelle de la part de GomboSwift concernant votre commande de [Articles]. Nous aimerions confirmer votre adresse à [Commune] et programmer la livraison pour aujourd'hui ou demain. Êtes-vous disponible ?" },
-    { id: 'recall', title: "Relance Injoignable", text: "Bonjour [Nom], nous avons tenté de vous joindre plusieurs fois sans succès pour votre livraison GomboSwift. Votre colis est prêt. Pourriez-vous nous confirmer que vous êtes toujours intéressé et nous donner un créneau de disponibilité ?" },
-    { id: 'delay', title: "Absence / Contretemps", text: "Bonjour [Nom], notre livreur a eu un contretemps imprévu aujourd'hui. Nous tenons à nous en excuser. Nous souhaitons reprogrammer votre livraison pour demain matin à la première heure. Est-ce que cela vous convient ?" }
+  const scriptsTemplates = [
+    { 
+      id: 'standard', 
+      title: "Confirmation Standard", 
+      text: "Bonjour [NOM_CLIENT], ici [OPERATEUR] de [BOUTIQUE]. Je vous appelle concernant votre commande. Nous aimerions confirmer votre adresse à [LOCALISATION] pour programmer la livraison. Êtes-vous disponible ?" 
+    },
+    { 
+      id: 'recall', 
+      title: "Relance Injoignable", 
+      text: "Bonjour [NOM_CLIENT], ici [OPERATEUR] de [BOUTIQUE]. Nous avons tenté de vous joindre plusieurs fois sans succès pour votre livraison à [LOCALISATION]. Votre colis est prêt. Pourriez-vous nous confirmer que vous êtes toujours intéressé et nous donner un créneau de disponibilité ?" 
+    },
+    { 
+      id: 'delay', 
+      title: "Absence / Contretemps", 
+      text: "Bonjour [NOM_CLIENT], ici [OPERATEUR] de [BOUTIQUE]. Notre livreur a eu un contretemps imprévu aujourd'hui pour votre colis à [LOCALISATION]. Nous tenons à nous en excuser et souhaitons reprogrammer pour demain. Est-ce que cela vous convient ?" 
+    }
   ];
 
-  const getSuggestedScript = (commande: Commande) => {
-    if (commande.statut_commande === 'a_rappeler') return scripts.find(s => s.id === 'recall');
-    return scripts.find(s => s.id === 'standard');
+  const formatScript = (template: string, commande?: Commande) => {
+    let text = template;
+    const clientName = commande?.nom_client || "[Nom du Client]";
+    const location = commande ? (commande.quartier_livraison || commande.commune_livraison || "[Commune]") : "[Commune/Quartier]";
+    const operatorName = currentUser?.nom_complet || currentUser?.email?.split('@')[0] || "votre conseiller";
+
+    text = text.replace(/\[NOM_CLIENT\]/g, clientName);
+    text = text.replace(/\[BOUTIQUE\]/g, SHOP_NAME);
+    text = text.replace(/\[LOCALISATION\]/g, location);
+    text = text.replace(/\[OPERATEUR\]/g, operatorName);
+    
+    return text;
+  };
+
+  const handleShowScript = (id: string, commande?: Commande) => {
+    const template = scriptsTemplates.find(s => s.id === id);
+    if (template) {
+      setActiveScript({
+        title: template.title,
+        text: formatScript(template.text, commande)
+      });
+    }
+  };
+
+  const getSuggestedScriptId = (commande: Commande) => {
+    if (commande.statut_commande === 'a_rappeler') return 'recall';
+    return 'standard';
   };
 
   return (
@@ -192,8 +232,8 @@ export const CentreAppel = () => {
                            style={{ height: '48px', borderRadius: '14px', padding: '0 1rem', fontWeight: 800, fontSize: '0.8rem' }}
                            onClick={(e) => { 
                              e.stopPropagation(); 
-                             const script = getSuggestedScript(cmd);
-                             if (script) setActiveScript(script);
+                             const scriptId = getSuggestedScriptId(cmd);
+                             handleShowScript(scriptId, cmd);
                            }}
                          >
                            Script
@@ -220,8 +260,8 @@ export const CentreAppel = () => {
                 <MessageSquare size={20} color="var(--primary)" /> Scripts Opérateurs
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                {scripts.map((s, i) => (
-                  <div key={i} style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.5)', borderRadius: '16px', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => setActiveScript(s)}>
+                {scriptsTemplates.map((s, i) => (
+                  <div key={i} style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.5)', borderRadius: '16px', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => handleShowScript(s.id)}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                       <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--primary)' }}>{s.title}</div>
                       <ChevronRight size={14} color="var(--primary)" />
