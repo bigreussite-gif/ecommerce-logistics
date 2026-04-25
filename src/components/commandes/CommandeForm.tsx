@@ -278,13 +278,25 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
           <X size={20} strokeWidth={2.5} />
         </button>
         
-        <div style={{ marginBottom: '2.5rem' }}>
-          <h2 className="text-premium" style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>
-            {editingCommande ? `Modifier Commande #${editingCommande.id.slice(0, 8).toUpperCase()}` : 'Nouvelle Commande'}
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.4rem', fontWeight: 500 }}>
-            {editingCommande ? 'Modifiez les informations nécessaires ci-dessous.' : 'Veuillez renseigner les détails du client et la composition de la commande.'}
-          </p>
+        <div style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <h2 className="text-premium" style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>
+              {editingCommande ? `Modifier Commande #${editingCommande.id.slice(0, 8).toUpperCase()}` : 'Nouvelle Commande'}
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.4rem', fontWeight: 500 }}>
+              {editingCommande ? 'Modifiez les informations nécessaires ci-dessous.' : 'Veuillez renseigner les détails du client et la composition de la commande.'}
+            </p>
+          </div>
+          {!editingCommande && (
+            <button 
+              type="button" 
+              className="btn btn-outline" 
+              style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', borderRadius: '10px', color: 'var(--primary)', borderColor: 'var(--primary)' }}
+              onClick={() => { onClose(); (window as any).openBulkImport?.(); }}
+            >
+              <Search size={14} /> Importer via Excel
+            </button>
+          )}
         </div>
         
         <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '2rem' }}>

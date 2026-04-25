@@ -619,7 +619,7 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
     
     const productMap = new Map<string, any>();
     const productById = new Map<string, any>();
-    (products || []).forEach(p => {
+    (products || []).forEach((p: any) => {
       if (p.sku) productMap.set(String(p.sku).trim().toUpperCase(), p);
       productById.set(p.id, p);
     });

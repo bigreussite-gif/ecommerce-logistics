@@ -116,6 +116,11 @@ export const Commandes = () => {
   };
 
   useEffect(() => {
+    (window as any).openBulkImport = () => setIsBulkOpen(true);
+    return () => { delete (window as any).openBulkImport; };
+  }, []);
+
+  useEffect(() => {
     setLoading(true);
     const unsubscribe = subscribeToCommandes((data) => {
       setCommandes(data);
@@ -192,8 +197,66 @@ export const Commandes = () => {
     return true;
   });
 
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls') || file.name.endsWith('.csv'))) {
+      setIsBulkOpen(true);
+      // We can pass the file to the modal, but for now we'll just open the modal.
+      // Better: trigger the file input in the modal if possible, but simplest is to just open the modal.
+    } else {
+      showToast("Veuillez déposer un fichier Excel ou CSV valide.", "error");
+    }
+  };
+
   return (
-    <>
+    <div 
+      onDragOver={handleDragOver} 
+      onDragLeave={handleDragLeave} 
+      onDrop={handleDrop}
+      style={{ position: 'relative', minHeight: '100vh' }}
+    >
+      {isDragging && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(79, 70, 229, 0.1)',
+          backdropFilter: 'blur(8px)',
+          border: '4px dashed var(--primary)',
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--primary)',
+          pointerEvents: 'none',
+          animation: 'fadeIn 0.2s ease'
+        }}>
+          <div style={{ background: 'white', padding: '3rem', borderRadius: '40px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.2)', textAlign: 'center' }}>
+            <div style={{ background: 'var(--primary)', color: 'white', width: '80px', height: '80px', borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+              <Download size={40} style={{ transform: 'rotate(180deg)' }} />
+            </div>
+            <h2 style={{ fontSize: '2rem', fontWeight: 900 }}>Déposez pour importer</h2>
+            <p style={{ fontWeight: 600, opacity: 0.8 }}>Relâchez le fichier pour lancer l'importation Excel.</p>
+          </div>
+        </div>
+      )}
+
       <div style={{ animation: 'pageEnter 0.6s ease' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
           <div className="mobile-stack">
@@ -467,6 +530,6 @@ export const Commandes = () => {
           onClose={() => setSelectedCommandeId(null)} 
         />
       )}
-    </>
+    </div>
   );
 };

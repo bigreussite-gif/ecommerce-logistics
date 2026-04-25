@@ -38,34 +38,48 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
           return newItem;
         });
 
-        // Map to our expected structure
+        // Map to our expected structure and group by phone
+        const ordersMap = new Map<string, any>();
+        
         const cleanValue = (val: any) => {
           if (!val) return '';
           const str = String(val).split('\n')[0].split('\r')[0].trim();
           return str;
         };
 
-        const formatted = normalizedData.map(item => ({
-          client: {
-            nom_complet: cleanValue(item.client || item.nom || item['nom complet'] || item.customer || ''),
-            telephone: cleanValue(item.telephone || item['téléphone'] || item.phone || item.tel || ''),
-            telephone_secondaire: cleanValue(item['telephone 2'] || item['téléphone 2'] || item.telephone2 || item.tel2 || item['téléphone secondaire'] || item['telephone secondaire'] || item['numéro secondaire'] || item['numero secondaire'] || item['phone 2'] || item.phone2 || '')
-          },
-          lines: [
-            { 
-              produit: cleanValue(item.reference || item['référence'] || item.ref || item['réf'] || item.sku || item.code || item.produit || item.article || item.item || '').toUpperCase(), 
-              quantite: parseInt(item.quantite || item.qte || item['quantité'] || '1') 
-            }
-          ],
-          source: 'Import Groupé',
-          commune: cleanValue(item.commune || item.zone || item.ville || ''),
-          quartier: cleanValue(item.quartier || item.secteur || ''),
-          adresse: cleanValue(item.adresse || item.localisation || ''),
-          notes: cleanValue(item.notes || item.commentaire || item.infos || ''),
-          frais_livraison: parseInt(item.frais || item.livraison || item['frais livraison'] || '0')
-        }));
+        normalizedData.forEach(item => {
+          const phone = cleanValue(item.telephone || item['téléphone'] || item.phone || item.tel || '');
+          if (!phone) return;
 
-        setPreview(formatted);
+          const prodRef = cleanValue(item.reference || item['référence'] || item.ref || item['réf'] || item.sku || item.code || item.produit || item.article || item.item || '').toUpperCase();
+          const qte = parseInt(item.quantite || item.qte || item['quantité'] || '1');
+
+          if (ordersMap.has(phone)) {
+            // Add line to existing order
+            const existingOrder = ordersMap.get(phone);
+            existingOrder.lines.push({ produit: prodRef, quantite: qte });
+          } else {
+            // Create new order entry
+            ordersMap.set(phone, {
+              client: {
+                nom_complet: cleanValue(item.client || item.nom || item['nom complet'] || item.customer || ''),
+                telephone: phone,
+                telephone_secondaire: cleanValue(item['telephone 2'] || item['téléphone 2'] || item.telephone2 || item.tel2 || item['téléphone secondaire'] || item['telephone secondaire'] || item['numéro secondaire'] || item['numero secondaire'] || item['phone 2'] || item.phone2 || '')
+              },
+              lines: [
+                { produit: prodRef, quantite: qte }
+              ],
+              source: 'Import Groupé',
+              commune: cleanValue(item.commune || item.zone || item.ville || ''),
+              quartier: cleanValue(item.quartier || item.secteur || ''),
+              adresse: cleanValue(item.adresse || item.localisation || ''),
+              notes: cleanValue(item.notes || item.commentaire || item.infos || ''),
+              frais_livraison: parseInt(item.frais || item.livraison || item['frais livraison'] || '0')
+            });
+          }
+        });
+
+        setPreview(Array.from(ordersMap.values()));
         setError(null);
       } catch (err) {
         console.error(err);

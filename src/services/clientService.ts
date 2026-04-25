@@ -138,7 +138,7 @@ export const getClientsWithIntelligence = async (): Promise<(Client & ClientFide
     const phone = clientToPhoneMap[o.client_id];
     if (phone) {
       if (!ordersByPhone[phone]) ordersByPhone[phone] = [];
-      ordersByPhone[phone].push(o);
+      ordersByPhone[phone].push(o as any);
     }
   });
 

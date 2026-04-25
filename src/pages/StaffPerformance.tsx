@@ -89,7 +89,7 @@ export const StaffPerformance = () => {
         });
 
         const lStats: StaffStats[] = livreurs.map(l => {
-          const lCmds = (ordersByLivreur[l.id] || []).filter(c => {
+          const lCmds = (ordersByLivreur[l.id] || []).filter((c: Commande) => {
             const isSucces = ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase());
             // Pour la compta, on se base sur la date de livraison effective ou la dernière mise à jour
             const activeDate = isSucces ? new Date(c.date_livraison_effective || c.updated_at) : new Date(c.date_creation);
@@ -99,11 +99,11 @@ export const StaffPerformance = () => {
           const logStats = calculateLogisticalStats(lCmds);
           
           // CA Total = Montant Total (Produits + Livraison + Primes)
-          const ca_total = lCmds.reduce((acc, c) => 
+          const ca_total = lCmds.reduce((acc: number, c: Commande) => 
             acc + (['livree', 'terminee'].includes(c.statut_commande?.toLowerCase()) ? (Number(c.montant_total) || 0) : 0)
           , 0);
 
-          const primes = lCmds.reduce((acc, c) => 
+          const primes = lCmds.reduce((acc: number, c: Commande) => 
             acc + (['livree', 'terminee'].includes(c.statut_commande?.toLowerCase()) ? (Number(c.total_primes_installation) || 0) : 0)
           , 0);
 
@@ -119,24 +119,33 @@ export const StaffPerformance = () => {
             primes,
             taux_succes: logStats.taux_succes
           };
-        }).sort((a, b) => b.ca_total - a.ca_total);
+        }).sort((a: StaffStats, b: StaffStats) => b.ca_total - a.ca_total);
 
         // --- 2. Calculate Agent Stats ---
-        const aStats: AgentStats[] = agents.map(a => {
-          const aCmds = (ordersByAgent[a.id] || []).filter(c => isAfter(new Date(c.date_creation), startOfInterval));
+        const agents = users_data.filter(u => u.role === 'AGENT_APPEL' || u.role === 'AGENT_MIXTE' || u.role === 'GESTIONNAIRE');
+        const ordersByAgent: Record<string, Commande[]> = {};
+        cmds_data.forEach(c => {
+          if (c.agent_appel_id) {
+            if (!ordersByAgent[c.agent_appel_id]) ordersByAgent[c.agent_appel_id] = [];
+            ordersByAgent[c.agent_appel_id].push(c);
+          }
+        });
+
+        const aStats: AgentStats[] = agents.map((a: any) => {
+          const aCmds = (ordersByAgent[a.id] || []).filter((c: Commande) => isAfter(new Date(c.date_creation), startOfInterval));
           const total = aCmds.length;
           
-          const validees = aCmds.filter(c => !['en_attente_appel', 'annulee'].includes(c.statut_commande?.toLowerCase())).length;
-          const livrees = aCmds.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).length;
-          const retours = aCmds.filter(c => ['retour_livreur', 'retour_stock', 'retour_client'].includes(c.statut_commande?.toLowerCase())).length;
-          const echecs = aCmds.filter(c => ['echouee', 'absent'].includes(c.statut_commande?.toLowerCase())).length;
-          const reprogrammees = aCmds.filter(c => c.statut_commande?.toLowerCase() === 'a_rappeler').length;
-          const annulees = aCmds.filter(c => c.statut_commande?.toLowerCase() === 'annulee').length;
+          const validees = aCmds.filter((c: Commande) => !['en_attente_appel', 'annulee'].includes(c.statut_commande?.toLowerCase())).length;
+          const livrees = aCmds.filter((c: Commande) => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).length;
+          const retours = aCmds.filter((c: Commande) => ['retour_livreur', 'retour_stock', 'retour_client'].includes(c.statut_commande?.toLowerCase())).length;
+          const echecs = aCmds.filter((c: Commande) => ['echouee', 'absent'].includes(c.statut_commande?.toLowerCase())).length;
+          const reprogrammees = aCmds.filter((c: Commande) => c.statut_commande?.toLowerCase() === 'a_rappeler').length;
+          const annulees = aCmds.filter((c: Commande) => c.statut_commande?.toLowerCase() === 'annulee').length;
           
-          const userLogins = allLogins.filter(l => l.user_id === a.id && isAfter(new Date(l.login_time), startOfInterval)).length;
+          const userLogins = allLogins.filter((l: any) => l.user_id === a.id && isAfter(new Date(l.login_time), startOfInterval)).length;
           
           // CA Brut Généré par l'agent
-          const ca_genere = aCmds.reduce((acc, c) => 
+          const ca_genere = aCmds.reduce((acc: number, c: Commande) => 
             acc + (['livree', 'terminee'].includes(c.statut_commande?.toLowerCase()) ? (Number(c.montant_total) || 0) : 0)
           , 0);
 
@@ -159,7 +168,7 @@ export const StaffPerformance = () => {
             taux_conversion,
             connexions: userLogins
           };
-        }).sort((a, b) => b.ca_genere - a.ca_genere);
+        }).sort((a: AgentStats, b: AgentStats) => b.ca_genere - a.ca_genere);
 
         // --- 3. Calculate Product Creator Stats ---
         const creators = users_data.filter(u => u.role !== 'LIVREUR' && u.role !== 'CAISSIERE');
