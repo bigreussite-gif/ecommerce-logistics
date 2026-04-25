@@ -54,23 +54,23 @@ export const CentreAppel = () => {
   const scriptsTemplates = [
     { 
       id: 'standard', 
-      title: "🚀 Closing de Livraison", 
-      text: "Bonjour [NOM_CLIENT], ici [OPERATEUR], responsable qualité chez [BOUTIQUE]. Je vous appelle pour sécuriser votre créneau de livraison prioritaire à [LOCALISATION]. Notre équipe logistique finalise le chargement pour votre zone. Je vous confirme que vous serez bien présent pour réceptionner votre colis aujourd'hui entre [HEURE] ? Excellent, je note que vous êtes prêt." 
+      title: "🚀 Confirmation Directe (CI)", 
+      text: "Bonjour [NOM_CLIENT], c'est [OPERATEUR] de Jachete Côte d'Ivoire. Je vous appelle pour caler votre livraison à [LOCALISATION]. Le livreur est déjà en train de charger pour votre zone là-bas. Je confirme que vous serez bien présent pour réceptionner votre colis tout à l'heure ? D'accord, on fait comme ça, restez à l'écoute." 
     },
     { 
       id: 'recall', 
-      title: "⏳ Relance d'Urgence", 
-      text: "Bonjour [NOM_CLIENT], ici [OPERATEUR] de [BOUTIQUE]. Je reviens vers vous car votre colis est actuellement en attente sur le quai de chargement pour [LOCALISATION]. Nous avons énormément de demandes aujourd'hui et je souhaite vous garantir votre livraison. Si je valide maintenant, le livreur passe vous voir dans l'heure. On bloque ça ensemble ?" 
+      title: "⏳ Relance 'On est ensemble'", 
+      text: "Bonjour [NOM_CLIENT], c'est [OPERATEUR] de Jachete CI. On a essayé de vous joindre plusieurs fois pour votre colis, mais ça ne passait pas. Votre commande est déjà prête pour [LOCALISATION]. On ne veut pas que ça traîne ici, donc dites-moi : est-ce qu'on peut envoyer le livreur maintenant pour finir ça ?" 
     },
     { 
       id: 'delay', 
-      title: "🛠️ Solution Prioritaire", 
-      text: "Bonjour [NOM_CLIENT], ici [OPERATEUR] de [BOUTIQUE]. Je vous appelle personnellement car j'ai mis votre colis en 'Priorité Alpha' pour demain matin à la première heure suite au léger contretemps d'aujourd'hui. Je veux m'assurer que vous serez la première personne livrée sur [LOCALISATION]. Vous me confirmez votre disponibilité pour que je bloque le livreur pour vous ?" 
+      title: "🛠️ Solution 'Priorité Chic'", 
+      text: "Bonjour [NOM_CLIENT], c'est [OPERATEUR] de Jachete CI. On a eu un petit contretemps aujourd'hui, on s'excuse vraiment pour ça. Mais j'ai décidé de vous mettre en 'Priorité 1' pour demain matin à la première heure sur [LOCALISATION]. Vous serez le tout premier livré. C'est bon pour vous ?" 
     },
     {
       id: 'marketing_recovery',
-      title: "💎 Reconquête Client",
-      text: "Bonjour [NOM_CLIENT], ici [OPERATEUR] de [BOUTIQUE]. Je vois que votre commande à [LOCALISATION] n'a pas pu être finalisée. C'est dommage car c'est l'un de nos articles les plus demandés. Exceptionnellement, je peux vous réactiver la livraison avec un petit cadeau de fidélité si nous bloquons un créneau ferme maintenant. Qu'en dites-vous ?"
+      title: "💎 Reconquête 'Cadeau'",
+      text: "Bonjour [NOM_CLIENT], c'est [OPERATEUR] de Jachete CI. Je vois que votre commande à [LOCALISATION] a été annulée. C'est vraiment dommage parce que c'est un article qui finit vite. Si vous reprenez maintenant, je vous rajoute un petit cadeau de la boutique pour vous faire plaisir. On relance la livraison ?"
     }
   ];
 
