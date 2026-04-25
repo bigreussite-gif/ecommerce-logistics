@@ -28,11 +28,12 @@ export const getCommandeWithLines = async (id: string): Promise<Commande & { lig
   };
 };
 
-export const getCommandes = async (): Promise<Commande[]> => {
+export const getCommandes = async (limit = 50, offset = 0): Promise<Commande[]> => {
   const { data, error } = await insforge.database
     .from('commandes')
     .select('*, clients(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*, produits(*))')
-    .order('date_creation', { ascending: false });
+    .order('date_creation', { ascending: false })
+    .range(offset, offset + limit - 1);
   
   if (error) throw error;
   
@@ -609,169 +610,176 @@ export const logWhatsAppMessage = async (commandeId: string, _type: string): Pro
 export const createBulkCommandes = async (data: any[]): Promise<{ count: number, error?: string }> => {
   if (!data || data.length === 0) return { count: 0 };
 
-  let lastError = "";
-
   try {
-    // 1. Pre-fetch products
-    // We try to fetch all products to be fast, but fallback to single queries if needed.
-    const { data: products, error: prodError } = await insforge.database
+    // 1. Charger tout le catalogue produits pour correspondance SKU
+    const { data: products } = await insforge.database
       .from('produits')
       .select('id, nom, sku, prix_vente, actif');
     
-    if (prodError) throw new Error(`Chargement catalogue: ${prodError.message}`);
-
     const productMap = new Map<string, any>();
     (products || []).forEach(p => {
       if (p.sku) productMap.set(String(p.sku).trim().toUpperCase(), p);
     });
 
-    // 2. Client matching
+    // 2. Gestion des clients en masse
     const cleanPhone = (p: any): string => String(p || '').replace(/\D/g, '').slice(-10);
     
-    // Fetch all for matching
-    const { data: allClients, error: fetchClientsErr } = await insforge.database
+    // Charger les clients existants pour éviter les doublons
+    const { data: existingClients } = await insforge.database
       .from('clients')
       .select('id, telephone, telephone_secondaire');
     
-    if (fetchClientsErr) console.warn("Client fetch error", fetchClientsErr);
-    
-    const clientMap = new Map<string, string>();
-    (allClients || []).forEach(c => {
+    const clientMapByPhone = new Map<string, string>();
+    (existingClients || []).forEach(c => {
       const p1 = cleanPhone(c.telephone);
       const p2 = cleanPhone(c.telephone_secondaire);
-      if (p1 && p1.length >= 8) clientMap.set(p1, c.id);
-      if (p2 && p2.length >= 8) clientMap.set(p2, c.id);
+      if (p1 && p1.length >= 8) clientMapByPhone.set(p1, c.id);
+      if (p2 && p2.length >= 8) clientMapByPhone.set(p2, c.id);
     });
 
-    let successCount = 0;
-    const chunkDate = new Date().toISOString();
+    // Identifier les nouveaux clients à créer
+    const newClientsToCreate: any[] = [];
+    const processedPhones = new Set<string>();
 
-    // 3. Process items in parallel chunks
-    const chunkSize = 10;
-    for (let i = 0; i < data.length; i += chunkSize) {
-      const chunk = data.slice(i, i + chunkSize);
+    data.forEach(item => {
+      const phone = cleanPhone(item.client.telephone);
+      if (phone && phone.length >= 8 && !clientMapByPhone.has(phone) && !processedPhones.has(phone)) {
+        newClientsToCreate.push({
+          nom_complet: item.client.nom_complet,
+          telephone: item.client.telephone,
+          telephone_secondaire: item.client.telephone_secondaire || '',
+          commune: item.commune || '',
+          quartier: item.quartier || '',
+          adresse: item.adresse || ''
+        });
+        processedPhones.add(phone);
+      }
+    });
+
+    // Insertion groupée des nouveaux clients
+    if (newClientsToCreate.length > 0) {
+      const { data: createdClients, error: clientErr } = await insforge.database
+        .from('clients')
+        .insert(newClientsToCreate)
+        .select();
       
-      const results = await Promise.all(chunk.map(async (item) => {
-        try {
-          const { client, lines, mode_paiement, commune, quartier, adresse, notes, frais_livraison } = item;
-          const normalizedPhone = cleanPhone(client.telephone);
-          
-          if (!normalizedPhone || normalizedPhone.length < 8) {
-            console.warn("Phone too short or empty", client.telephone);
-            return false;
-          }
-
-          let clientId = clientMap.get(normalizedPhone);
-          
-          if (!clientId) {
-            const { data: newClient, error: clientErr } = await insforge.database
-              .from('clients')
-              .insert([{
-                nom_complet: client.nom_complet,
-                telephone: client.telephone,
-                telephone_secondaire: client.telephone_secondaire || '',
-                commune: commune,
-                quartier: quartier || '',
-                adresse: adresse
-              }])
-              .select()
-              .single();
-            
-            if (clientErr) {
-              if (clientErr.code === '23505' || clientErr.message?.includes('unique')) {
-                const { data: found } = await insforge.database
-                   .from('clients')
-                   .select('id, telephone_secondaire')
-                   .or(`telephone.ilike.%${normalizedPhone}%,telephone_secondaire.ilike.%${normalizedPhone}%`)
-                   .limit(1)
-                   .maybeSingle();
-                clientId = found?.id;
-              } else {
-                throw new Error(`Client (${client.nom_complet}): ${clientErr.message}`);
-              }
-            } else {
-              clientId = newClient.id;
-            }
-            if (clientId) clientMap.set(normalizedPhone, clientId);
-          }
-
-          // Always ensure secondary phone is linked if provided in Excel
-          if (clientId && client.telephone_secondaire) {
-            await insforge.database
-              .from('clients')
-              .update({ telephone_secondaire: client.telephone_secondaire })
-              .eq('id', clientId);
-          }
-
-          if (!clientId) return false;
-
-          let calculatedTotal = 0;
-          const finalLines: any[] = [];
-
-          for (const line of lines) {
-            const skuToMatch = String(line.produit).trim().toUpperCase();
-            let prod = productMap.get(skuToMatch);
-            
-            if (!prod) {
-              // Try directly on DB
-              const { data: fallback } = await insforge.database
-                 .from('produits')
-                 .select('*')
-                 .ilike('sku', skuToMatch)
-                 .maybeSingle();
-              if (fallback) {
-                prod = fallback;
-                productMap.set(skuToMatch, prod);
-              }
-            }
-
-            if (prod) {
-              const prix = prod.prix_vente;
-              const montant = prix * line.quantite;
-              calculatedTotal += montant;
-              finalLines.push({
-                produit_id: prod.id,
-                nom_produit: prod.nom,
-                quantite: line.quantite,
-                prix_unitaire: prix,
-                montant_ligne: montant
-              });
-            } else {
-               lastError = `Article non trouvé : "${skuToMatch}"`;
-            }
-          }
-
-          if (finalLines.length > 0) {
-            await createCommandeBase({
-              client_id: clientId,
-              source_commande: `Import ${chunkDate.slice(0,10)}`,
-              montant_total: calculatedTotal + (frais_livraison || 0),
-              frais_livraison: frais_livraison || 0,
-              mode_paiement: mode_paiement || 'Cash à la livraison',
-              commune_livraison: commune || '',
-              quartier_livraison: quartier || '',
-              adresse_livraison: adresse || '',
-              notes_client: notes || '',
-              statut_commande: 'en_attente_appel',
-              date_creation: new Date()
-            }, finalLines);
-            return true;
-          }
-          return false;
-        } catch (e: any) {
-          console.error("Ligne import fail:", e);
-          lastError = e.message;
-          return false;
-        }
-      }));
+      if (clientErr) throw new Error(`Erreur création clients groupée: ${clientErr.message}`);
       
-      successCount += results.filter(r => r === true).length;
+      (createdClients || []).forEach(c => {
+        const p = cleanPhone(c.telephone);
+        if (p) clientMapByPhone.set(p, c.id);
+      });
     }
-    
-    return { count: successCount, error: successCount === 0 ? lastError : undefined };
-  } catch (globalErr: any) {
-    console.error("Global import fail:", globalErr);
-    return { count: 0, error: globalErr.message };
+
+    // 3. Préparer les commandes et lignes
+    const commandesToInsert: any[] = [];
+    const itemsWithValidData: any[] = [];
+    const now = new Date().toISOString();
+    const source = `Import ${now.slice(0, 10)}`;
+
+    data.forEach(item => {
+      const phone = cleanPhone(item.client.telephone);
+      const clientId = clientMapByPhone.get(phone);
+      if (!clientId) return;
+
+      let totalCmd = 0;
+      const cmdLines: any[] = [];
+
+      item.lines.forEach((l: any) => {
+        const prod = productMap.get(String(l.produit).trim().toUpperCase());
+        if (prod) {
+          const prix = prod.prix_vente;
+          const montant = prix * l.quantite;
+          totalCmd += montant;
+          cmdLines.push({
+            produit_id: prod.id,
+            nom_produit: prod.nom,
+            quantite: l.quantite,
+            prix_unitaire: prix,
+            montant_ligne: montant
+          });
+        }
+      });
+
+      if (cmdLines.length > 0) {
+        commandesToInsert.push({
+          client_id: clientId,
+          source_commande: source,
+          statut_commande: 'en_attente_appel',
+          montant_total: totalCmd + (item.frais_livraison || 0),
+          frais_livraison: item.frais_livraison || 0,
+          commune_livraison: item.commune || '',
+          quartier_livraison: item.quartier || '',
+          adresse_livraison: item.adresse || '',
+          notes_client: item.notes || '',
+          date_creation: now
+        });
+        itemsWithValidData.push({ lines: cmdLines });
+      }
+    });
+
+    if (commandesToInsert.length === 0) return { count: 0, error: "Aucune donnée valide à importer." };
+
+    // 4. Insertion groupée des commandes
+    const { data: createdCmds, error: cmdErr } = await insforge.database
+      .from('commandes')
+      .insert(commandesToInsert)
+      .select();
+
+    if (cmdErr) throw new Error(`Erreur insertion commandes groupée: ${cmdErr.message}`);
+
+    // 5. Insertion groupée des lignes et mouvements de stock
+    const linesToInsert: any[] = [];
+    const stockMovesToInsert: any[] = [];
+
+    (createdCmds || []).forEach((cmd, idx) => {
+      const sourceItem = itemsWithValidData[idx];
+      sourceItem.lines.forEach((l: any) => {
+        linesToInsert.push({
+          commande_id: cmd.id,
+          ...l
+        });
+        stockMovesToInsert.push({
+          produit_id: l.produit_id,
+          type_mouvement: 'sortie',
+          quantite: l.quantite,
+          reference: `Import Cmd #${cmd.id.substring(0, 8)}`,
+          date: now
+        });
+      });
+    });
+
+    if (linesToInsert.length > 0) {
+      const { error: linesErr } = await insforge.database
+        .from('lignes_commandes')
+        .insert(linesToInsert);
+      if (linesErr) console.error("Erreur insertion lignes groupée:", linesErr);
+    }
+
+    if (stockMovesToInsert.length > 0) {
+      await insforge.database
+        .from('mouvements_stock')
+        .insert(stockMovesToInsert);
+      
+      // Update product stocks
+      // Note: In a production environment with high volume, this should be done via a database trigger
+      // or a single stored procedure to ensure atomicity and speed.
+      for (const move of stockMovesToInsert) {
+        const prod = productMap.get(move.produit_id) || (products || []).find(p => p.id === move.produit_id);
+        if (prod) {
+          const currentStock = Number(prod.stock_actuel || 0);
+          await insforge.database
+            .from('produits')
+            .update({ stock_actuel: currentStock - move.quantite })
+            .eq('id', move.produit_id);
+        }
+      }
+    }
+
+    return { count: createdCmds?.length || 0 };
+  } catch (err: any) {
+    console.error("Global import fail:", err);
+    return { count: 0, error: err.message };
   }
 };
 

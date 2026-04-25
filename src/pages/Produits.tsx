@@ -3,6 +3,7 @@ import { Plus, Search, Filter } from 'lucide-react';
 import { ProduitList } from '../components/produits/ProduitList';
 import { ProduitForm } from '../components/produits/ProduitForm';
 import { StockForm } from '../components/produits/StockForm';
+import { BulkImportProduitModal } from '../components/produits/BulkImportProduitModal';
 import { subscribeToProduits } from '../services/produitService';
 import { getCategories } from '../services/adminService';
 import { Produit, Categorie } from '../types';
@@ -19,6 +20,7 @@ export const Produits = () => {
   
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [stockProduit, setStockProduit] = useState<Produit | null>(null);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -48,10 +50,15 @@ export const Produits = () => {
             <h1 className="text-premium" style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>Catalogue Inventaire</h1>
             <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginTop: '0.4rem', fontWeight: 500 }}>Gérez vos articles, prix de vente et niveaux de stock en temps réel.</p>
           </div>
-          <button className="btn btn-primary" style={{ height: '56px', padding: '0 2rem', borderRadius: '18px', fontWeight: 800, fontSize: '1.05rem', boxShadow: '0 10px 15px -3px rgba(99, 102, 255, 0.3)' }} onClick={() => { setSelectedProduit(null); setIsProduitFormOpen(true); }}>
-            <Plus size={22} strokeWidth={3} style={{ marginRight: '0.5rem' }} />
-            Nouveau Produit
-          </button>
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <button className="btn btn-outline" style={{ height: '56px', padding: '0 1.5rem', borderRadius: '18px', fontWeight: 700 }} onClick={() => setIsBulkOpen(true)}>
+              Importation Groupée
+            </button>
+            <button className="btn btn-primary" style={{ height: '56px', padding: '0 2rem', borderRadius: '18px', fontWeight: 800, fontSize: '1.05rem', boxShadow: '0 10px 15px -3px rgba(99, 102, 255, 0.3)' }} onClick={() => { setSelectedProduit(null); setIsProduitFormOpen(true); }}>
+              <Plus size={22} strokeWidth={3} style={{ marginRight: '0.5rem' }} />
+              Nouveau Produit
+            </button>
+          </div>
         </div>
 
         <div className="card glass-effect" style={{ marginBottom: '2.5rem', padding: '1.25rem', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -117,6 +124,13 @@ export const Produits = () => {
           produit={stockProduit} 
           onClose={() => setIsStockFormOpen(false)} 
           onSave={() => setIsStockFormOpen(false)} 
+        />
+      )}
+
+      {isBulkOpen && (
+        <BulkImportProduitModal 
+          onClose={() => setIsBulkOpen(false)} 
+          onSave={() => setIsBulkOpen(false)} 
         />
       )}
     </>
