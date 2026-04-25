@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, CheckCircle, Clock, XCircle, MessageCircle, AlertCircle, Plus, Minus, Trash2, Search } from 'lucide-react';
+import { X, CheckCircle, Clock, XCircle, MessageCircle, AlertCircle, Plus, Minus, Trash2, Search, PhoneCall } from 'lucide-react';
 import { updateCommandeStatus, updateCommandeLignesAndStock, logWhatsAppMessage } from '../../services/commandeService';
 import { insforge } from '../../lib/insforge';
 import { useAuth } from '../../contexts/AuthContext';
@@ -262,41 +262,47 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
     : [];
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content card" style={{ maxWidth: '650px', padding: '2.5rem' }} onClick={e => e.stopPropagation()}>
-        <button 
-          onClick={onClose} 
-          style={{ 
-            position: 'absolute', 
-            top: '1.5rem', 
-            right: '1.5rem', 
-            background: '#f1f5f9', 
-            border: 'none', 
-            borderRadius: '12px',
-            width: '36px',
-            height: '36px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer', 
-            color: 'var(--text-muted)',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <X size={18} strokeWidth={2.5} />
-        </button>
+    <div className="modal-backdrop" style={{ backdropFilter: 'blur(10px)', background: 'rgba(15, 23, 42, 0.7)' }} onClick={onClose}>
+      <div className="modal-content" style={{ maxWidth: '750px', padding: 0, borderRadius: '32px', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)' }} onClick={e => e.stopPropagation()}>
         
-        <div style={{ marginBottom: '2rem' }}>
-          <h2 className="text-premium" style={{ fontSize: '1.6rem', fontWeight: 800, margin: 0 }}>Traitement d'Appel</h2>
-          <div style={{ marginTop: '1rem', padding: '1.25rem', background: '#f8fafc', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>Référence</span>
-              <strong style={{ fontSize: '0.9rem', color: 'var(--text-main)', background: '#eaedff', padding: '0.2rem 0.6rem', borderRadius: '8px' }}>#{commande.id.slice(0, 8).toUpperCase()}</strong>
+        {/* Header Section */}
+        <div style={{ padding: '2.5rem', background: 'linear-gradient(135deg, #f8fafc, #eff6ff)', borderBottom: '1px solid #e2e8f0', position: 'relative' }}>
+          <button 
+            onClick={onClose} 
+            style={{ 
+              position: 'absolute', 
+              top: '1.5rem', 
+              right: '1.5rem', 
+              background: 'white', 
+              border: '1px solid #e2e8f0', 
+              borderRadius: '14px',
+              width: '42px',
+              height: '42px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer', 
+              color: 'var(--text-muted)',
+              boxShadow: '0 4px 10px rgba(0,0,0,0.05)'
+            }}
+          >
+            <X size={20} strokeWidth={2.5} />
+          </button>
+          
+          <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+            <div style={{ width: '80px', height: '80px', borderRadius: '24px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 10px 20px rgba(99, 102, 255, 0.2)' }}>
+              <PhoneCall size={36} />
             </div>
-            <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)' }}>{commande.nom_client || 'Client Anonyme'}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
-              <div style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-muted)' }}>📞 {commande.telephone_client}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <h2 className="text-premium" style={{ fontSize: '1.8rem', fontWeight: 900, margin: 0 }}>Traitement d'Appel</h2>
+                <span style={{ padding: '0.4rem 0.8rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)' }}>#{commande.id.slice(0, 8).toUpperCase()}</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginTop: '0.5rem' }}>
+                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>{commande.nom_client || 'Client Anonyme'}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                  <MessageCircle size={18} color="#25D366" /> {commande.telephone_client}
+                </div>
                 <a 
                   href={generateWhatsAppLink()} 
                   target="_blank" 
@@ -306,16 +312,16 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
                     display: 'flex', 
                     alignItems: 'center', 
                     gap: '0.4rem', 
-                    padding: '0.3rem 0.7rem', 
+                    padding: '0.4rem 0.8rem', 
                     background: '#25D366', 
                     color: 'white', 
-                    borderRadius: '8px', 
+                    borderRadius: '10px', 
                     fontSize: '0.75rem', 
-                    fontWeight: 700, 
-                    textDecoration: 'none'
+                    fontWeight: 800, 
+                    textDecoration: 'none',
+                    boxShadow: '0 4px 10px rgba(37, 211, 102, 0.2)'
                   }}
                 >
-                  <MessageCircle size={14} fill="currentColor" /> 
                   WhatsApp
                 </a>
               </div>
@@ -323,7 +329,8 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
           </div>
         </div>
         
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ padding: '2.5rem', maxHeight: '75vh', overflowY: 'auto' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
           {/* Articles Adjustment Section */}
           <div style={{ padding: '1.5rem', background: '#f0f9ff', borderRadius: '20px', border: '1px solid #bae6fd' }}>
@@ -593,5 +600,6 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
         </form>
       </div>
     </div>
+  </div>
   );
 };

@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
-import { CommandeList } from '../components/commandes/CommandeList';
+import { useState, useEffect, useMemo } from 'react';
+import { 
+  PhoneCall, CheckCircle, Clock, 
+  MessageSquare, TrendingUp, Search, ChevronRight
+} from 'lucide-react';
 import { AppelForm } from '../components/centre-appel/AppelForm';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
 import { subscribeToCommandesByStatus } from '../services/commandeService';
@@ -10,6 +13,7 @@ export const CentreAppel = () => {
   const [loading, setLoading] = useState(true);
   const [selectedCommande, setSelectedCommande] = useState<Commande | null>(null);
   const [viewingCommandeId, setViewingCommandeId] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     setLoading(true);
@@ -20,42 +24,173 @@ export const CentreAppel = () => {
     return () => unsubscribe();
   }, []);
 
+  const stats = useMemo(() => {
+    const urgent = commandes.filter(c => c.statut_commande === 'a_rappeler').length;
+    const newCalls = commandes.filter(c => c.statut_commande === 'en_attente_appel').length;
+    return { urgent, newCalls, total: commandes.length };
+  }, [commandes]);
+
+  const filteredCommandes = useMemo(() => {
+    return commandes.filter(c => 
+      (c.nom_client || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (c.telephone_client || '').includes(searchTerm)
+    ).sort((a, b) => {
+      if (a.statut_commande === 'a_rappeler' && b.statut_commande !== 'a_rappeler') return -1;
+      if (a.statut_commande !== 'a_rappeler' && b.statut_commande === 'a_rappeler') return 1;
+      return new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime();
+    });
+  }, [commandes, searchTerm]);
+
+  const scripts = [
+    { title: "Confirmation Standard", text: "Bonjour [Nom], je vous appelle de la part de Jachete CI concernant votre commande de [Articles]..." },
+    { title: "Relance Injoignable", text: "Bonjour, nous avons tenté de vous joindre pour votre livraison. Merci de nous confirmer votre disponibilité..." },
+    { title: "Absence du Livreue", text: "Bonjour, notre livreur a eu un contretemps. Nous reprogrammons votre passage pour demain matin..." }
+  ];
+
   return (
     <>
-      <div style={{ animation: 'pageEnter 0.6s ease' }}>
-        <div style={{ marginBottom: '2.5rem' }}>
-          <h1 className="text-premium" style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0 }}>Centre d'Appel</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginTop: '0.4rem', fontWeight: 500 }}>Gestion des flux de validation client et relances téléphoniques.</p>
+      <div style={{ animation: 'pageEnter 0.6s ease', paddingBottom: '4rem' }}>
+        {/* Header Section */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem', flexWrap: 'wrap', gap: '2rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
+              <div style={{ padding: '0.75rem', background: 'var(--primary)', borderRadius: '16px', color: 'white' }}>
+                <PhoneCall size={32} />
+              </div>
+              <h1 className="text-premium" style={{ fontSize: '2.5rem', fontWeight: 900, margin: 0 }}>Call Center Ops</h1>
+            </div>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 600 }}>Coordination des flux de validation et relances clients.</p>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem' }}>
+            <div className="card glass-effect" style={{ padding: '1rem 1.5rem', borderRadius: '18px', display: 'flex', flexDirection: 'column', minWidth: '160px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Flux Total</span>
+              <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--primary)' }}>{stats.total}</span>
+            </div>
+            <div className="card glass-effect" style={{ padding: '1rem 1.5rem', borderRadius: '18px', background: '#fef2f2', border: '1px solid #fee2e2', display: 'flex', flexDirection: 'column', minWidth: '160px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#991b1b', textTransform: 'uppercase' }}>À Rappeler</span>
+              <span style={{ fontSize: '1.8rem', fontWeight: 900, color: '#dc2626' }}>{stats.urgent}</span>
+            </div>
+          </div>
         </div>
 
-        <div className="card glass-effect" style={{ marginBottom: '2.5rem', padding: '2rem', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-            <h3 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: 'var(--primary)' }}>
-              Flux à Traiter 
-              <span style={{ marginLeft: '1rem', padding: '0.2rem 0.8rem', background: 'rgba(99, 102, 255, 0.1)', borderRadius: '10px', fontSize: '0.9rem' }}>
-                {commandes.length} commandes
-              </span>
-            </h3>
-          </div>
-          
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
-              <div className="loading-spinner" style={{ margin: '0 auto 1rem' }}></div>
-              <p style={{ fontWeight: 600 }}>Récupération des appels prioritaires...</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem', alignItems: 'start' }}>
+          {/* Main Area: Order List */}
+          <div className="card glass-effect" style={{ padding: '2rem', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Clock size={24} color="var(--primary)" /> File d'attente prioritaire
+              </h3>
+              
+              <div style={{ position: 'relative', width: '300px' }}>
+                <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="Filtrer un client..." 
+                  style={{ paddingLeft: '3rem', height: '44px', borderRadius: '12px', background: 'white' }}
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                />
+              </div>
             </div>
-          ) : (
-            <CommandeList 
-              commandes={[...commandes].sort((a, b) => {
-                if (a.statut_commande === 'a_rappeler' && b.statut_commande !== 'a_rappeler') return -1;
-                if (a.statut_commande !== 'a_rappeler' && b.statut_commande === 'a_rappeler') return 1;
-                return 0;
-              })} 
-              onActionClick={setSelectedCommande}
-              onViewClick={(c) => setViewingCommandeId(c.id)}
-              actionIcon="PhoneCall"
-              actionLabel="Lancer l'appel"
-            />
-          )}
+            
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '6rem' }}>
+                <div className="spinner" style={{ margin: '0 auto 1.5rem' }}></div>
+                <p style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Synchronisation du flux d'appels...</p>
+              </div>
+            ) : filteredCommandes.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '6rem', background: '#f8fafc', borderRadius: '20px', border: '2px dashed #e2e8f0' }}>
+                <CheckCircle size={48} color="#10b981" style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                <h4 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>Tous les appels sont traités !</h4>
+                <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem', fontWeight: 600 }}>Le flux est vide pour le moment.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {filteredCommandes.map(cmd => (
+                  <div key={cmd.id} className="call-row" style={{ 
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                    padding: '1.5rem', background: 'white', borderRadius: '20px', 
+                    border: `1px solid ${cmd.statut_commande === 'a_rappeler' ? '#fee2e2' : '#f1f5f9'}`,
+                    boxShadow: '0 4px 15px rgba(0,0,0,0.02)',
+                    transition: 'all 0.2s ease',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }} onClick={() => setViewingCommandeId(cmd.id)}>
+                    {cmd.statut_commande === 'a_rappeler' && (
+                      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: '#ef4444' }} />
+                    )}
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flex: 1 }}>
+                      <div style={{ width: '54px', height: '54px', borderRadius: '16px', background: cmd.statut_commande === 'a_rappeler' ? '#fef2f2' : '#eff6ff', color: cmd.statut_commande === 'a_rappeler' ? '#dc2626' : 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <PhoneCall size={24} strokeWidth={2.5} />
+                      </div>
+                      
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <span style={{ fontWeight: 900, fontSize: '1.1rem', color: '#1e293b' }}>{cmd.nom_client}</span>
+                          {cmd.statut_commande === 'a_rappeler' && <span style={{ padding: '0.2rem 0.6rem', background: '#fee2e2', color: '#dc2626', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 800 }}>URGENT: RELANCE</span>}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', marginTop: '0.25rem' }}>
+                          <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 700 }}>📞 {cmd.telephone_client}</div>
+                          <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>📍 {cmd.commune_livraison || 'Zone inconnue'}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                       <div style={{ textAlign: 'right', marginRight: '1rem' }}>
+                         <div style={{ fontWeight: 900, color: 'var(--primary)', fontSize: '1.1rem' }}>{(cmd.montant_total || 0).toLocaleString()} F</div>
+                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>{cmd.lignes?.length} articles</div>
+                       </div>
+                       <button 
+                         className="btn btn-primary" 
+                         style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                         onClick={(e) => { e.stopPropagation(); setSelectedCommande(cmd); }}
+                       >
+                         Traiter <ChevronRight size={18} />
+                       </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar: Scripts & Insights */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div className="card glass-effect" style={{ padding: '2rem', borderRadius: '24px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <h3 style={{ margin: '0 0 1.5rem 0', fontSize: '1.2rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <MessageSquare size={20} color="var(--primary)" /> Scripts Opérateurs
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                {scripts.map((s, i) => (
+                  <div key={i} style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.5)', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.5rem', color: 'var(--primary)' }}>{s.title}</div>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5', fontStyle: 'italic' }}>"{s.text}"</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="card glass-effect" style={{ padding: '2rem', borderRadius: '24px', background: 'linear-gradient(135deg, var(--primary), #4f46e5)', color: 'white', border: 'none' }}>
+              <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.2rem', fontWeight: 900 }}>Productivité</h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <TrendingUp size={24} />
+                </div>
+                <div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>85%</div>
+                  <div style={{ fontSize: '0.8rem', opacity: 0.8, fontWeight: 700 }}>Taux de validation</div>
+                </div>
+              </div>
+              <p style={{ margin: 0, fontSize: '0.85rem', lineHeight: '1.4', opacity: 0.9 }}>
+                Assurez-vous de bien valider la <strong>commune</strong> et le <strong>créneau horaire</strong> lors de chaque appel.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -73,6 +208,29 @@ export const CentreAppel = () => {
           onClose={() => setViewingCommandeId(null)} 
         />
       )}
+
+      <style>{`
+        @keyframes pageEnter {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .call-row:hover {
+          transform: translateX(5px);
+          border-color: var(--primary) !important;
+          box-shadow: 0 8px 25px rgba(99, 102, 255, 0.08) !important;
+        }
+        .spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid #e2e8f0;
+          border-top-color: var(--primary);
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </>
   );
 };
