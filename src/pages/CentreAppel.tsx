@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  PhoneCall, CheckCircle, Clock, 
+  PhoneCall, CheckCircle, Clock, X,
   MessageSquare, TrendingUp, Search, ChevronRight
 } from 'lucide-react';
 import { AppelForm } from '../components/centre-appel/AppelForm';
@@ -14,8 +14,8 @@ export const CentreAppel = () => {
   const [selectedCommande, setSelectedCommande] = useState<Commande | null>(null);
   const [viewingCommandeId, setViewingCommandeId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-
   const [statusFilter, setStatusFilter] = useState('All');
+  const [activeScript, setActiveScript] = useState<{ title: string, text: string } | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -48,10 +48,15 @@ export const CentreAppel = () => {
   }, [commandes, searchTerm, statusFilter]);
 
   const scripts = [
-    { title: "Confirmation Standard", text: "Bonjour [Nom], je vous appelle de la part de Jachete CI concernant votre commande de [Articles]..." },
-    { title: "Relance Injoignable", text: "Bonjour, nous avons tenté de vous joindre pour votre livraison. Merci de nous confirmer votre disponibilité..." },
-    { title: "Absence du Livreue", text: "Bonjour, notre livreur a eu un contretemps. Nous reprogrammons votre passage pour demain matin..." }
+    { id: 'standard', title: "Confirmation Standard", text: "Bonjour [Nom], je vous appelle de la part de GomboSwift concernant votre commande de [Articles]. Nous aimerions confirmer votre adresse à [Commune] et programmer la livraison pour aujourd'hui ou demain. Êtes-vous disponible ?" },
+    { id: 'recall', title: "Relance Injoignable", text: "Bonjour [Nom], nous avons tenté de vous joindre plusieurs fois sans succès pour votre livraison GomboSwift. Votre colis est prêt. Pourriez-vous nous confirmer que vous êtes toujours intéressé et nous donner un créneau de disponibilité ?" },
+    { id: 'delay', title: "Absence / Contretemps", text: "Bonjour [Nom], notre livreur a eu un contretemps imprévu aujourd'hui. Nous tenons à nous en excuser. Nous souhaitons reprogrammer votre livraison pour demain matin à la première heure. Est-ce que cela vous convient ?" }
   ];
+
+  const getSuggestedScript = (commande: Commande) => {
+    if (commande.statut_commande === 'a_rappeler') return scripts.find(s => s.id === 'recall');
+    return scripts.find(s => s.id === 'standard');
+  };
 
   return (
     <>
@@ -180,13 +185,27 @@ export const CentreAppel = () => {
                          <div style={{ fontWeight: 900, color: 'var(--primary)', fontSize: '1.1rem' }}>{(cmd.montant_total || 0).toLocaleString()} F</div>
                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>{cmd.lignes?.length} articles</div>
                        </div>
-                       <button 
-                         className="btn btn-primary" 
-                         style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                         onClick={(e) => { e.stopPropagation(); setSelectedCommande(cmd); }}
-                       >
-                         Traiter <ChevronRight size={18} />
-                       </button>
+                       
+                       <div style={{ display: 'flex', gap: '0.5rem' }}>
+                         <button 
+                           className="btn btn-outline" 
+                           style={{ height: '48px', borderRadius: '14px', padding: '0 1rem', fontWeight: 800, fontSize: '0.8rem' }}
+                           onClick={(e) => { 
+                             e.stopPropagation(); 
+                             const script = getSuggestedScript(cmd);
+                             if (script) setActiveScript(script);
+                           }}
+                         >
+                           Script
+                         </button>
+                         <button 
+                           className="btn btn-primary" 
+                           style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                           onClick={(e) => { e.stopPropagation(); setSelectedCommande(cmd); }}
+                         >
+                           Traiter <ChevronRight size={18} />
+                         </button>
+                       </div>
                     </div>
                   </div>
                 ))}
@@ -202,9 +221,13 @@ export const CentreAppel = () => {
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 {scripts.map((s, i) => (
-                  <div key={i} style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.5)', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '0.5rem', color: 'var(--primary)' }}>{s.title}</div>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5', fontStyle: 'italic' }}>"{s.text}"</p>
+                  <div key={i} style={{ padding: '1.25rem', background: 'rgba(255,255,255,0.5)', borderRadius: '16px', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => setActiveScript(s)}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--primary)' }}>{s.title}</div>
+                      <ChevronRight size={14} color="var(--primary)" />
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4', fontStyle: 'italic', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>"{s.text}"</p>
+                    <button className="btn btn-outline btn-sm" style={{ width: '100%', marginTop: '1rem', height: '32px', fontSize: '0.75rem', borderRadius: '8px' }}>Afficher</button>
                   </div>
                 ))}
               </div>
@@ -228,6 +251,37 @@ export const CentreAppel = () => {
           </div>
         </div>
       </div>
+
+      {/* Script Viewer Modal */}
+      {activeScript && (
+        <div className="modal-backdrop" style={{ backdropFilter: 'blur(8px)', background: 'rgba(15, 23, 42, 0.6)' }} onClick={() => setActiveScript(null)}>
+          <div className="modal-content" style={{ maxWidth: '600px', padding: '3rem', borderRadius: '32px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900, color: 'var(--primary)' }}>{activeScript.title}</h2>
+              <button onClick={() => setActiveScript(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '12px', width: '40px', height: '40px', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            <div style={{ background: '#f8fafc', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', position: 'relative' }}>
+              <MessageSquare size={24} color="var(--primary)" style={{ position: 'absolute', top: '-12px', left: '2rem', background: 'white', padding: '4px', borderRadius: '8px' }} />
+              <p style={{ margin: 0, fontSize: '1.1rem', lineHeight: '1.8', color: '#334155', fontWeight: 600 }}>
+                {activeScript.text}
+              </p>
+            </div>
+            <div style={{ marginTop: '2.5rem', display: 'flex', gap: '1rem' }}>
+              <button 
+                className="btn btn-primary" 
+                style={{ flex: 1, height: '56px', borderRadius: '16px', fontWeight: 800 }}
+                onClick={() => {
+                  navigator.clipboard.writeText(activeScript.text);
+                  setActiveScript(null);
+                }}
+              >
+                Copier le script
+              </button>
+              <button className="btn btn-outline" style={{ flex: 1, height: '56px', borderRadius: '16px', fontWeight: 800 }} onClick={() => setActiveScript(null)}>Fermer</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {selectedCommande && (
         <AppelForm 
