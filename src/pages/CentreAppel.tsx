@@ -15,6 +15,8 @@ export const CentreAppel = () => {
   const [viewingCommandeId, setViewingCommandeId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
+  const [statusFilter, setStatusFilter] = useState('All');
+
   useEffect(() => {
     setLoading(true);
     const unsubscribe = subscribeToCommandesByStatus(['en_attente_appel', 'a_rappeler'], (data) => {
@@ -31,15 +33,19 @@ export const CentreAppel = () => {
   }, [commandes]);
 
   const filteredCommandes = useMemo(() => {
-    return commandes.filter(c => 
-      (c.nom_client || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (c.telephone_client || '').includes(searchTerm)
-    ).sort((a, b) => {
+    return commandes.filter(c => {
+      const matchesSearch = (c.nom_client || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (c.telephone_client || '').includes(searchTerm);
+      const matchesStatus = statusFilter === 'All' || 
+                           (statusFilter === 'New' && c.statut_commande === 'en_attente_appel') ||
+                           (statusFilter === 'Relance' && c.statut_commande === 'a_rappeler');
+      return matchesSearch && matchesStatus;
+    }).sort((a, b) => {
       if (a.statut_commande === 'a_rappeler' && b.statut_commande !== 'a_rappeler') return -1;
       if (a.statut_commande !== 'a_rappeler' && b.statut_commande === 'a_rappeler') return 1;
       return new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime();
     });
-  }, [commandes, searchTerm]);
+  }, [commandes, searchTerm, statusFilter]);
 
   const scripts = [
     { title: "Confirmation Standard", text: "Bonjour [Nom], je vous appelle de la part de Jachete CI concernant votre commande de [Articles]..." },
@@ -77,21 +83,50 @@ export const CentreAppel = () => {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem', alignItems: 'start' }}>
           {/* Main Area: Order List */}
           <div className="card glass-effect" style={{ padding: '2rem', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <Clock size={24} color="var(--primary)" /> File d'attente prioritaire
+                <Clock size={24} color="var(--primary)" /> File d'attente
               </h3>
               
-              <div style={{ position: 'relative', width: '300px' }}>
-                <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="Filtrer un client..." 
-                  style={{ paddingLeft: '3rem', height: '44px', borderRadius: '12px', background: 'white' }}
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                />
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flex: 1, minWidth: '400px', justifyContent: 'flex-end' }}>
+                <div style={{ position: 'relative', flex: 1, maxWidth: '250px' }}>
+                  <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="Filtrer..." 
+                    style={{ paddingLeft: '3rem', height: '44px', borderRadius: '12px', background: 'white' }}
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '4px', borderRadius: '12px' }}>
+                  {[
+                    { id: 'All', label: 'Tous' },
+                    { id: 'New', label: 'Nouveaux' },
+                    { id: 'Relance', label: 'Relances' }
+                  ].map(f => (
+                    <button
+                      key={f.id}
+                      onClick={() => setStatusFilter(f.id)}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        borderRadius: '10px',
+                        border: 'none',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        background: statusFilter === f.id ? 'white' : 'transparent',
+                        color: statusFilter === f.id ? 'var(--primary)' : 'var(--text-muted)',
+                        boxShadow: statusFilter === f.id ? '0 2px 8px rgba(0,0,0,0.05)' : 'none',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             
