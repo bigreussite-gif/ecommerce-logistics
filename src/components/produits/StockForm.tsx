@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { Produit, MouvementStock } from '../../types';
 import { addMouvementStock } from '../../services/produitService';
-import { X, ArrowDownRight, ArrowUpRight, RefreshCcw, Info } from 'lucide-react';
+import { getFournisseurs, Fournisseur } from '../../services/fournisseurService';
+import { registerAchatStock } from '../../services/achatService';
+import { X, ArrowDownRight, ArrowUpRight, RefreshCcw, Info, ShoppingCart } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
+import { useEffect } from 'react';
 
 interface StockFormProps {
   produit: Produit;
@@ -19,7 +22,15 @@ export const StockForm = ({ produit, onClose, onSave }: StockFormProps) => {
     reference: '',
     commentaire: ''
   });
+  const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([]);
+  const [selectedFournisseur, setSelectedFournisseur] = useState('');
+  const [prixAchat, setPrixAchat] = useState(produit.prix_achat || 0);
+  const [modePaiement, setModePaiement] = useState<'Cash' | 'Crédit'>('Cash');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    getFournisseurs().then(setFournisseurs).catch(console.error);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,12 +43,26 @@ export const StockForm = ({ produit, onClose, onSave }: StockFormProps) => {
 
     setLoading(true);
     try {
-      await addMouvementStock(formData as any);
-      showToast("Mouvement de stock enregistré avec succès !", "success");
+      if (formData.type_mouvement === 'entree' && selectedFournisseur) {
+        // If it's an entry with a supplier, use the full AchatStock logic
+        await registerAchatStock({
+          produit_id: produit.id,
+          fournisseur_id: selectedFournisseur,
+          quantite: formData.quantite || 0,
+          prix_achat_unitaire: prixAchat,
+          montant_total: (formData.quantite || 0) * prixAchat,
+          mode_paiement: modePaiement,
+          statut_paiement: modePaiement === 'Cash' ? 'Payé' : 'En attente'
+        });
+      } else {
+        // Otherwise use simple movement
+        await addMouvementStock(formData as any);
+      }
+      showToast("Opération enregistrée avec succès !", "success");
       onSave();
     } catch (error) {
-      showToast("Erreur lors de l'enregistrement du mouvement.", "error");
-      console.error("Error adding stock movement", error);
+      showToast("Erreur lors de l'enregistrement.", "error");
+      console.error("Error updating stock", error);
     } finally {
       setLoading(false);
     }
@@ -152,17 +177,86 @@ export const StockForm = ({ produit, onClose, onSave }: StockFormProps) => {
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Référence</label>
-              <input 
-                type="text" 
-                className="form-input" 
-                placeholder="ex: BL-2024-001"
-                value={formData.reference}
-                onChange={e => setFormData({...formData, reference: e.target.value})}
-              />
-            </div>
+            {formData.type_mouvement === 'entree' ? (
+              <div className="form-group">
+                <label className="form-label">Prix d'Achat Unitaire (F)</label>
+                <input 
+                  type="number" 
+                  className="form-input" 
+                  style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'right', color: 'var(--primary)' }}
+                  value={prixAchat}
+                  onChange={e => setPrixAchat(Number(e.target.value))}
+                />
+              </div>
+            ) : (
+              <div className="form-group">
+                <label className="form-label">Référence</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="ex: BL-2024-001"
+                  value={formData.reference}
+                  onChange={e => setFormData({...formData, reference: e.target.value})}
+                />
+              </div>
+            )}
           </div>
+
+          {formData.type_mouvement === 'entree' && (
+            <div style={{ background: 'rgba(99, 102, 255, 0.05)', padding: '1.5rem', borderRadius: '20px', marginBottom: '1.5rem', border: '1px dashed var(--primary)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--primary)' }}>
+                <ShoppingCart size={18} />
+                <span style={{ fontWeight: 800, fontSize: '0.9rem', textTransform: 'uppercase' }}>Détails de l'Achat</span>
+              </div>
+              
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Fournisseur</label>
+                  <select 
+                    className="form-select" 
+                    value={selectedFournisseur} 
+                    onChange={e => setSelectedFournisseur(e.target.value)}
+                    style={{ background: 'white' }}
+                  >
+                    <option value="">Sélectionner un fournisseur...</option>
+                    {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+                  </select>
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">Mode de Règlement</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <button 
+                      type="button"
+                      onClick={() => setModePaiement('Cash')}
+                      style={{ 
+                        padding: '0.75rem', borderRadius: '12px', border: '2px solid', 
+                        borderColor: modePaiement === 'Cash' ? '#10b981' : '#e2e8f0',
+                        background: modePaiement === 'Cash' ? '#ecfdf5' : 'white',
+                        color: modePaiement === 'Cash' ? '#065f46' : 'var(--text-muted)',
+                        fontWeight: 700, cursor: 'pointer'
+                      }}
+                    >
+                      CASH
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setModePaiement('Crédit')}
+                      style={{ 
+                        padding: '0.75rem', borderRadius: '12px', border: '2px solid', 
+                        borderColor: modePaiement === 'Crédit' ? '#f59e0b' : '#e2e8f0',
+                        background: modePaiement === 'Crédit' ? '#fffbeb' : 'white',
+                        color: modePaiement === 'Crédit' ? '#92400e' : 'var(--text-muted)',
+                        fontWeight: 700, cursor: 'pointer'
+                      }}
+                    >
+                      CRÉDIT
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="form-group" style={{ marginBottom: '2rem' }}>
             <label className="form-label">Note / Commentaire</label>
