@@ -320,10 +320,9 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
                 </td>
                 <td data-label="Permissions">
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                    {u.permissions?.slice(0, 3).map(p => (
+                    {u.permissions?.map(p => (
                       <span key={p} style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: '#f1f5f9', borderRadius: '4px', color: 'var(--text-muted)', fontWeight: 600 }}>{p}</span>
                     ))}
-                    {(u.permissions?.length || 0) > 3 && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>+{(u.permissions?.length || 0) - 3}</span>}
                   </div>
                 </td>
                 <td style={{ textAlign: 'right' }}>

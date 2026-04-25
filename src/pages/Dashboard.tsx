@@ -26,7 +26,7 @@ export const Dashboard = () => {
   const fetchTop = useCallback(async (p: Period, start?: string, end?: string) => {
     try {
       const days = p === 'today' ? 1 : p === '7d' ? 7 : p === '30d' ? 30 : 0;
-      const top = await getTopSellingProducts(10, days, start, end);
+      const top = await getTopSellingProducts(null, days, start, end);
       const catStats = await getCategoryPerformance(days, start, end);
       setTopProducts(top);
       setCategoryStats(catStats);
@@ -494,7 +494,7 @@ export const Dashboard = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {heatmapData.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Aucune donnée</div>
-            ) : heatmapData.slice(0, 6).map((z) => (
+            ) : heatmapData.map((z) => (
               <div key={z.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{z.name}</span>
@@ -614,7 +614,7 @@ export const Dashboard = () => {
                   <Tag size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
                   <p>Aucune donnée sur cette période.</p>
                 </div>
-              ) : categoryStats.slice(0, 10).map((c, i) => {
+              ) : categoryStats.map((c, i) => {
                 const maxCA = Math.max(...categoryStats.map(cat => cat.ca));
                 const percent = maxCA > 0 ? (c.ca / maxCA) * 100 : 0;
                 return (
@@ -661,7 +661,7 @@ export const Dashboard = () => {
                   <MapPin size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
                   <p>Aucune donnée sur cette période.</p>
                 </div>
-              ) : bestZonesData.slice(0, 10).map((z, i) => (
+              ) : bestZonesData.map((z, i) => (
                 <div key={z.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

@@ -444,7 +444,7 @@ export const generateAuditReportPDF = (
   doc.setFont("helvetica", "bold");
   doc.text("Journal des Opérations Majeures", 20, finalY1);
 
-  const tableRows = transactions.slice(0, 30).map(t => [
+  const tableRows = transactions.map(t => [
     format(new Date(t.date), 'dd/MM/yyyy'),
     t.description.substring(0, 45),
     t.categorie,

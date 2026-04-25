@@ -28,7 +28,7 @@ export const getCommandeWithLines = async (id: string): Promise<Commande & { lig
   };
 };
 
-export const getCommandes = async (limit: number | null = 1000, offset = 0): Promise<Commande[]> => {
+export const getCommandes = async (limit: number | null = null, offset = 0): Promise<Commande[]> => {
   let query = insforge.database
     .from('commandes')
     .select('*, clients(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*, produits(*))')
@@ -53,7 +53,7 @@ export const getCommandes = async (limit: number | null = 1000, offset = 0): Pro
 export const subscribeToCommandes = (callback: (commandes: Commande[]) => void) => {
   const fetch = () => {
     if (document.visibilityState === 'visible') {
-      getCommandes(100).then(callback); // Fetch top 100 for better performance
+      getCommandes(null).then(callback); // Fetch all for reliability
     }
   };
   fetch();
@@ -385,7 +385,7 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
   await Promise.all(updatePromises);
 };
 
-export const getTopSellingProducts = async (limit = 10, days?: number, start?: string, end?: string): Promise<{ nom: string, nb_ventes: number, total_ca: number, total_sorties: number, taux_succes: number }[]> => {
+export const getTopSellingProducts = async (limit: number | null = null, days?: number, start?: string, end?: string): Promise<{ nom: string, nb_ventes: number, total_ca: number, total_sorties: number, taux_succes: number }[]> => {
   let query = insforge.database
     .from('lignes_commandes')
     .select('*, commandes!inner(statut_commande, date_creation, date_livraison_effective)');
@@ -437,7 +437,7 @@ export const getTopSellingProducts = async (limit = 10, days?: number, start?: s
     }
   });
 
-  return Object.values(aggregates)
+  const result = Object.values(aggregates)
     .map(stats => {
       const finishedAttempts = stats.livrees + stats.echecs;
       return { 
@@ -448,8 +448,12 @@ export const getTopSellingProducts = async (limit = 10, days?: number, start?: s
         taux_succes: finishedAttempts > 0 ? Math.round((stats.livrees / finishedAttempts) * 100) : 0
       };
     })
-    .sort((a, b) => b.nb_ventes - a.nb_ventes)
-    .slice(0, limit);
+    .sort((a, b) => b.nb_ventes - a.nb_ventes);
+  
+  if (limit !== null) {
+    return result.slice(0, limit);
+  }
+  return result;
 };
 
 export const getCategoryPerformance = async (days?: number, start?: string, end?: string): Promise<{ nom: string, nb_articles: number, ca: number }[]> => {
