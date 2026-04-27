@@ -136,8 +136,8 @@ export const Logistique = () => {
                       />
                     </div>
                   </th>
-                  <th>Client / Destination</th>
-                  <th>Zone</th>
+                  <th>Client & Contact</th>
+                  <th>Zone & Destination</th>
                   <th style={{ textAlign: 'right' }}>Valeur</th>
                 </tr>
               </thead>
