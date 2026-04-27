@@ -100,14 +100,31 @@ export const Caisse = () => {
 
     setLoading(true);
     try {
-      const { data: results } = await insforge.database
+      let results = [];
+      const { data: refResults } = await insforge.database
         .from('commandes')
         .select('*, clients(nom_complet, telephone), users(nom_complet), lignes:lignes_commandes(*)')
         .or(`ref_text.ilike.%${cleanId}%`)
         .limit(1);
 
+      if (refResults && refResults.length > 0) {
+        results = refResults;
+      } else {
+        // Try searching by client name or phone
+        const { data: clientResults } = await insforge.database
+          .from('commandes')
+          .select('*, clients!inner(nom_complet, telephone), users(nom_complet), lignes:lignes_commandes(*)')
+          .or(`nom_complet.ilike.%${cleanId}%,telephone.ilike.%${cleanId}%`, { referencedTable: 'clients' })
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        if (clientResults && clientResults.length > 0) {
+          results = clientResults;
+        }
+      }
+
       if (!results || results.length === 0) {
-        showToast("Aucune commande trouvée avec cette référence.", "error");
+        showToast("Aucune commande trouvée avec cette référence ou ce client.", "error");
         return;
       }
 
@@ -367,7 +384,7 @@ export const Caisse = () => {
                     <input 
                       type="text" 
                       className="form-input" 
-                      placeholder="Ajouter une commande (Ref #...)"
+                      placeholder="Ajouter une commande (Ref, Nom, Tél...)"
                       style={{ paddingLeft: '2.5rem', height: '40px', fontSize: '0.9rem', borderRadius: '10px' }}
                       value={extraSearch}
                       onChange={e => setExtraSearch(e.target.value)}
