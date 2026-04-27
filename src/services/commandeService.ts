@@ -7,7 +7,7 @@ import { globalEventBus, EVENTS } from '../utils/events';
 export const getCommandeWithLines = async (id: string): Promise<Commande & { lignes: LigneCommande[] }> => {
   const { data: cmd, error: cmdError } = await insforge.database
     .from('commandes')
-    .select('*, clients(*)')
+    .select('*, clients(*), livreur:users!commandes_livreur_id_fkey(nom_complet)')
     .eq('id', id)
     .single();
 
@@ -37,7 +37,7 @@ export const getCommandesByIds = async (ids: string[]): Promise<(Commande & { li
 
   const { data: cmds, error: cmdError } = await insforge.database
     .from('commandes')
-    .select('*, clients(*)')
+    .select('*, clients(*), livreur:users!commandes_livreur_id_fkey(nom_complet)')
     .in('id', ids);
 
   if (cmdError) throw cmdError;

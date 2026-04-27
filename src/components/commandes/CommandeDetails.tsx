@@ -288,6 +288,22 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800 }}>Paiement</div>
                       <div style={{ fontWeight: 700 }}>{commande.mode_paiement}</div>
                    </div>
+                   {(commande as any).livreur?.nom_complet && (
+                     <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed #e2e8f0' }}>
+                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, marginBottom: '0.25rem' }}>Affectation Logistique</div>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                         <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(99, 102, 255, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                           <User size={12} strokeWidth={3} />
+                         </div>
+                         <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{(commande as any).livreur.nom_complet}</div>
+                         {commande.feuille_route_id && (
+                           <span style={{ fontSize: '0.7rem', background: '#e2e8f0', padding: '0.2rem 0.5rem', borderRadius: '6px', fontWeight: 700, color: '#475569' }}>
+                             #{(commande.feuille_route_id || '').slice(0, 5).toUpperCase()}
+                           </span>
+                         )}
+                       </div>
+                     </div>
+                   )}
                 </div>
              </div>
           </div>
