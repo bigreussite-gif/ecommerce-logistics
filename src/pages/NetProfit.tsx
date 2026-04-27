@@ -97,7 +97,7 @@ export const NetProfit = () => {
     
     // Validate lines if stock purchase
     if (newDepense.categorie === 'Achat Stock / Fournisseur' && depenseLignes.length === 0) {
-      return showToast("Veuillez ajouter au moins un produit pour un achat de stock", "warning");
+      return showToast("Veuillez ajouter au moins un produit pour un achat de stock", "error");
     }
 
     try {

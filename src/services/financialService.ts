@@ -110,7 +110,6 @@ export interface ProfitStats {
   pertes_livraison: number;
   benefice_caisse: number;
   flux_tresorerie: number;
-  flux_tresorerie?: number;
   roas?: number;
   cac?: number;
 }

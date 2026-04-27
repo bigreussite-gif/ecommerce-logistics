@@ -1,5 +1,5 @@
 import { insforge } from '../lib/insforge';
-import { addMouvementStock } from './produitService';
+import { addMouvementStock, updateProduit } from './produitService';
 import { addDepense, deleteDepense } from './financialService';
 import { updateFournisseur, getFournisseurs } from './fournisseurService';
 import { globalEventBus, EVENTS } from '../utils/events';
@@ -55,7 +55,7 @@ export const registerAchatStock = async (achat: Omit<AchatStock, 'id' | 'date_ac
         produit_id: achat.produit_id,
         nom_produit: 'Achat Stock', // Will be ignored by stock logic as it uses produit_id
         quantite: achat.quantite,
-        prix_unitaire: achat.prix_unitaire || achat.prix_achat_unitaire,
+        prix_unitaire: achat.prix_achat_unitaire,
         montant_ligne: achat.montant_total
       }]
     });
@@ -88,7 +88,6 @@ export const registerAchatStock = async (achat: Omit<AchatStock, 'id' | 'date_ac
 };
 
 export const registerBulkAchatsStock = async (achats: Omit<AchatStock, 'id' | 'date_achat'>[]): Promise<void> => {
-  const date_achat = new Date().toISOString();
   
   for (const achat of achats) {
     await registerAchatStock(achat);

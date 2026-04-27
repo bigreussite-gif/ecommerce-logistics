@@ -8,9 +8,21 @@ class EventBus {
       this.listeners[event] = [];
     }
     this.listeners[event].push(callback);
-    return () => {
+    return () => this.unsubscribe(event, callback);
+  }
+
+  on(event: string, callback: Callback) {
+    this.subscribe(event, callback);
+  }
+
+  off(event: string, callback: Callback) {
+    this.unsubscribe(event, callback);
+  }
+
+  private unsubscribe(event: string, callback: Callback) {
+    if (this.listeners[event]) {
       this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
-    };
+    }
   }
 
   emit(event: string) {

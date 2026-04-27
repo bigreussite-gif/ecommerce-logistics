@@ -622,6 +622,19 @@ export const getFinancialData = async (startDate?: string, endDate?: string): Pr
   }));
 };
 
+export const updateCommandeBase = async (id: string, updates: Partial<Commande>, oldLines: LigneCommande[], newLines: any[]): Promise<void> => {
+  const { error: cmdError } = await insforge.database
+    .from('commandes')
+    .update(updates as any)
+    .eq('id', id);
+
+  if (cmdError) throw cmdError;
+
+  await updateCommandeLignesAndStock(id, oldLines, newLines);
+  
+  globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
+};
+
 export const updateCommandeLignesAndStock = async (commandeId: string, oldLines: LigneCommande[], newLines: any[]): Promise<void> => {
   const oldMap = new Map(oldLines.map(l => [l.id, l]));
   
