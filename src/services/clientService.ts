@@ -185,7 +185,7 @@ export const getClientsWithIntelligence = async (): Promise<(Client & ClientFide
     if (settledCount >= 5 || total_encaisse > 150000) segment = 'Diamant 💎';
     else if (settledCount >= 2) segment = 'Fidèle ✅';
     
-    if (lastOrderDate instanceof Date && lastOrderDate.getTime() < sixtyDaysAgo) {
+    if (lastOrderDate && (lastOrderDate as any).getTime() < sixtyDaysAgo) {
       segment = 'À relancer ⚠️';
     }
 
