@@ -7,6 +7,7 @@ import { Plus, Search, Calendar, Package, CreditCard, DollarSign, X, Filter, Sho
 import { useToast } from '../contexts/ToastContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { globalEventBus, EVENTS } from '../utils/events';
 
 interface AchatLine {
   id: string; // temp unique id for the UI
@@ -34,6 +35,13 @@ export const Approvisionnement = () => {
 
   useEffect(() => {
     loadData();
+    
+    // Harmonize updates: subscribe to global events
+    const unsubscribe = globalEventBus.subscribe(EVENTS.ACHATS_UPDATED, () => {
+      loadData();
+    });
+    
+    return () => unsubscribe();
   }, []);
 
   const loadData = async () => {
@@ -112,7 +120,6 @@ export const Approvisionnement = () => {
       showToast('Approvisionnement groupé enregistré avec succès', 'success');
       setIsModalOpen(false);
       setItems([{ id: Math.random().toString(), produit_id: '', fournisseur_id: '', quantite: 1, prix_achat_unitaire: 0, mode_paiement: 'Cash', statut_paiement: 'Payé' }]);
-      loadData();
     } catch (error) {
       showToast('Erreur lors de l\'enregistrement', 'error');
     } finally {
@@ -129,6 +136,15 @@ export const Approvisionnement = () => {
     total: achats.reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0),
     cash: achats.filter(a => a.mode_paiement === 'Cash').reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0),
     credit: achats.filter(a => a.mode_paiement === 'Crédit').reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0),
+    count: achats.reduce((acc, a) => acc + (Number(a.quantite) || 0), 0),
+    topProduct: (() => {
+      const counts: Record<string, number> = {};
+      achats.forEach(a => {
+        const name = a.produits?.nom || 'Inconnu';
+        counts[name] = (counts[name] || 0) + Number(a.quantite);
+      });
+      return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+    })()
   };
 
   const globalTotal = items.reduce((acc, item) => acc + (item.quantite * item.prix_achat_unitaire), 0);
@@ -148,33 +164,51 @@ export const Approvisionnement = () => {
       </div>
 
       {/* Stats Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <div className="card glass-effect hover-card" style={{ padding: '1.75rem', borderLeft: '5px solid var(--primary)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
-            <div style={{ padding: '0.75rem', background: 'var(--primary-light)', borderRadius: '14px', color: 'var(--primary)' }}>
-              <ShoppingBag size={24} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+        <div className="card glass-effect hover-card" style={{ padding: '1.5rem', borderLeft: '5px solid var(--primary)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ padding: '0.6rem', background: 'var(--primary-light)', borderRadius: '12px', color: 'var(--primary)' }}>
+              <ShoppingBag size={20} />
             </div>
-            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total des Achats</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Achats</span>
           </div>
-          <span style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--text-main)' }}>{stats.total.toLocaleString()} <span style={{ fontSize: '1rem', opacity: 0.6 }}>F</span></span>
+          <span style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--text-main)' }}>{stats.total.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span></span>
         </div>
-        <div className="card glass-effect hover-card" style={{ padding: '1.75rem', borderLeft: '5px solid #10b981' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
-            <div style={{ padding: '0.75rem', background: '#dcfce7', borderRadius: '14px', color: '#10b981' }}>
-              <DollarSign size={24} />
+        <div className="card glass-effect hover-card" style={{ padding: '1.5rem', borderLeft: '5px solid #10b981' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ padding: '0.6rem', background: '#dcfce7', borderRadius: '12px', color: '#10b981' }}>
+              <DollarSign size={20} />
             </div>
-            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Règlements Cash</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Cash</span>
           </div>
-          <span style={{ fontSize: '2.2rem', fontWeight: 900, color: '#10b981' }}>{stats.cash.toLocaleString()} <span style={{ fontSize: '1rem', opacity: 0.6 }}>F</span></span>
+          <span style={{ fontSize: '1.8rem', fontWeight: 900, color: '#10b981' }}>{stats.cash.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span></span>
         </div>
-        <div className="card glass-effect hover-card" style={{ padding: '1.75rem', borderLeft: '5px solid #f59e0b' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.25rem' }}>
-            <div style={{ padding: '0.75rem', background: '#fef3c7', borderRadius: '14px', color: '#f59e0b' }}>
-              <CreditCard size={24} />
+        <div className="card glass-effect hover-card" style={{ padding: '1.5rem', borderLeft: '5px solid #f59e0b' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ padding: '0.6rem', background: '#fef3c7', borderRadius: '12px', color: '#f59e0b' }}>
+              <CreditCard size={20} />
             </div>
-            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Engagement Crédit</span>
+            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Crédit</span>
           </div>
-          <span style={{ fontSize: '2.2rem', fontWeight: 900, color: '#f59e0b' }}>{stats.credit.toLocaleString()} <span style={{ fontSize: '1rem', opacity: 0.6 }}>F</span></span>
+          <span style={{ fontSize: '1.8rem', fontWeight: 900, color: '#f59e0b' }}>{stats.credit.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span></span>
+        </div>
+        <div className="card glass-effect hover-card" style={{ padding: '1.5rem', borderLeft: '5px solid #6366f1' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ padding: '0.6rem', background: '#e0e7ff', borderRadius: '12px', color: '#6366f1' }}>
+              <Package size={20} />
+            </div>
+            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Articles Achetés</span>
+          </div>
+          <span style={{ fontSize: '1.8rem', fontWeight: 900, color: '#6366f1' }}>{stats.count.toLocaleString()}</span>
+        </div>
+        <div className="card glass-effect hover-card" style={{ padding: '1.5rem', borderLeft: '5px solid #ec4899' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+            <div style={{ padding: '0.6rem', background: '#fce7f3', borderRadius: '12px', color: '#ec4899' }}>
+              <CheckCircle2 size={20} />
+            </div>
+            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Article Phare</span>
+          </div>
+          <span style={{ fontSize: '1.2rem', fontWeight: 900, color: '#ec4899', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={stats.topProduct}>{stats.topProduct}</span>
         </div>
       </div>
 

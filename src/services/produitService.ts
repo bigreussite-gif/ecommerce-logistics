@@ -1,5 +1,6 @@
 import { Produit, MouvementStock } from '../types';
 import { insforge } from '../lib/insforge';
+import { globalEventBus, EVENTS } from '../utils/events';
 
 export const getProduits = async (): Promise<Produit[]> => {
   const { data, error } = await insforge.database
@@ -32,6 +33,7 @@ export const createProduit = async (produit: Omit<Produit, 'id'>): Promise<strin
     .select();
   
   if (error) throw error;
+  globalEventBus.emit(EVENTS.STOCK_UPDATED);
   return data?.[0]?.id;
 };
 
@@ -44,6 +46,7 @@ export const updateProduit = async (id: string, data: Partial<Produit>): Promise
     .eq('id', id);
   
   if (error) throw error;
+  globalEventBus.emit(EVENTS.STOCK_UPDATED);
 };
 
 export const addMouvementStock = async (mouvement: Omit<MouvementStock, 'id'>): Promise<void> => {
@@ -95,8 +98,9 @@ export const addMouvementStock = async (mouvement: Omit<MouvementStock, 'id'>): 
     console.error("Error updating product total stock:", updateError);
     throw updateError;
   }
+  
+  globalEventBus.emit(EVENTS.STOCK_UPDATED);
 };
-
 
 export const getHistoriqueStock = async (produit_id: string): Promise<MouvementStock[]> => {
   const { data, error } = await insforge.database
@@ -108,3 +112,4 @@ export const getHistoriqueStock = async (produit_id: string): Promise<MouvementS
   if (error) throw error;
   return data || [];
 };
+

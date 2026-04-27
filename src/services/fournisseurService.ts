@@ -1,4 +1,5 @@
 import { insforge } from '../lib/insforge';
+import { globalEventBus, EVENTS } from '../utils/events';
 
 export interface Fournisseur {
   id: string;
@@ -30,6 +31,7 @@ export const createFournisseur = async (fournisseur: Omit<Fournisseur, 'id' | 's
     .select();
   
   if (error) throw error;
+  globalEventBus.emit(EVENTS.FOURNISSEURS_UPDATED);
   return data?.[0]?.id;
 };
 
@@ -40,6 +42,7 @@ export const updateFournisseur = async (id: string, data: Partial<Fournisseur>):
     .eq('id', id);
   
   if (error) throw error;
+  globalEventBus.emit(EVENTS.FOURNISSEURS_UPDATED);
 };
 
 export const deleteFournisseur = async (id: string): Promise<void> => {
@@ -49,6 +52,7 @@ export const deleteFournisseur = async (id: string): Promise<void> => {
     .eq('id', id);
   
   if (error) throw error;
+  globalEventBus.emit(EVENTS.FOURNISSEURS_UPDATED);
 };
 
 export const payDebt = async (id: string, amount: number): Promise<void> => {
@@ -61,7 +65,7 @@ export const payDebt = async (id: string, amount: number): Promise<void> => {
 
   if (!f) throw new Error("Fournisseur introuvable");
 
-  const newDebt = Number(f.solde_dette || 0) - amount;
+  const newDebt = Math.max(0, Number(f.solde_dette || 0) - amount);
 
   // 2. Update debt
   await insforge.database
@@ -69,13 +73,46 @@ export const payDebt = async (id: string, amount: number): Promise<void> => {
     .update({ solde_dette: newDebt })
     .eq('id', id);
 
-  // 3. Create expense
+  // 3. Update related purchases status (FIFO)
+  // Find "En attente" purchases for this supplier
+  const { data: pendingAchats } = await insforge.database
+    .from('achats_stock')
+    .select('id, montant_total, statut_paiement')
+    .eq('fournisseur_id', id)
+    .eq('statut_paiement', 'En attente')
+    .order('date_achat', { ascending: true });
+
+  if (pendingAchats && pendingAchats.length > 0) {
+    let remainingAmount = amount;
+    for (const achat of pendingAchats) {
+      if (remainingAmount <= 0) break;
+      
+      const achatMontant = Number(achat.montant_total) || 0;
+      
+      // If payment covers at least 90% of the purchase (allowing for small rounding), mark as paid
+      // Or if it's a partial payment, we might need a more complex system, 
+      // but for now let's mark as 'Payé' if we cover the full amount.
+      if (remainingAmount >= achatMontant) {
+        await insforge.database
+          .from('achats_stock')
+          .update({ statut_paiement: 'Payé' })
+          .eq('id', achat.id);
+        remainingAmount -= achatMontant;
+      }
+    }
+  }
+
+  // 4. Create expense
   const { addDepense } = await import('./financialService');
   await addDepense({
     date: new Date().toISOString(),
     categorie: 'Règlement Fournisseur',
     montant: amount,
-    description: `Paiement dette fournisseur (ID: ${id.substring(0,8)})`,
+    description: `Règlement Dette Fournisseur : (ID: ${id.substring(0,8)})`,
     mode_paiement: 'Cash'
   });
+
+  globalEventBus.emit(EVENTS.FOURNISSEURS_UPDATED);
+  globalEventBus.emit(EVENTS.ACHATS_UPDATED);
 };
+

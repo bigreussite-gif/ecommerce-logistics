@@ -2,6 +2,7 @@ import { insforge } from '../lib/insforge';
 import { addMouvementStock } from './produitService';
 import { addDepense } from './financialService';
 import { updateFournisseur, getFournisseurs } from './fournisseurService';
+import { globalEventBus, EVENTS } from '../utils/events';
 
 export interface AchatStock {
   id: string;
@@ -69,7 +70,11 @@ export const registerAchatStock = async (achat: Omit<AchatStock, 'id' | 'date_ac
       });
     }
   }
+
+  globalEventBus.emit(EVENTS.ACHATS_UPDATED);
+  globalEventBus.emit(EVENTS.STOCK_UPDATED);
 };
+
 export const registerBulkAchatsStock = async (achats: Omit<AchatStock, 'id' | 'date_achat'>[]): Promise<void> => {
   const date_achat = new Date().toISOString();
   
@@ -113,4 +118,8 @@ export const registerBulkAchatsStock = async (achats: Omit<AchatStock, 'id' | 'd
       }
     }
   }
+  
+  globalEventBus.emit(EVENTS.ACHATS_UPDATED);
+  globalEventBus.emit(EVENTS.STOCK_UPDATED);
 };
+

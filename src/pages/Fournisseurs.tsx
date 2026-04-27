@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { getFournisseurs, createFournisseur, updateFournisseur, deleteFournisseur, Fournisseur, payDebt } from '../services/fournisseurService';
-import { Building2, Plus, Search, Phone, MapPin, Trash2, Edit2, Wallet, X, User, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { getAchatsStock } from '../services/achatService';
+import { Building2, Plus, Search, Phone, Trash2, Edit2, Wallet, X, User, ArrowRight, CheckCircle2, Package, Star, CreditCard, DollarSign } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import { globalEventBus, EVENTS } from '../utils/events';
 
 export const Fournisseurs = () => {
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([]);
+  const [achats, setAchats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,22 +25,56 @@ export const Fournisseurs = () => {
   const { showToast } = useToast();
 
   useEffect(() => {
-    loadFournisseurs();
+    loadData();
+    
+    const unsubscribe = globalEventBus.subscribe(EVENTS.FOURNISSEURS_UPDATED, () => {
+      loadData();
+    });
+    
+    const unsubscribeAchats = globalEventBus.subscribe(EVENTS.ACHATS_UPDATED, () => {
+      loadData();
+    });
+    
+    return () => {
+      unsubscribe();
+      unsubscribeAchats();
+    };
   }, []);
 
-  const loadFournisseurs = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await getFournisseurs();
-      setFournisseurs(data);
+      const [fData, aData] = await Promise.all([
+        getFournisseurs(),
+        getAchatsStock()
+      ]);
+      setFournisseurs(fData);
+      setAchats(aData);
     } catch (error) {
-      showToast('Erreur lors du chargement des fournisseurs', 'error');
+      showToast('Erreur lors du chargement des données', 'error');
     } finally {
       setLoading(false);
     }
   };
 
+
   const totalDette = fournisseurs.reduce((acc, f) => acc + (Number(f.solde_dette) || 0), 0);
+
+  const getSupplierStats = (supplierId: string) => {
+    const sAchats = achats.filter(a => a.fournisseur_id === supplierId);
+    const cash = sAchats.filter(a => a.mode_paiement === 'Cash').reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0);
+    const credit = sAchats.filter(a => a.mode_paiement === 'Crédit').reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0);
+    const itemsCount = sAchats.reduce((acc, a) => acc + (Number(a.quantite) || 0), 0);
+    
+    const productCounts: Record<string, number> = {};
+    sAchats.forEach(a => {
+      const name = a.produits?.nom || 'Inconnu';
+      productCounts[name] = (productCounts[name] || 0) + Number(a.quantite);
+    });
+    const topProduct = Object.entries(productCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
+
+    return { cash, credit, itemsCount, topProduct };
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +89,7 @@ export const Fournisseurs = () => {
       setIsModalOpen(false);
       setEditingFournisseur(null);
       setFormData({ nom: '', contact: '', telephone: '', adresse: '' });
-      loadFournisseurs();
+      loadData();
     } catch (error) {
       showToast('Erreur lors de l\'enregistrement', 'error');
     }
@@ -66,7 +103,7 @@ export const Fournisseurs = () => {
       showToast('Paiement enregistré avec succès', 'success');
       setIsPayModalOpen(false);
       setPayAmount('');
-      loadFournisseurs();
+      loadData();
     } catch (error) {
       showToast('Erreur lors du paiement', 'error');
     }
@@ -88,7 +125,7 @@ export const Fournisseurs = () => {
       try {
         await deleteFournisseur(id);
         showToast('Fournisseur supprimé', 'success');
-        loadFournisseurs();
+        loadData();
       } catch (error) {
         showToast('Erreur lors de la suppression', 'error');
       }
@@ -152,65 +189,95 @@ export const Fournisseurs = () => {
       {loading ? (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '8rem 0' }}><div className="spinner"></div></div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '2rem' }}>
-          {filtered.map(f => (
-            <div key={f.id} className="card glass-effect hover-card" style={{ padding: '2rem', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 15px 30px -5px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem' }}>
-                <div style={{ background: 'linear-gradient(135deg, var(--primary), #4f46e5)', color: 'white', padding: '1rem', borderRadius: '18px', boxShadow: '0 8px 16px -4px rgba(99, 102, 255, 0.4)' }}>
-                  <Building2 size={28} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '2rem' }}>
+          {filtered.map(f => {
+            const fStats = getSupplierStats(f.id);
+            return (
+              <div key={f.id} className="card glass-effect hover-card" style={{ padding: '2rem', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 15px 30px -5px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.75rem' }}>
+                  <div style={{ background: 'linear-gradient(135deg, var(--primary), #4f46e5)', color: 'white', padding: '1rem', borderRadius: '18px', boxShadow: '0 8px 16px -4px rgba(99, 102, 255, 0.4)' }}>
+                    <Building2 size={28} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button onClick={() => handleEdit(f)} className="btn-icon" style={{ background: '#f1f5f9', color: 'var(--text-main)', borderRadius: '12px', width: '40px', height: '40px' }}><Edit2 size={18} /></button>
+                    <button onClick={() => handleDelete(f.id)} className="btn-icon" style={{ background: '#fef2f2', color: '#ef4444', borderRadius: '12px', width: '40px', height: '40px' }}><Trash2 size={18} /></button>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button onClick={() => handleEdit(f)} className="btn-icon" style={{ background: '#f1f5f9', color: 'var(--text-main)', borderRadius: '12px', width: '40px', height: '40px' }}><Edit2 size={18} /></button>
-                  <button onClick={() => handleDelete(f.id)} className="btn-icon" style={{ background: '#fef2f2', color: '#ef4444', borderRadius: '12px', width: '40px', height: '40px' }}><Trash2 size={18} /></button>
+
+                <h3 style={{ margin: '0 0 0.6rem 0', fontWeight: 900, fontSize: '1.5rem', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>{f.nom}</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                  {f.contact && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.85rem' }}>
+                      <User size={14} color="var(--primary)" /> {f.contact}
+                    </div>
+                  )}
+                  {f.telephone && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.85rem' }}>
+                      <Phone size={14} color="var(--primary)" /> {f.telephone}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                  <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                      <DollarSign size={14} color="#10b981" />
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Dépensé Cash</span>
+                    </div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#10b981' }}>{fStats.cash.toLocaleString()} F</div>
+                  </div>
+                  <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                      <CreditCard size={14} color="#f59e0b" />
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Dépensé Crédit</span>
+                    </div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#f59e0b' }}>{fStats.credit.toLocaleString()} F</div>
+                  </div>
+                  <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                      <Package size={14} color="#6366f1" />
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Articles</span>
+                    </div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#6366f1' }}>{fStats.itemsCount.toLocaleString()}</div>
+                  </div>
+                  <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                      <Star size={14} color="#ec4899" />
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Produit Phare</span>
+                    </div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#ec4899', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={fStats.topProduct}>{fStats.topProduct}</div>
+                  </div>
+                </div>
+
+                <div style={{ 
+                  background: Number(f.solde_dette) > 0 ? 'linear-gradient(to right, #fff1f2, #fff)' : 'linear-gradient(to right, #f0fdf4, #fff)', 
+                  padding: '1.25rem', 
+                  borderRadius: '20px', 
+                  border: '1.5px solid', 
+                  borderColor: Number(f.solde_dette) > 0 ? '#fecaca' : '#bbf7d0', 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  boxShadow: 'inset 0 2px 4px 0 rgba(0,0,0,0.02)'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', color: Number(f.solde_dette) > 0 ? '#be123c' : '#15803d', display: 'block', letterSpacing: '0.08em', marginBottom: '0.15rem' }}>Solde Dû</span>
+                    <span style={{ fontSize: '1.4rem', fontWeight: 950, color: Number(f.solde_dette) > 0 ? '#be123c' : '#15803d' }}>{Number(f.solde_dette || 0).toLocaleString()} <span style={{ fontSize: '0.8rem' }}>F</span></span>
+                  </div>
+                  {Number(f.solde_dette) > 0 && (
+                    <button 
+                      onClick={() => { setSelectedFournisseur(f); setPayAmount(f.solde_dette.toString()); setIsPayModalOpen(true); }}
+                      className="btn btn-primary" 
+                      style={{ padding: '0.6rem 1rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                    >
+                      Régler <ArrowRight size={16} strokeWidth={3} />
+                    </button>
+                  )}
+                  {(!f.solde_dette || Number(f.solde_dette) <= 0) && <div style={{ color: '#15803d', opacity: 0.5 }}><CheckCircle2 size={28} /></div>}
                 </div>
               </div>
-
-              <h3 style={{ margin: '0 0 0.6rem 0', fontWeight: 900, fontSize: '1.5rem', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>{f.nom}</h3>
-              {f.contact && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.5rem', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.95rem' }}>
-                  <User size={16} color="var(--primary)" /> {f.contact}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '12px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}><Phone size={18} /></div>
-                  {f.telephone || 'Non renseigné'}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                  <div style={{ width: '36px', height: '36px', borderRadius: '12px', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}><MapPin size={18} /></div>
-                  <span style={{ fontSize: '0.9rem', lineHeight: '1.4' }}>{f.adresse || 'Pas d\'adresse enregistrée'}</span>
-                </div>
-              </div>
-
-              <div style={{ 
-                background: Number(f.solde_dette) > 0 ? 'linear-gradient(to right, #fff1f2, #fff)' : 'linear-gradient(to right, #f0fdf4, #fff)', 
-                padding: '1.5rem', 
-                borderRadius: '24px', 
-                border: '1.5px solid', 
-                borderColor: Number(f.solde_dette) > 0 ? '#fecaca' : '#bbf7d0', 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                boxShadow: 'inset 0 2px 4px 0 rgba(0,0,0,0.02)'
-              }}>
-                <div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', color: Number(f.solde_dette) > 0 ? '#be123c' : '#15803d', display: 'block', letterSpacing: '0.08em', marginBottom: '0.25rem' }}>Solde Dû</span>
-                  <span style={{ fontSize: '1.6rem', fontWeight: 950, color: Number(f.solde_dette) > 0 ? '#be123c' : '#15803d' }}>{Number(f.solde_dette || 0).toLocaleString()} <span style={{ fontSize: '0.9rem' }}>F</span></span>
-                </div>
-                {Number(f.solde_dette) > 0 && (
-                  <button 
-                    onClick={() => { setSelectedFournisseur(f); setPayAmount(f.solde_dette.toString()); setIsPayModalOpen(true); }}
-                    className="btn btn-primary" 
-                    style={{ padding: '0.75rem 1.25rem', borderRadius: '14px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.6rem' }}
-                  >
-                    Régler <ArrowRight size={18} strokeWidth={3} />
-                  </button>
-                )}
-                {(!f.solde_dette || Number(f.solde_dette) <= 0) && <div style={{ color: '#15803d', opacity: 0.5 }}><CheckCircle2 size={32} /></div>}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

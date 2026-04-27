@@ -2,6 +2,7 @@ import { Commande, LigneCommande } from '../types';
 import { insforge } from '../lib/insforge';
 import { addMouvementStock } from './produitService';
 import { getCommuneByName } from './adminService';
+import { globalEventBus, EVENTS } from '../utils/events';
 
 export const getCommandeWithLines = async (id: string): Promise<Commande & { lignes: LigneCommande[] }> => {
   const { data: cmd, error: cmdError } = await insforge.database
@@ -167,6 +168,8 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
       console.warn("Erreur mise à jour stock (non bloquant):", stkErr);
     }
   }
+  
+  globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
   return id;
 };
 
@@ -257,6 +260,8 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
       console.error("Erreur Stock Flow:", stockErr);
     }
   }
+  
+  globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
 };
 
 /**
@@ -309,6 +314,8 @@ export const confirmRMAMovement = async (id: string, choice: 'REUTILISABLE' | 'D
         }]);
     }
   }
+  
+  globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
 };
 
 export const reactivateFailedCommande = async (id: string, notes?: string): Promise<void> => {
@@ -373,6 +380,8 @@ export const registerReturn = async (id: string, motif: string, solution: string
       }
     }
   }
+  
+  globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
 };
 
 export const bulkUpdateCommandeStatus = async (ids: string[], status: string, additionalData: any = {}): Promise<void> => {
@@ -383,6 +392,7 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
     })
   );
   await Promise.all(updatePromises);
+  globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
 };
 
 export const getTopSellingProducts = async (limit: number | null = null, days?: number, start?: string, end?: string): Promise<{ nom: string, nb_ventes: number, total_ca: number, total_sorties: number, taux_succes: number }[]> => {
@@ -510,6 +520,7 @@ export const deleteCommande = async (id: string): Promise<void> => {
     .eq('id', id);
   
   if (error) throw error;
+  globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
 };
 
 export const getFinancialData = async (startDate?: string, endDate?: string): Promise<(Commande & { lignes: LigneCommande[] })[]> => {
@@ -608,6 +619,8 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
       }
     }
   }
+  
+  globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
 };
 
 export const logWhatsAppMessage = async (commandeId: string, _type: string): Promise<void> => {
@@ -615,6 +628,8 @@ export const logWhatsAppMessage = async (commandeId: string, _type: string): Pro
     .from('commandes')
     .update({ statut_commande: 'en_attente_appel' } as any) // dummy update to trigger something if needed
     .eq('id', commandeId);
+  
+  globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
 };
 
 export const createBulkCommandes = async (data: any[]): Promise<{ count: number, error?: string }> => {
@@ -796,11 +811,14 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
         if (upsertErr) console.error("Erreur mise à jour stocks bulk:", upsertErr);
       }
     }
+    
+    globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
+    globalEventBus.emit(EVENTS.STOCK_UPDATED);
 
     return { count: createdCmds?.length || 0 };
-  } catch (err: any) {
-    console.error("Global import fail:", err);
-    return { count: 0, error: err.message };
+  } catch (error: any) {
+    console.error("Bulk Import Error:", error);
+    return { count: 0, error: error.message };
   }
 };
 
@@ -828,4 +846,5 @@ export const updateCommandeBase = async (id: string, commande: Partial<Commande>
 
   // 2. Synchronize lines and stock
   await updateCommandeLignesAndStock(id, currentLines, newLines);
+  globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
 };
