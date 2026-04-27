@@ -120,10 +120,10 @@ export const Logistique = () => {
           </div>
 
           <div className="table-container table-to-cards">
-            <table>
+            <table style={{ tableLayout: 'fixed', width: '100%' }}>
               <thead className="mobile-hide">
                 <tr>
-                  <th style={{ width: 60 }}>
+                  <th style={{ width: '60px', minWidth: '60px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <input 
                         type="checkbox" 
@@ -136,9 +136,9 @@ export const Logistique = () => {
                       />
                     </div>
                   </th>
-                  <th>Client & Contact</th>
-                  <th>Zone & Destination</th>
-                  <th style={{ textAlign: 'right' }}>Valeur</th>
+                  <th style={{ width: '35%' }}>Client & Contact</th>
+                  <th style={{ width: '35%' }}>Zone & Destination</th>
+                  <th style={{ textAlign: 'right', width: '30%' }}>Valeur</th>
                 </tr>
               </thead>
               <tbody>
