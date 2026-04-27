@@ -62,8 +62,8 @@ export const Fournisseurs = () => {
 
   const getSupplierStats = (supplierId: string) => {
     const sAchats = achats.filter(a => a.fournisseur_id === supplierId);
-    const cash = sAchats.filter(a => a.mode_paiement === 'Cash').reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0);
-    const credit = sAchats.filter(a => a.mode_paiement === 'Crédit').reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0);
+    const cash = sAchats.filter(a => a.statut_paiement === 'Payé').reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0);
+    const credit = sAchats.filter(a => a.statut_paiement === 'En attente').reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0);
     const itemsCount = sAchats.reduce((acc, a) => acc + (Number(a.quantite) || 0), 0);
     
     const productCounts: Record<string, number> = {};

@@ -134,8 +134,8 @@ export const Approvisionnement = () => {
 
   const stats = {
     total: achats.reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0),
-    cash: achats.filter(a => a.mode_paiement === 'Cash').reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0),
-    credit: achats.filter(a => a.mode_paiement === 'Crédit').reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0),
+    cash: achats.filter(a => a.statut_paiement === 'Payé').reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0),
+    credit: achats.filter(a => a.statut_paiement === 'En attente').reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0),
     count: achats.reduce((acc, a) => acc + (Number(a.quantite) || 0), 0),
     topProduct: (() => {
       const counts: Record<string, number> = {};
