@@ -60,6 +60,24 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
     }
   };
 
+  const handleReassign = async () => {
+    if (!commande) return;
+    if (!window.confirm("Voulez-vous vraiment retirer cette commande de son livreur actuel pour la réattribuer ?")) return;
+
+    setIsUpdating(true);
+    try {
+      const updatedNotes = `[RÉATTRIBUTION] Détachée du livreur le ${new Date().toLocaleString()}${commande.notes_client ? "\n--- Notes ---\n" + commande.notes_client : ""}`;
+      await updateCommandeStatus(commande.id, 'validee', { notes_client: updatedNotes });
+      showToast("Commande remise en attente d'affectation.", "success");
+      onClose();
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de la réattribution.", "error");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleReactivateFailed = async () => {
     if (!commande) return;
     if (!window.confirm("Voulez-vous vraiment réactiver cette commande échouée ?")) return;
@@ -343,6 +361,17 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
                 style={{ borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
               >
                 <RefreshCw size={18} /> Réactiver Annulation
+              </button>
+            )}
+
+            {commande.statut_commande?.toLowerCase() === 'en_cours_livraison' && (
+              <button 
+                className="btn btn-warning" 
+                onClick={handleReassign} 
+                disabled={isUpdating}
+                style={{ borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f59e0b', color: 'white', border: 'none' }}
+              >
+                <RotateCcw size={18} /> Réattribuer
               </button>
             )}
 
