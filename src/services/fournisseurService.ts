@@ -74,30 +74,42 @@ export const payDebt = async (id: string, amount: number): Promise<void> => {
     .eq('id', id);
 
   // 3. Update related purchases status (FIFO)
-  // Find "En attente" purchases for this supplier
+  // Re-fetch all "En attente" purchases for this supplier to reconcile
   const { data: pendingAchats } = await insforge.database
     .from('achats_stock')
-    .select('id, montant_total, statut_paiement')
+    .select('id, montant_total')
     .eq('fournisseur_id', id)
     .eq('statut_paiement', 'En attente')
     .order('date_achat', { ascending: true });
 
   if (pendingAchats && pendingAchats.length > 0) {
-    let remainingAmount = amount;
-    for (const achat of pendingAchats) {
-      if (remainingAmount <= 0) break;
-      
-      const achatMontant = Number(achat.montant_total) || 0;
-      
-      // If payment covers at least 90% of the purchase (allowing for small rounding), mark as paid
-      // Or if it's a partial payment, we might need a more complex system, 
-      // but for now let's mark as 'Payé' if we cover the full amount.
-      if (remainingAmount >= achatMontant) {
-        await insforge.database
-          .from('achats_stock')
-          .update({ statut_paiement: 'Payé' })
-          .eq('id', achat.id);
-        remainingAmount -= achatMontant;
+    const totalPending = pendingAchats.reduce((acc, a) => acc + (Number(a.montant_total) || 0), 0);
+    // The amount that has been paid is (Total ever owed - Current debt)
+    // But since we only have the "En attente" list, we can say:
+    // Any amount by which we reduced the debt should close the oldest pending purchases.
+    // However, if the user makes multiple partial payments, we need to know how much was already paid.
+    // A simpler way: if the total debt is 0, all are paid.
+    if (newDebt <= 0.1) {
+      await insforge.database
+        .from('achats_stock')
+        .update({ statut_paiement: 'Payé' })
+        .eq('fournisseur_id', id)
+        .eq('statut_paiement', 'En attente');
+    } else {
+      // Reconcile FIFO: mark as paid all purchases that fit in (TotalPending - currentDebt)
+      let amountToMarkAsPaid = Math.max(0, totalPending - newDebt);
+      for (const achat of pendingAchats) {
+        const achatMontant = Number(achat.montant_total) || 0;
+        if (amountToMarkAsPaid >= achatMontant - 0.1) {
+          await insforge.database
+            .from('achats_stock')
+            .update({ statut_paiement: 'Payé' })
+            .eq('id', achat.id);
+          amountToMarkAsPaid -= achatMontant;
+        } else {
+          // If we can't fully pay the next one, we stop
+          break;
+        }
       }
     }
   }
