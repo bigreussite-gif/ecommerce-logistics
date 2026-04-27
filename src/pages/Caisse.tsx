@@ -1,5 +1,5 @@
 import { useState, useEffect, Fragment, useMemo, useCallback } from 'react';
-import { getAvailableLivreurs } from '../services/logistiqueService';
+import { getAvailableLivreurs, reassignCommandeToFeuille } from '../services/logistiqueService';
 import { getFeuillesEnCours, getCommandesConcernees, processCaisse, CaisseResolution } from '../services/caisseService';
 import { insforge } from '../lib/insforge';
 import type { User, Commande, FeuilleRoute } from '../types';
@@ -102,7 +102,7 @@ export const Caisse = () => {
     try {
       const { data: results } = await insforge.database
         .from('commandes')
-        .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*)')
+        .select('*, clients(nom_complet, telephone), users(nom_complet), lignes:lignes_commandes(*)')
         .or(`id.ilike.%${cleanId}%`)
         .limit(1);
 
@@ -112,6 +112,14 @@ export const Caisse = () => {
       }
 
       const cmd = results[0];
+      
+      // Check if already on another sheet
+      if (cmd.feuille_route_id && cmd.feuille_route_id !== feuille.id) {
+        const livreurName = cmd.users?.nom_complet || "un autre agent";
+        const confirmed = window.confirm(`Cette commande est actuellement affectée à ${livreurName}. Voulez-vous la transférer sur cette feuille de route ?`);
+        if (!confirmed) return;
+      }
+
       const fullCmd = {
         ...cmd,
         nom_client: cmd.clients?.nom_complet,
@@ -119,14 +127,8 @@ export const Caisse = () => {
         lignes: cmd.lignes || []
       };
 
-      await insforge.database
-        .from('commandes')
-        .update({ 
-          feuille_route_id: feuille.id, 
-          livreur_id: selectedLivreur,
-          statut_commande: 'en_cours_livraison' 
-        })
-        .eq('id', cmd.id);
+      // Use the new reassignment service
+      await reassignCommandeToFeuille(cmd.id, feuille.id, selectedLivreur);
 
       setCommandes(prev => [...prev, fullCmd]);
       setResolutions(prev => ({
@@ -140,10 +142,11 @@ export const Caisse = () => {
       }));
 
       setExtraSearch('');
-      showToast(`Commande #${cmd.id.slice(0,8)} ajoutée à la tournée.`, "success");
+      showToast(`Commande #${cmd.id.slice(0,8)} réaffectée et ajoutée.`, "success");
 
     } catch (e) {
-      showToast("Erreur lors de l'ajout.", "error");
+      console.error(e);
+      showToast("Erreur lors de l'ajout ou du transfert.", "error");
     } finally {
       setLoading(false);
     }

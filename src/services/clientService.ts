@@ -34,7 +34,7 @@ export const searchClientByPhone = async (phone: string): Promise<Client | null>
   const { data, error } = await insforge.database
     .from('clients')
     .select('*')
-    .or(`telephone.eq."${phone}",telephone_secondaire.eq."${phone}"`)
+    .or(`telephone.eq.${phone},telephone_secondaire.eq.${phone}`)
     .single();
 
   if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "no rows returned"
@@ -185,7 +185,7 @@ export const getClientsWithIntelligence = async (): Promise<(Client & ClientFide
     if (settledCount >= 5 || total_encaisse > 150000) segment = 'Diamant 💎';
     else if (settledCount >= 2) segment = 'Fidèle ✅';
     
-    if (lastOrderDate && (lastOrderDate as any).getTime() < sixtyDaysAgo) {
+    if (lastOrderDate && (lastOrderDate as Date).getTime() < sixtyDaysAgo) {
       segment = 'À relancer ⚠️';
     }
 

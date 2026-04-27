@@ -1,7 +1,7 @@
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import type { Commande, StatutCommande } from '../../types';
-import { Eye, PhoneCall, Truck, Trash2, FileText, Edit2, MapPin, User, Hash, ShoppingBag } from 'lucide-react';
+import { Eye, PhoneCall, Truck, Trash2, FileText, Edit2, User, Hash, ShoppingBag } from 'lucide-react';
 
 interface CommandeListProps {
   commandes: Commande[];
@@ -17,35 +17,38 @@ interface CommandeListProps {
 }
 
 const getStatusBadge = (status: StatutCommande) => {
-  const styles: Record<string, { bg: string, color: string, label: string }> = {
-    'en_attente_appel': { bg: '#fef3c7', color: '#92400e', label: 'Attente Appel' },
-    'a_rappeler': { bg: '#fee2e2', color: '#991b1b', label: 'À Rappeler' },
-    'validee': { bg: '#ecfdf5', color: '#065f46', label: 'Validée' },
-    'en_cours_livraison': { bg: '#eef2ff', color: '#3730a3', label: 'En Livraison' },
-    'livree': { bg: '#f0fdf4', color: '#166534', label: 'Livrée' },
-    'terminee': { bg: '#f0fdf4', color: '#166534', label: 'Terminée' },
-    'echouee': { bg: '#fef2f2', color: '#991b1b', label: 'Échouée' },
-    'retour_livreur': { bg: '#fff7ed', color: '#9a3412', label: 'Retour Livr.' },
-    'retour_stock': { bg: '#f8fafc', color: '#475569', label: 'En Stock' },
-    'annulee': { bg: '#f1f5f9', color: '#64748b', label: 'Annulée' },
-    'retour_client': { bg: '#fff7ed', color: '#c2410c', label: 'Retour Client' }
+  const styles: Record<string, { bg: string, color: string, label: string, border: string }> = {
+    'en_attente_appel': { bg: '#fffbeb', color: '#b45309', label: 'Attente Appel', border: '#fef3c7' },
+    'a_rappeler': { bg: '#fff1f2', color: '#be123c', label: 'À Rappeler', border: '#ffe4e6' },
+    'validee': { bg: '#f0fdf4', color: '#15803d', label: 'Validée', border: '#dcfce7' },
+    'en_cours_livraison': { bg: '#eff6ff', color: '#1d4ed8', label: 'En Livraison', border: '#dbeafe' },
+    'livree': { bg: '#f0fdf4', color: '#166534', label: 'Livrée', border: '#dcfce7' },
+    'terminee': { bg: '#f0fdf4', color: '#166534', label: 'Terminée', border: '#dcfce7' },
+    'echouee': { bg: '#fef2f2', color: '#991b1b', label: 'Échouée', border: '#fee2e2' },
+    'retour_livreur': { bg: '#fff7ed', color: '#9a3412', label: 'Retour Livr.', border: '#ffedd5' },
+    'retour_stock': { bg: '#f8fafc', color: '#475569', label: 'En Stock', border: '#f1f5f9' },
+    'annulee': { bg: '#f1f5f9', color: '#64748b', label: 'Annulée', border: '#e2e8f0' },
+    'retour_client': { bg: '#fff7ed', color: '#c2410c', label: 'Retour Client', border: '#ffedd5' }
   };
 
-  const style = styles[status] || { bg: '#f1f5f9', color: '#64748b', label: status };
+  const style = styles[status] || { bg: '#f1f5f9', color: '#64748b', label: status, border: '#e2e8f0' };
 
   return (
     <span style={{ 
       display: 'inline-flex', 
       alignItems: 'center', 
-      padding: '0.4rem 0.8rem', 
-      borderRadius: '10px', 
-      fontSize: '0.75rem', 
-      fontWeight: 800, 
+      padding: '0.35rem 0.75rem', 
+      borderRadius: '12px', 
+      fontSize: '0.7rem', 
+      fontWeight: 900, 
       background: style.bg, 
       color: style.color,
+      border: `1px solid ${style.border}`,
       textTransform: 'uppercase',
-      letterSpacing: '0.02em'
+      letterSpacing: '0.04em',
+      boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
     }}>
+      <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: style.color, marginRight: '0.5rem' }}></span>
       {style.label}
     </span>
   );
@@ -90,20 +93,22 @@ export const CommandeList = ({
 
   if (commandes.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: '6rem 0', color: 'var(--text-muted)' }}>
-        <ShoppingBag size={48} style={{ opacity: 0.1, marginBottom: '1.5rem' }} />
-        <p style={{ fontSize: '1.1rem', fontWeight: 700 }}>Aucune commande trouvée.</p>
-        <p style={{ fontSize: '0.9rem', marginTop: '0.5rem', fontWeight: 600 }}>Ajustez vos filtres ou effectuez une nouvelle recherche.</p>
+      <div style={{ textAlign: 'center', padding: '6rem 2rem', color: '#94a3b8' }}>
+        <div style={{ width: '80px', height: '80px', background: '#f1f5f9', borderRadius: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem' }}>
+          <ShoppingBag size={40} style={{ opacity: 0.2 }} />
+        </div>
+        <p style={{ fontSize: '1.2rem', fontWeight: 850, color: '#1e293b' }}>Aucune commande dans cette section</p>
+        <p style={{ fontSize: '0.95rem', marginTop: '0.5rem', fontWeight: 600 }}>Modifiez vos filtres ou lancez une nouvelle recherche.</p>
       </div>
     );
   }
 
   return (
-    <div className="table-container table-to-cards" style={{ margin: '0 -1rem' }}>
-      <table style={{ width: '100%', borderSpacing: '0 0.75rem', borderCollapse: 'separate' }}>
-        <thead className="mobile-hide">
-          <tr style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase' }}>
-            <th style={{ padding: '1rem', width: '40px', textAlign: 'center' }}>
+    <div className="table-container" style={{ overflowX: 'auto', background: 'white', borderRadius: '24px', boxShadow: 'var(--shadow-premium)', border: '1px solid #f1f5f9' }}>
+      <table style={{ width: '100%', borderSpacing: '0', borderCollapse: 'collapse', tableLayout: 'fixed', minWidth: '1000px' }}>
+        <thead>
+          <tr style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
+            <th style={{ padding: '1.25rem 1rem', width: '60px', textAlign: 'center' }}>
               <input 
                 type="checkbox" 
                 className="form-checkbox"
@@ -111,29 +116,27 @@ export const CommandeList = ({
                 onChange={toggleSelectAll}
               />
             </th>
-            <th style={{ padding: '1rem' }}>Référence / Date</th>
-            <th style={{ padding: '1rem' }}>Client</th>
-            <th style={{ padding: '1rem' }}>Destination</th>
-            <th style={{ padding: '1rem' }}>Montant</th>
-            <th style={{ padding: '1rem' }}>Statut</th>
-            <th style={{ padding: '1rem', textAlign: 'right' }}>Actions</th>
+            <th style={{ padding: '1.25rem 1rem', width: '180px', textAlign: 'left' }}>Référence & Date</th>
+            <th style={{ padding: '1.25rem 1rem', width: '220px', textAlign: 'left' }}>Identité Client</th>
+            <th style={{ padding: '1.25rem 1rem', width: '200px', textAlign: 'left' }}>Localisation</th>
+            <th style={{ padding: '1.25rem 1rem', width: '160px', textAlign: 'left' }}>Détails Financiers</th>
+            <th style={{ padding: '1.25rem 1rem', width: '160px', textAlign: 'left' }}>État Flux</th>
+            <th style={{ padding: '1.25rem 1rem', width: '180px', textAlign: 'right' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
           {commandes.map((c) => {
             const dateRaw = c.date_creation?.toDate ? c.date_creation.toDate() : (c.date_creation || new Date());
-            const dateStr = format(dateRaw, 'dd MMM yyyy', { locale: fr });
-            const timeStr = format(dateRaw, 'HH:mm', { locale: fr });
+            const dateStr = format(dateRaw, 'dd/MM/yyyy', { locale: fr });
             const isSelected = selectedIds.includes(c.id);
             
             return (
               <tr key={c.id} className="table-row-premium" style={{ 
-                background: isSelected ? 'rgba(99, 102, 255, 0.04)' : 'white',
-                boxShadow: isSelected ? '0 4px 15px rgba(99, 102, 255, 0.08)' : '0 2px 8px rgba(0,0,0,0.02)',
-                transition: 'all 0.2s ease',
-                borderRadius: '16px'
+                background: isSelected ? '#f8faff' : 'white',
+                borderBottom: '1px solid #f8fafc',
+                transition: 'all 0.2s ease'
               }}>
-                <td style={{ padding: '1.25rem', textAlign: 'center', borderRadius: '16px 0 0 16px' }}>
+                <td style={{ padding: '1.25rem 1rem', textAlign: 'center' }}>
                   <input 
                     type="checkbox" 
                     className="form-checkbox"
@@ -142,85 +145,63 @@ export const CommandeList = ({
                   />
                 </td>
                 
-                <td data-label="Référence" style={{ padding: '1.25rem' }}>
+                <td style={{ padding: '1.25rem 1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div className="mobile-hide" style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '10px', color: '#64748b' }}>
-                      <Hash size={16} />
+                    <div style={{ padding: '0.5rem', background: '#f1f5f9', borderRadius: '10px', color: '#64748b', flexShrink: 0 }}>
+                      <Hash size={14} />
                     </div>
-                    <div>
-                      <div style={{ fontWeight: 900, color: '#1e293b', fontSize: '0.95rem' }}>#{c.id.slice(0, 8).toUpperCase()}</div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>{dateStr} • {timeStr}</div>
-                    </div>
-                  </div>
-                </td>
-
-                <td data-label="Client" style={{ padding: '1.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div className="mobile-hide" style={{ width: '36px', height: '36px', background: 'var(--primary)10', color: 'var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.8rem' }}>
-                      {c.nom_client?.charAt(0) || <User size={16} />}
-                    </div>
-                    <div>
-                      <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.95rem' }}>{c.nom_client || 'Client Inconnu'}</div>
-                      <div style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 700 }}>{c.telephone_client}</div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 950, color: '#1e293b', fontSize: '0.85rem', fontFamily: 'monospace' }}>#{c.id.slice(0, 8).toUpperCase()}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 700, marginTop: '0.1rem' }}>{dateStr}</div>
                     </div>
                   </div>
                 </td>
 
-                <td data-label="Destination" style={{ padding: '1.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <MapPin className="mobile-hide" size={14} color="#64748b" />
-                    <div>
-                      <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.9rem' }}>{c.commune_livraison}</div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>{c.adresse_livraison}</div>
+                <td style={{ padding: '1.25rem 1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                    <div style={{ width: '32px', height: '32px', background: 'linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%)', color: '#1e293b', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.75rem', flexShrink: 0 }}>
+                      {c.nom_client?.charAt(0) || <User size={14} />}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 850, color: '#1e293b', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.nom_client || 'Client Inconnu'}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 800 }}>{c.telephone_client}</div>
                     </div>
                   </div>
                 </td>
 
-                <td data-label="Montant" style={{ padding: '1.25rem' }}>
-                  <div style={{ fontWeight: 900, color: 'var(--primary)', fontSize: '1.1rem' }}>
-                    {Number(c.montant_total).toLocaleString()} <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>F</span>
+                <td style={{ padding: '1.25rem 1rem' }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 850, color: '#334155', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.commune_livraison}</div>
+                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.adresse_livraison || 'Sans adresse'}</div>
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700 }}>{c.lignes?.length || 0} articles</div>
                 </td>
 
-                <td data-label="Statut" style={{ padding: '1.25rem' }}>
+                <td style={{ padding: '1.25rem 1rem' }}>
+                  <div style={{ fontWeight: 950, color: '#1e293b', fontSize: '0.95rem' }}>
+                    {Number(c.montant_total).toLocaleString()} <span style={{ fontSize: '0.6rem', color: '#94a3b8' }}>F</span>
+                  </div>
+                  <div style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 800, textTransform: 'uppercase', marginTop: '0.1rem' }}>
+                    {c.lignes?.length || 0} Article(s)
+                  </div>
+                </td>
+
+                <td style={{ padding: '1.25rem 1rem' }}>
                   {getStatusBadge(c.statut_commande)}
                 </td>
 
-                <td style={{ padding: '1.25rem', textAlign: 'right', borderRadius: '0 16px 16px 0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                    <button 
-                      className="btn-action-premium" 
-                      onClick={() => onActionClick && onActionClick(c)}
-                      title={actionLabel}
-                    >
+                <td style={{ padding: '1.25rem 1rem', textAlign: 'right' }}>
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.35rem' }}>
+                    <button className="btn-icon-premium" onClick={() => onActionClick && onActionClick(c)} title={actionLabel}>
                       {getIconComponent(actionIcon)}
                     </button>
-
-                    <button 
-                      className="btn-action-premium" 
-                      onClick={() => onEditClick && onEditClick(c)}
-                      title="Modifier"
-                      style={{ color: '#f59e0b' }}
-                    >
-                      <Edit2 size={18} />
+                    <button className="btn-icon-premium" onClick={() => onEditClick && onEditClick(c)} title="Modifier" style={{ color: '#f59e0b' }}>
+                      <Edit2 size={16} />
                     </button>
-                    
-                    <button 
-                      className="btn-action-premium" 
-                      onClick={() => onInvoiceClick && onInvoiceClick(c)}
-                      title="Facture"
-                    >
-                      <FileText size={18} />
+                    <button className="btn-icon-premium" onClick={() => onInvoiceClick && onInvoiceClick(c)} title="Facture">
+                      <FileText size={16} />
                     </button>
-
-                    <button 
-                      className="btn-action-premium" 
-                      onClick={() => { if(window.confirm('Supprimer cette commande ?')) onDelete?.(c); }}
-                      title="Supprimer"
-                      style={{ color: '#ef4444' }}
-                    >
-                      <Trash2 size={18} />
+                    <button className="btn-icon-premium" onClick={() => { if(window.confirm('Supprimer cette commande ?')) onDelete?.(c); }} title="Supprimer" style={{ color: '#ef4444' }}>
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 </td>
@@ -232,34 +213,33 @@ export const CommandeList = ({
 
       <style>{`
         .table-row-premium:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 20px rgba(0,0,0,0.06) !important;
           background: #f8fafc !important;
+          box-shadow: inset 4px 0 0 var(--primary);
         }
-        .btn-action-premium {
-          width: 38px;
-          height: 38px;
+        .btn-icon-premium {
+          width: 36px;
+          height: 36px;
           border-radius: 10px;
           border: 1px solid #f1f5f9;
           background: white;
           color: #64748b;
           display: flex;
-          alignItems: center;
-          justifyContent: center;
+          align-items: center;
+          justify-content: center;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .btn-action-premium:hover {
-          border-color: var(--primary);
-          color: var(--primary);
-          background: var(--primary)05;
-          transform: scale(1.05);
+        .btn-icon-premium:hover {
+          border-color: #cbd5e1;
+          background: #f8fafc;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
         .form-checkbox {
-          width: 20px;
-          height: 20px;
+          width: 18px;
+          height: 18px;
           border-radius: 6px;
-          border: 2px solid #cbd5e1;
+          border: 2px solid #e2e8f0;
           cursor: pointer;
           accent-color: var(--primary);
         }

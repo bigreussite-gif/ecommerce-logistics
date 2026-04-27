@@ -145,3 +145,65 @@ export const supprimerFeuilleRoute = async (feuilleId: string): Promise<void> =>
 
   if (error) throw error;
 };
+
+export const reassignCommandeToFeuille = async (commandeId: string, targetFeuilleId: string, targetLivreurId: string): Promise<void> => {
+  // 1. Get the command to check current state
+  const { data: cmd, error: cmdError } = await insforge.database
+    .from('commandes')
+    .select('montant_total, feuille_route_id')
+    .eq('id', commandeId)
+    .single();
+    
+  if (cmdError || !cmd) throw new Error("Commande introuvable");
+  
+  const oldFeuilleId = cmd.feuille_route_id;
+  const montant = Number(cmd.montant_total) || 0;
+
+  // 2. Update the command
+  const { error: updateCmdError } = await insforge.database
+    .from('commandes')
+    .update({ 
+      feuille_route_id: targetFeuilleId, 
+      livreur_id: targetLivreurId,
+      statut_commande: 'en_cours_livraison' 
+    })
+    .eq('id', commandeId);
+
+  if (updateCmdError) throw updateCmdError;
+
+  // 3. Update the NEW sheet stats
+  const { data: targetFeuille } = await insforge.database
+    .from('feuilles_route')
+    .select('total_commandes, total_montant_theorique')
+    .eq('id', targetFeuilleId)
+    .single();
+
+  if (targetFeuille) {
+    await insforge.database
+      .from('feuilles_route')
+      .update({
+        total_commandes: (targetFeuille.total_commandes || 0) + 1,
+        total_montant_theorique: Number(targetFeuille.total_montant_theorique || 0) + montant
+      })
+      .eq('id', targetFeuilleId);
+  }
+
+  // 4. Update the OLD sheet stats (if it existed)
+  if (oldFeuilleId && oldFeuilleId !== targetFeuilleId) {
+    const { data: oldFeuille } = await insforge.database
+      .from('feuilles_route')
+      .select('total_commandes, total_montant_theorique')
+      .eq('id', oldFeuilleId)
+      .single();
+
+    if (oldFeuille) {
+      await insforge.database
+        .from('feuilles_route')
+        .update({
+          total_commandes: Math.max(0, (oldFeuille.total_commandes || 0) - 1),
+          total_montant_theorique: Math.max(0, Number(oldFeuille.total_montant_theorique || 0) - montant)
+        })
+        .eq('id', oldFeuilleId);
+    }
+  }
+};

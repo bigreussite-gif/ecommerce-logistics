@@ -26,8 +26,7 @@ export const Commandes = () => {
   const [editingCommande, setEditingCommande] = useState<Commande | null>(null);
   const [originalLines, setOriginalLines] = useState<LigneCommande[]>([]);
   
-  // Stats & Periods
-  const [period, setPeriod] = useState<Period>('all');
+  const [period, setPeriod] = useState<Period>('7d'); // Default to 7 days for better focus
   const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -173,7 +172,7 @@ export const Commandes = () => {
     const cancelled = filteredByDateCommandes.filter((c: Commande) => ['annulee'].includes(c.statut_commande?.toLowerCase())).length;
     const retours = filteredByDateCommandes.filter((c: Commande) => c.statut_commande === 'retour_client').length;
     
-    const successRate = total > 0 ? Math.round((delivered / (delivered + failed + delivered)) * 100) || 0 : 0;
+    const successRate = (delivered + failed) > 0 ? Math.round((delivered / (delivered + failed)) * 100) : 0;
 
     return { total, processing, inDelivery, delivered, failed, cancelled, retours, successRate };
   }, [filteredByDateCommandes]);
@@ -224,201 +223,175 @@ export const Commandes = () => {
       onDragOver={handleDragOver} 
       onDragLeave={handleDragLeave} 
       onDrop={handleDrop}
-      style={{ position: 'relative', minHeight: '100vh', paddingBottom: '5rem' }}
+      style={{ position: 'relative', minHeight: '100vh', padding: '1rem', background: '#f8fafc' }}
     >
+      {/* Dynamic Dropzone Overlay */}
       {isDragging && (
         <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(99, 102, 255, 0.1)',
-          backdropFilter: 'blur(12px)',
-          border: '4px dashed var(--primary)',
-          zIndex: 9999,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--primary)',
-          pointerEvents: 'none',
-          animation: 'fadeIn 0.2s ease'
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(99, 102, 255, 0.1)', backdropFilter: 'blur(12px)',
+          border: '4px dashed var(--primary)', zIndex: 9999,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          color: 'var(--primary)', pointerEvents: 'none', animation: 'fadeIn 0.2s ease'
         }}>
-          <div style={{ background: 'white', padding: '4rem', borderRadius: '48px', boxShadow: '0 30px 60px -12px rgba(99, 102, 255, 0.3)', textAlign: 'center', transform: 'scale(1.1)' }}>
-            <div style={{ background: 'var(--primary)', color: 'white', width: '100px', height: '100px', borderRadius: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem', boxShadow: '0 15px 30px rgba(99, 102, 255, 0.4)' }}>
+          <div style={{ background: 'white', padding: '4rem', borderRadius: '48px', boxShadow: '0 30px 60px -12px rgba(99, 102, 255, 0.3)', textAlign: 'center' }}>
+            <div style={{ background: 'var(--primary)', color: 'white', width: '100px', height: '100px', borderRadius: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
               <Download size={48} style={{ transform: 'rotate(180deg)' }} />
             </div>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 900, color: '#1e293b' }}>Importation Intelligente</h2>
-            <p style={{ fontWeight: 600, fontSize: '1.1rem', color: '#64748b', marginTop: '1rem' }}>Relâchez votre fichier Excel ou CSV pour traiter les commandes.</p>
+            <h2 style={{ fontSize: '2.5rem', fontWeight: 900 }}>Importation Intelligente</h2>
+            <p style={{ fontWeight: 600, color: '#64748b' }}>Relâchez votre fichier pour traiter les commandes.</p>
           </div>
         </div>
       )}
 
-      <div style={{ animation: 'pageEnter 0.6s ease' }}>
-        {/* Header Section */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem', flexWrap: 'wrap', gap: '2rem' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-              <div style={{ padding: '0.75rem', background: 'var(--primary)', borderRadius: '16px', color: 'white' }}>
-                <ShoppingBag size={32} />
+      <div style={{ maxWidth: '1600px', margin: '0 auto', animation: 'pageEnter 0.6s ease' }}>
+        
+        {/* ZONE A: VISION & ACTIONS */}
+        <section style={{ marginBottom: '3rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '0.5rem' }}>
+                <div style={{ padding: '0.8rem', background: 'linear-gradient(135deg, var(--primary) 0%, #4338ca 100%)', borderRadius: '18px', color: 'white', boxShadow: '0 10px 20px rgba(99, 102, 255, 0.2)' }}>
+                  <ShoppingBag size={28} />
+                </div>
+                <h1 style={{ fontSize: '2.2rem', fontWeight: 950, margin: 0, letterSpacing: '-0.02em', color: '#1e293b' }}>
+                  Hub Commandes
+                </h1>
               </div>
-              <h1 className="text-premium" style={{ fontSize: '2.5rem', fontWeight: 900, margin: 0 }}>Gestion Commandes</h1>
-            </div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 600 }}>Pilotez vos flux logistiques et suivez vos performances en temps réel.</p>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <div style={{ display: 'flex', background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '0.4rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-               {(['today', '7d', '30d', 'all'] as Period[]).map((p) => (
-                 <button
-                   key={p}
-                   onClick={() => setPeriod(p)}
-                   style={{
-                     padding: '0.6rem 1.2rem',
-                     borderRadius: '12px',
-                     fontSize: '0.8rem',
-                     fontWeight: 800,
-                     border: 'none',
-                     background: period === p ? 'var(--primary)' : 'transparent',
-                     color: period === p ? 'white' : '#64748b',
-                     cursor: 'pointer',
-                     transition: 'all 0.2s ease'
-                   }}
-                 >
-                   {p === 'today' ? "Aujourd'hui" : p === '7d' ? '7j' : p === '30d' ? '30j' : 'Tout'}
-                 </button>
-               ))}
-               <button 
-                 onClick={() => setPeriod('custom')}
-                 style={{
-                   padding: '0.6rem 1.2rem',
-                   borderRadius: '12px',
-                   fontSize: '0.8rem',
-                   fontWeight: 800,
-                   border: 'none',
-                   background: period === 'custom' ? 'var(--primary)' : 'transparent',
-                   color: period === 'custom' ? 'white' : '#64748b',
-                   cursor: 'pointer',
-                   display: 'flex',
-                   alignItems: 'center',
-                   gap: '0.5rem'
-                 }}
-               >
-                 <Calendar size={14} /> Custom
-               </button>
+              <p style={{ color: '#64748b', fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>
+                Pilotage centralisé des flux de livraison et performance logistique.
+              </p>
             </div>
 
-            <button className="btn btn-outline" onClick={() => setIsBulkOpen(true)} style={{ height: '52px', padding: '0 1.5rem', borderRadius: '16px', fontWeight: 800, border: '1px solid #e2e8f0', background: 'white' }}>
-              <Download size={20} style={{ transform: 'rotate(180deg)' }} />
-              Import Bulk
-            </button>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'white', padding: '0.6rem', borderRadius: '22px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: '14px', padding: '0.25rem' }}>
+                {(['today', '7d', '30d', 'all'] as Period[]).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setPeriod(p)}
+                    style={{
+                      padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800, border: 'none',
+                      background: period === p ? 'white' : 'transparent',
+                      color: period === p ? 'var(--primary)' : '#64748b',
+                      boxShadow: period === p ? '0 4px 10px rgba(0,0,0,0.05)' : 'none',
+                      cursor: 'pointer', transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {p === 'today' ? "Aujourd'hui" : p === '7d' ? '7j' : p === '30d' ? '30j' : 'Tout'}
+                  </button>
+                ))}
+                <button onClick={() => setPeriod('custom')} style={{ padding: '0.5rem 1rem', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800, border: 'none', background: period === 'custom' ? 'white' : 'transparent', color: period === 'custom' ? 'var(--primary)' : '#64748b', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Calendar size={12} /> Perso
+                </button>
+              </div>
 
-            <button className="btn btn-primary" onClick={() => setIsFormOpen(true)} style={{ height: '52px', padding: '0 1.5rem', borderRadius: '16px', fontWeight: 800, boxShadow: '0 10px 20px rgba(99, 102, 255, 0.2)' }}>
-              <Plus size={22} /> Nouvelle
-            </button>
-          </div>
-        </div>
+              <div style={{ width: '1px', height: '30px', background: '#e2e8f0' }}></div>
 
-        {period === 'custom' && (
-          <div className="card glass-effect" style={{ marginBottom: '2.5rem', padding: '1.5rem', display: 'flex', gap: '2rem', alignItems: 'center', justifyContent: 'center', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)', animation: 'slideDown 0.3s ease' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)' }}>DU</span>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="form-input" style={{ width: 'auto', height: '40px', borderRadius: '10px' }} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)' }}>AU</span>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="form-input" style={{ width: 'auto', height: '40px', borderRadius: '10px' }} />
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button onClick={() => setIsBulkOpen(true)} className="btn btn-outline" style={{ height: '44px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 700 }}>
+                  <Download size={18} style={{ transform: 'rotate(180deg)' }} /> Import
+                </button>
+                <button onClick={() => setIsFormOpen(true)} className="btn btn-primary" style={{ height: '44px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 800, padding: '0 1.5rem' }}>
+                  <Plus size={20} /> Nouvelle Commande
+                </button>
+              </div>
             </div>
           </div>
-        )}
 
-        {/* Dashboard Analytics Cards */}
-        <div className="res-grid" style={{ marginBottom: '3rem' }}>
-          {[
-            { label: 'Flux Total', value: stats.total, color: 'var(--primary)', icon: <ShoppingBag size={24} />, trend: 'Volume Global' },
-            { label: 'En Validation', value: stats.processing, color: '#f59e0b', icon: <Clock size={24} />, trend: 'Flux entrant' },
-            { label: 'Livraison', value: stats.inDelivery, color: '#6366f1', icon: <Truck size={24} />, trend: 'En transit' },
-            { label: 'Livrées', value: stats.delivered, color: '#10b981', icon: <CheckCircle size={24} />, trend: `${stats.successRate}% succès` },
-            { label: 'Échecs / Retours', value: stats.failed, color: '#ef4444', icon: <AlertCircle size={24} />, trend: 'À traiter' }
-          ].map((item, idx) => (
-            <div key={idx} className="card glass-effect" style={{ padding: '2rem', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', flexDirection: 'column', gap: '1rem', transition: 'all 0.3s ease' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: `${item.color}15`, color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {period === 'custom' && (
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', animation: 'slideDown 0.3s ease' }}>
+              <div className="card glass-effect" style={{ padding: '1rem 2rem', borderRadius: '16px', display: 'flex', gap: '2rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b' }}>DU</span>
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="form-input" style={{ height: '36px', width: 'auto' }} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b' }}>AU</span>
+                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="form-input" style={{ height: '36px', width: 'auto' }} />
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ZONE B: LOGISTICS INTELLIGENCE */}
+        <section style={{ marginBottom: '3rem' }}>
+          <div className="res-grid" style={{ gap: '1.5rem' }}>
+            {[
+              { label: 'Flux Total', value: stats.total, color: 'var(--primary)', icon: <ShoppingBag size={22} />, desc: 'Commandes traitées' },
+              { label: 'Validation', value: stats.processing, color: '#f59e0b', icon: <Clock size={22} />, desc: 'En attente de tri' },
+              { label: 'En Route', value: stats.inDelivery, color: '#6366f1', icon: <Truck size={22} />, desc: 'Sorties logistique' },
+              { label: 'Livrées', value: stats.delivered, color: '#10b981', icon: <CheckCircle size={22} />, desc: `${stats.successRate}% succès` },
+              { label: 'Perturbées', value: stats.failed, color: '#ef4444', icon: <AlertCircle size={22} />, desc: 'Échecs & Retours' }
+            ].map((item, idx) => (
+              <div key={idx} className="card" style={{ padding: '1.5rem', borderRadius: '24px', border: '1px solid #e2e8f0', background: 'white', display: 'flex', gap: '1.25rem', alignItems: 'center', transition: 'transform 0.2s' }}>
+                <div style={{ width: '54px', height: '54px', borderRadius: '16px', background: `${item.color}10`, color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {item.icon}
                 </div>
-                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: item.color, padding: '0.3rem 0.6rem', background: `${item.color}10`, borderRadius: '8px', textTransform: 'uppercase' }}>
-                  {item.trend}
+                <div>
+                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#1e293b', lineHeight: 1 }}>{item.value}</div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', marginTop: '0.25rem' }}>{item.label}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 800, color: item.color, marginTop: '0.2rem', textTransform: 'uppercase' }}>{item.desc}</div>
                 </div>
               </div>
-              <div>
-                <div style={{ fontSize: '2rem', fontWeight: 900, color: '#1e293b' }}>{item.value.toLocaleString()}</div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{item.label}</div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </section>
 
-        {/* Filters & Actions Area */}
-        <div className="card glass-effect" style={{ padding: '2rem', borderRadius: '32px', border: '1px solid rgba(255,255,255,0.1)', marginBottom: '2rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+        {/* ZONE C: FLEET MANAGEMENT (FILTERS) */}
+        <section style={{ marginBottom: '1.5rem' }}>
+          <div className="card" style={{ padding: '1.25rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
-              <div style={{ position: 'relative', maxWidth: '500px', width: '100%' }}>
-                <Search size={20} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input 
-                  type="text" 
-                  placeholder="Rechercher par client, téléphone ou ID..." 
-                  className="form-input"
-                  style={{ paddingLeft: '3.5rem', height: '52px', borderRadius: '16px', background: 'white', border: '1px solid #e2e8f0', fontWeight: 600 }}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-
-              <div style={{ display: 'flex', overflowX: 'auto', gap: '6px', background: '#f1f5f9', padding: '6px', borderRadius: '16px', scrollbarWidth: 'none' }}>
+              
+              <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', padding: '2px', scrollbarWidth: 'none' }}>
                 {[
-                  { id: 'to_process', label: 'Flux', count: stats.processing },
-                  { id: 'in_delivery', label: 'En Livraison', count: stats.inDelivery },
-                  { id: 'done', label: 'Livrées', count: stats.delivered },
-                  { id: 'failed', label: 'Échecs', count: stats.failed },
-                  { id: 'annulee', label: 'Annulées', count: stats.cancelled },
-                  { id: 'retours', label: 'Retours', count: stats.retours },
-                  { id: 'all', label: 'Tout', count: stats.total }
+                  { id: 'to_process', label: 'À Valider', count: stats.processing, color: '#f59e0b' },
+                  { id: 'in_delivery', label: 'En Livraison', count: stats.inDelivery, color: '#6366f1' },
+                  { id: 'done', label: 'Livrées', count: stats.delivered, color: '#10b981' },
+                  { id: 'failed', label: 'Échecs', count: stats.failed, color: '#ef4444' },
+                  { id: 'annulee', label: 'Annulées', count: stats.cancelled, color: '#64748b' },
+                  { id: 'all', label: 'Historique', count: stats.total, color: 'var(--primary)' }
                 ].map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
                     style={{
-                      padding: '0.6rem 1.25rem',
-                      borderRadius: '12px',
-                      fontSize: '0.85rem',
-                      fontWeight: 800,
-                      whiteSpace: 'nowrap',
-                      border: 'none',
-                      background: activeTab === tab.id ? 'white' : 'transparent',
-                      color: activeTab === tab.id ? 'var(--primary)' : '#64748b',
-                      boxShadow: activeTab === tab.id ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem'
+                      padding: '0.6rem 1.25rem', borderRadius: '14px', fontSize: '0.85rem', fontWeight: 800,
+                      whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+                      background: activeTab === tab.id ? `${tab.color}10` : 'transparent',
+                      color: activeTab === tab.id ? tab.color : '#64748b',
+                      display: 'flex', alignItems: 'center', gap: '0.6rem'
                     }}
                   >
                     {tab.label}
-                    <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', background: activeTab === tab.id ? 'var(--primary)15' : '#e2e8f0', color: activeTab === tab.id ? 'var(--primary)' : '#64748b', borderRadius: '6px' }}>{tab.count}</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 900, opacity: activeTab === tab.id ? 1 : 0.6 }}>{tab.count}</span>
                   </button>
                 ))}
               </div>
-            </div>
 
+              <div style={{ position: 'relative', minWidth: '320px', flex: 1, maxWidth: '500px' }}>
+                <Search size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                <input 
+                  type="text" placeholder="Rechercher (Client, Tel, ID)..." 
+                  className="form-input" style={{ paddingLeft: '3.5rem', height: '48px', borderRadius: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', fontWeight: 600, fontSize: '0.95rem' }}
+                  value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ZONE D: DATA HUB (THE LIST) */}
+        <section>
+          <div className="card" style={{ padding: '0.5rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', minHeight: '400px' }}>
             {loading ? (
               <div style={{ textAlign: 'center', padding: '6rem' }}>
                 <div className="loading-spinner" style={{ margin: '0 auto 1.5rem' }}></div>
-                <p style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Chargement de vos données logistiques...</p>
+                <p style={{ fontWeight: 700, color: '#64748b' }}>Chargement du catalogue des flux...</p>
               </div>
             ) : (
               <CommandeList 
+                key={`${activeTab}-${searchTerm}-${period}`}
                 commandes={filteredCommandes} 
                 selectedIds={selectedIds}
                 onSelectionChange={setSelectedIds}
@@ -429,54 +402,31 @@ export const Commandes = () => {
               />
             )}
           </div>
-        </div>
+        </section>
 
         {/* Floating Batch Action Bar */}
         {selectedIds.length > 0 && (
-          <div 
-            style={{ 
-              position: 'fixed', 
-              bottom: '2.5rem', 
-              left: '50%', 
-              transform: 'translateX(-50%)', 
-              background: '#1e293b', 
-              padding: '1.25rem 2.5rem', 
-              borderRadius: '24px', 
-              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '2rem',
-              zIndex: 1000,
-              animation: 'slideUp 0.3s ease',
-              color: 'white'
-            }}
-          >
+          <div style={{ 
+            position: 'fixed', bottom: '2.5rem', left: '50%', transform: 'translateX(-50%)', 
+            background: '#1e293b', padding: '1.25rem 2.5rem', borderRadius: '24px', 
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', gap: '2rem',
+            zIndex: 1000, animation: 'slideUp 0.3s ease', color: 'white'
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderRight: '1px solid rgba(255,255,255,0.1)', paddingRight: '2rem' }}>
               <div style={{ background: 'var(--primary)', color: 'white', width: '32px', height: '32px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 900 }}>
                 {selectedIds.length}
               </div>
               <span style={{ fontWeight: 700, fontSize: '1rem' }}>SÉLECTIONNÉS</span>
-              <button 
-                onClick={() => setSelectedIds([])}
-                style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', display: 'flex', padding: '0.5rem' }}
-              >
+              <button onClick={() => setSelectedIds([])} style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', display: 'flex' }}>
                 <X size={20} />
               </button>
             </div>
 
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button 
-                className="btn btn-primary" 
-                onClick={handleBulkValidate}
-                style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, background: 'white', color: '#1e293b' }}
-              >
+              <button className="btn btn-primary" onClick={handleBulkValidate} style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, background: 'white', color: '#1e293b' }}>
                 <CheckCircle size={20} /> Valider Groupée
               </button>
-              <button 
-                className="btn btn-outline" 
-                onClick={handleLogisticsExport}
-                style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, border: '1px solid rgba(255,255,255,0.2)', color: 'white' }}
-              >
+              <button className="btn btn-outline" onClick={handleLogisticsExport} style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, border: '1px solid rgba(255,255,255,0.2)', color: 'white' }}>
                 <Download size={20} /> Export Livreurs
               </button>
             </div>
@@ -484,6 +434,7 @@ export const Commandes = () => {
         )}
       </div>
 
+      {/* Modals & Overlays */}
       {isFormOpen && (
         <CommandeForm 
           onClose={() => { setIsFormOpen(false); setEditingCommande(null); setOriginalLines([]); }} 
@@ -494,32 +445,18 @@ export const Commandes = () => {
       )}
 
       {isBulkOpen && (
-        <BulkImportModal 
-          onClose={() => setIsBulkOpen(false)} 
-          onSave={() => setIsBulkOpen(false)} 
-        />
+        <BulkImportModal onClose={() => setIsBulkOpen(false)} onSave={() => setIsBulkOpen(false)} />
       )}
 
       {selectedCommandeId && (
-        <CommandeDetails 
-          commandeId={selectedCommandeId} 
-          onClose={() => setSelectedCommandeId(null)} 
-        />
+        <CommandeDetails commandeId={selectedCommandeId} onClose={() => setSelectedCommandeId(null)} />
       )}
 
       <style>{`
-        @keyframes pageEnter {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideUp {
-          from { transform: translate(-50%, 100px); opacity: 0; }
-          to { transform: translate(-50%, 0); opacity: 1; }
-        }
-        @keyframes slideDown {
-          from { transform: translateY(-20px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
-        }
+        @keyframes pageEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { transform: translate(-50%, 100px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+        @keyframes slideDown { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .res-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
       `}</style>
     </div>
   );

@@ -304,9 +304,10 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
   const sheetIds = sheets?.map(s => s.id) || [];
   
   // Construct filter: (delivered in range) OR (part of a sheet processed in range)
-  let filterStr = `and(date_livraison_effective.gte.${startStr},date_livraison_effective.lte.${endStr})`;
+  let filterStr = `and(date_livraison_effective.gte."${startStr}",date_livraison_effective.lte."${endStr}")`;
   if (sheetIds.length > 0) {
-    filterStr = `or(${filterStr},feuille_route_id.in.(${sheetIds.join(',')}))`;
+    const quotedIds = sheetIds.map(id => `"${id}"`).join(',');
+    filterStr = `or(${filterStr},feuille_route_id.in.(${quotedIds}))`;
   }
 
   const { data: commandes, error: cmdError } = await insforge.database

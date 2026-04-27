@@ -338,15 +338,16 @@ export const analyzeGeographicalProfit = (commandes: (Commande & { lignes?: Lign
   }).sort((a, b) => b.profit_net - a.profit_net);
 };
 
-export const generateTimeSeriesData = (commandes: (Commande & { lignes?: LigneCommande[] })[], type: 'daily' | 'monthly' = 'daily') => {
+export const generateTimeSeriesData = (commandes: (Commande & { lignes?: LigneCommande[] })[], depenses: Depense[] = [], type: 'daily' | 'monthly' = 'daily') => {
   const terminalCmds = (commandes || []).filter(c => {
     const s = c.statut_commande?.toLowerCase();
     return ['livree', 'terminee'].includes(s);
   });
-  const groups: { [key: string]: { name: string, revenue: number, profit: number } } = {};
+  
+  const groups: { [key: string]: { name: string, revenue: number, profit: number, expenses: number } } = {};
 
+  // Process Commandes
   terminalCmds.forEach(c => {
-    // Favor actual delivery date if available, otherwise fallback to creation date
     const date = new Date(c.date_livraison_effective || c.date_creation);
     let key = 'Inconnu';
     try {
@@ -360,13 +361,14 @@ export const generateTimeSeriesData = (commandes: (Commande & { lignes?: LigneCo
     }
 
     if (!groups[key]) {
-      groups[key] = { name: key, revenue: 0, profit: 0 };
+      groups[key] = { name: key, revenue: 0, profit: 0, expenses: 0 };
     }
 
     const shipping = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
     const rev = (Number(c.montant_total) || 0) - shipping;
     const cost = (c as any).lignes?.reduce((sum: number, l: any) => {
-      const purchasePrice = l.prix_achat_unitaire || (l.produits?.prix_achat) || 0;
+      const prodData = Array.isArray(l.produits) ? l.produits[0] : l.produits;
+      const purchasePrice = l.prix_achat_unitaire || prodData?.prix_achat || 0;
       return sum + (l.quantite * Number(purchasePrice));
     }, 0) || 0;
 
@@ -377,7 +379,36 @@ export const generateTimeSeriesData = (commandes: (Commande & { lignes?: LigneCo
     groups[key].profit += (rev - cost - extractions - retenue);
   });
 
-  return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
+  // Process Depenses (Operating Expenses only)
+  (depenses || []).forEach(d => {
+    // Only count operating expenses, not stock purchases or cashing adjustments in this specific curve
+    if (['Achat Stock / Fournisseur', 'Surplus Caisse', 'Manquant Caisse'].includes(d.categorie)) return;
+
+    const date = new Date(d.date);
+    let key = 'Inconnu';
+    try {
+      if (!isNaN(date.getTime())) {
+        key = type === 'daily' 
+          ? format(date, 'dd/MM') 
+          : format(date, 'MMM', { locale: fr });
+      }
+    } catch (e) {
+      console.warn("Invalid date in depense:", d.id);
+    }
+
+    if (!groups[key]) {
+      groups[key] = { name: key, revenue: 0, profit: 0, expenses: 0 };
+    }
+
+    groups[key].expenses += (Number(d.montant) || 0);
+  });
+
+  // Sort by date key (this is a bit naive for dd/MM, but works for same-year data)
+  return Object.values(groups).sort((a, b) => {
+    if (a.name === 'Inconnu') return 1;
+    if (b.name === 'Inconnu') return -1;
+    return a.name.localeCompare(b.name);
+  });
 };
 
 export const calculateProductROI = (commandes: (Commande & { lignes?: LigneCommande[] })[]): ProductROI[] => {

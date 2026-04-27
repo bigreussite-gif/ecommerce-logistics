@@ -172,7 +172,7 @@ export const updateAchatStock = async (id: string, updates: Partial<AchatStock>)
         produit_id: newAchat.produit_id,
         nom_produit: 'Achat Stock',
         quantite: newAchat.quantite,
-        prix_unitaire: newAchat.prix_unitaire || newAchat.prix_achat_unitaire,
+        prix_unitaire: newAchat.prix_achat_unitaire,
         montant_ligne: newAchat.montant_total
       }]
     });

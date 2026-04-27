@@ -65,7 +65,11 @@ export const NetProfit = () => {
       setAllProducts(productData);
       const filteredExpenses = (depenseData || []).filter(d => {
         const dDate = new Date(d.date);
-        return dDate >= new Date(start) && dDate <= new Date(end);
+        const rangeStart = new Date(start);
+        rangeStart.setHours(0,0,0,0);
+        const rangeEnd = new Date(end);
+        rangeEnd.setHours(23,59,59,999);
+        return dDate >= rangeStart && dDate <= rangeEnd;
       });
       setAllCommandes(orderData || []);
       setDepenses(filteredExpenses);
@@ -83,8 +87,8 @@ export const NetProfit = () => {
   }, [period, customRange]);
 
   const chartData = useMemo(() => {
-    return generateTimeSeriesData(allCommandes, 'daily');
-  }, [allCommandes]);
+    return generateTimeSeriesData(allCommandes, depenses, 'daily');
+  }, [allCommandes, depenses]);
 
   // Security: Only Admin can see this
   if (!hasPermission('ADMIN')) {
@@ -247,6 +251,7 @@ export const NetProfit = () => {
                   <Legend iconType="circle" wrapperStyle={{ paddingTop: '2rem', fontWeight: 700 }} />
                   <Area type="monotone" name="Chiffre d'Affaires Net" dataKey="revenue" stroke="#6366f1" strokeWidth={5} fill="url(#colorCA)" />
                   <Area type="monotone" name="Marge Articles" dataKey="profit" stroke="#10b981" strokeWidth={5} fill="url(#colorProfit)" />
+                  <Area type="monotone" name="Charges Opérat." dataKey="expenses" stroke="#f43f5e" strokeWidth={3} strokeDasharray="5 5" fill="none" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>

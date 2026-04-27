@@ -61,7 +61,7 @@ export const AuditTresorerie = () => {
       // Optimized: Fetch global metrics (all time) with targeted columns ONLY to avoid huge payload crash
       const { data: globalOrdersData, error: globalError } = await insforge.database
         .from('commandes')
-        .select('montant_total, statut_commande, frais_livraison, lignes:lignes_commandes(quantite, prix_unitaire)')
+        .select('montant_total, statut_commande, frais_livraison, lignes:lignes_commandes(quantite, prix_unitaire, produits(prix_achat))')
         .in('statut_commande', ['livree', 'terminee', 'echouee', 'retour_livreur', 'retour_stock', 'absent', 'retour_client']);
 
       if (globalError) {
@@ -80,7 +80,7 @@ export const AuditTresorerie = () => {
       });
 
       const metrics = calculateProfitMetrics(orders, filteredExpenses);
-      const timeseries = generateTimeSeriesData(orders, 'daily');
+      const timeseries = generateTimeSeriesData(orders, filteredExpenses, 'daily');
       
       const combinedTransactions = [
         ...orders.map(o => ({
@@ -401,6 +401,7 @@ export const AuditTresorerie = () => {
                       <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-premium)' }} />
                       <Area type="monotone" dataKey="revenue" name="Revenue" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
                       <Area type="monotone" dataKey="profit" name="Profit" stroke="#10b981" strokeWidth={3} fill="transparent" />
+                      <Area type="monotone" dataKey="expenses" name="Charges" stroke="#f43f5e" strokeWidth={2} strokeDasharray="4 4" fill="transparent" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>

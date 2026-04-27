@@ -485,7 +485,7 @@ export const getTopSellingProducts = async (limit: number | null = null, days?: 
     const iso = startDate.toISOString();
     query = query.or(`date_livraison_effective.gte.${iso},and(date_livraison_effective.is.null,date_creation.gte.${iso})`, { foreignTable: 'commandes' });
   } else if (start && end) {
-    query = query.or(`and(date_livraison_effective.gte."${start}",date_livraison_effective.lte."${end}"),and(date_livraison_effective.is.null,date_creation.gte."${start}",date_creation.lte."${end}")`, { foreignTable: 'commandes' });
+    query = query.or(`and(date_livraison_effective.gte.${start},date_livraison_effective.lte.${end}),and(date_livraison_effective.is.null,date_creation.gte.${start},date_creation.lte.${end})`, { foreignTable: 'commandes' });
   }
 
   const { data: lines, error: linesError } = await query;
@@ -555,7 +555,7 @@ export const getCategoryPerformance = async (days?: number, start?: string, end?
     const iso = startDate.toISOString();
     query = query.or(`date_livraison_effective.gte.${iso},and(date_livraison_effective.is.null,date_creation.gte.${iso})`, { foreignTable: 'commandes' });
   } else if (start && end) {
-    query = query.or(`and(date_livraison_effective.gte."${start}",date_livraison_effective.lte."${end}"),and(date_livraison_effective.is.null,date_creation.gte."${start}",date_creation.lte."${end}")`, { foreignTable: 'commandes' });
+    query = query.or(`and(date_livraison_effective.gte.${start},date_livraison_effective.lte.${end}),and(date_livraison_effective.is.null,date_creation.gte.${start},date_creation.lte.${end})`, { foreignTable: 'commandes' });
   }
 
   const { data: lines, error: linesError } = await query;
@@ -603,15 +603,23 @@ export const deleteCommande = async (id: string): Promise<void> => {
 
 export const getFinancialData = async (startDate?: string, endDate?: string): Promise<(Commande & { lignes: LigneCommande[] })[]> => {
   const terminalStats = '(livree,terminee,echouee,retour_livreur,retour_stock,annulee,retour_client)';
-  const filterString = `and(date_livraison_effective.gte."${startDate}",date_livraison_effective.lte."${endDate}"),and(updated_at.gte."${startDate}",updated_at.lte."${endDate}",statut_commande.in.${terminalStats})`;
+  
+  // Dates with special characters (like ISO timestamps) MUST be quoted in .or() filters
+  const start = startDate ? `"${startDate}"` : '"2000-01-01"';
+  const end = endDate ? `"${endDate}"` : '"2099-12-31"';
+  
+  const filterString = `and(date_livraison_effective.gte.${start},date_livraison_effective.lte.${end}),and(updated_at.gte.${start},updated_at.lte.${end},statut_commande.in.${terminalStats})`;
   
   const { data: orders, error: orderError } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*)')
+    .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*, produits(prix_achat))')
     .or(filterString)
     .order('date_creation', { ascending: false });
 
-  if (orderError) throw orderError;
+  if (orderError) {
+    console.error("Financial fetch error details:", orderError);
+    throw orderError;
+  }
   if (!orders) return [];
 
   return orders.map((o: any) => ({
