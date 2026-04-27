@@ -107,9 +107,9 @@ export const AuditTresorerie = () => {
       setHourlyData(getHourlyDistribution(orders));
       setTransactions(combinedTransactions);
       setTopProducts(top);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Audit load error:", err);
-      showToast("Échec du chargement des données d'expertise", "error");
+      showToast(`Échec: ${err?.message || 'Erreur inconnue'}`, "error");
     } finally {
       setLoading(false);
     }
