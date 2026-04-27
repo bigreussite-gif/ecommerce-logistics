@@ -173,7 +173,7 @@ export const FinancialReport = () => {
 
   const successRate = logStats?.taux_succes || 0;
 
-  const timeSeries = generateTimeSeriesData(data.commandes, diffDays > 31 ? 'monthly' : 'daily');
+  const timeSeries = generateTimeSeriesData(data.commandes, data.depenses || [], diffDays > 31 ? 'monthly' : 'daily');
 
   const generateInsights = () => {
     const insights: any[] = [];

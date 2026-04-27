@@ -134,7 +134,7 @@ export const AdminTresorerie = () => {
   const mkt = useMemo(() => calculateMarketingROI(metrics.ca_brut, adsSpend, data.orders.length), [metrics.ca_brut, adsSpend, data.orders.length]);
 
   // Predictive Projection (Idea 2)
-  const history = useMemo(() => generateTimeSeriesData(data.orders), [data.orders]);
+  const history = useMemo(() => generateTimeSeriesData(data.orders, data.expenses), [data.orders, data.expenses]);
   const projections = useMemo(() => projectCashFlow(history, currentCashInAccount), [history, currentCashInAccount]);
 
   // Geographical Analysis (Idea 5)
