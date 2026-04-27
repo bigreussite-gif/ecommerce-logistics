@@ -58,18 +58,21 @@ export const AuditTresorerie = () => {
         getProduits()
       ]);
 
-      // Optimized: Fetch global metrics (all time) with targeted columns ONLY to avoid huge payload crash
-      const { data: globalOrdersData, error: globalError } = await insforge.database
-        .from('commandes')
-        .select('montant_total, statut_commande, frais_livraison, lignes:lignes_commandes(quantite, prix_unitaire, produits(prix_achat))')
-        .in('statut_commande', ['livree', 'terminee', 'echouee', 'retour_livreur', 'retour_stock', 'absent', 'retour_client']);
+      // Optimized: Fetch global metrics (all time) with targeted columns ONLY
+      let gMetrics: any = null;
+      try {
+        const { data: globalOrdersData, error: globalError } = await insforge.database
+          .from('commandes')
+          .select('montant_total, statut_commande, frais_livraison, lignes:lignes_commandes(quantite, prix_unitaire, produits(prix_achat))')
+          .in('statut_commande', ['livree', 'terminee', 'echouee', 'retour_livreur', 'retour_stock', 'absent', 'retour_client']);
 
-      if (globalError) {
-        console.error("Global metrics fetch error:", globalError);
-        throw globalError;
+        if (!globalError && globalOrdersData) {
+          gMetrics = calculateProfitMetrics(globalOrdersData as any, allExpenses);
+        }
+      } catch (gErr) {
+        console.warn("Global metrics fetch failed, using period metrics only:", gErr);
       }
-
-      const gMetrics = calculateProfitMetrics(globalOrdersData as any, allExpenses);
+      
       const sVal = calculateStockValue(allProds);
       setGlobalMetrics(gMetrics);
       setStockVal(sVal);

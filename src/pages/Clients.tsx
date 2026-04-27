@@ -219,15 +219,23 @@ export const Clients = () => {
         {/* Clients Table/Grid */}
         <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
           <div className="table-container table-to-cards">
-            <table style={{ borderCollapse: 'separate', borderSpacing: '0' }}>
-              <thead className="mobile-hide">
+            <table style={{ tableLayout: 'fixed', width: '100%', borderCollapse: 'separate', borderSpacing: '0' }}>
+              <colgroup>
+                <col style={{ width: '30%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '17%' }} />
+                <col style={{ width: '10%' }} />
+              </colgroup>
+              <thead className="mobile-hide" style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                 <tr style={{ background: '#f8fafc' }}>
-                  <th style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0' }}>Client</th>
-                  <th style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0' }}>Segment</th>
-                  <th style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>Achats</th>
-                  <th style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0' }}>Dernière Visite</th>
-                  <th style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Total Encaissé</th>
-                  <th style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', textAlign: 'right' }}>Action</th>
+                  <th style={{ padding: '1.25rem 1.5rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Client</th>
+                  <th style={{ padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Segment</th>
+                  <th style={{ padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', textAlign: 'center' }}>Achats</th>
+                  <th style={{ padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Dernière Visite</th>
+                  <th style={{ padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', textAlign: 'right' }}>Total Encaissé</th>
+                  <th style={{ padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)', textAlign: 'center' }}>Action</th>
                 </tr>
               </thead>
               <tbody>

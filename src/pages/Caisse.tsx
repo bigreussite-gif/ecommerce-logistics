@@ -380,7 +380,14 @@ export const Caisse = () => {
               </div>
 
               <div className="table-container table-to-cards">
-                <table>
+                <table style={{ tableLayout: 'fixed', width: '100%' }}>
+                  <colgroup>
+                    <col style={{ width: '10%' }} />
+                    <col style={{ width: '28%' }} />
+                    <col style={{ width: '16%' }} />
+                    <col style={{ width: '23%' }} />
+                    <col style={{ width: '23%' }} />
+                  </colgroup>
                   <thead className="mobile-hide">
                     <tr>
                       <th>Ref</th>
