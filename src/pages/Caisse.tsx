@@ -103,7 +103,7 @@ export const Caisse = () => {
       const { data: results } = await insforge.database
         .from('commandes')
         .select('*, clients(nom_complet, telephone), users(nom_complet), lignes:lignes_commandes(*)')
-        .or(`id.ilike.%${cleanId}%`)
+        .or(`ref_text.ilike.%${cleanId}%`)
         .limit(1);
 
       if (!results || results.length === 0) {

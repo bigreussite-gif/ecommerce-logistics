@@ -28,3 +28,8 @@ UPDATE lignes_commandes lc
 SET prix_achat_unitaire = p.prix_achat
 FROM produits p
 WHERE lc.produit_id = p.id AND lc.prix_achat_unitaire = 0;
+
+-- 4. Fonction pour permettre la recherche textuelle sur l'ID (UUID)
+CREATE OR REPLACE FUNCTION ref_text(c commandes) RETURNS text AS $$
+  SELECT c.id::text;
+$$ LANGUAGE SQL IMMUTABLE;
