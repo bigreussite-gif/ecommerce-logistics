@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { getFinancialData } from '../services/commandeService';
 import { getDepenses, addDepense, deleteDepense, calculateProfitMetrics, generateTimeSeriesData, ProfitStats } from '../services/financialService';
-import { Depense } from '../types';
+import { getProduits } from '../services/produitService';
+import { Depense, Produit, LigneDepense } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { 
@@ -30,6 +31,8 @@ export const NetProfit = () => {
     end: format(new Date(), 'yyyy-MM-dd')
   });
 
+  const [allProducts, setAllProducts] = useState<Produit[]>([]);
+  const [depenseLignes, setDepenseLignes] = useState<Partial<LigneDepense>[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newDepense, setNewDepense] = useState({
     categorie: 'Marketing / ADS',
@@ -54,10 +57,12 @@ export const NetProfit = () => {
     }
 
     try {
-      const [orderData, depenseData] = await Promise.all([
+      const [orderData, depenseData, productData] = await Promise.all([
         getFinancialData(start, end),
-        getDepenses().catch(() => [])
+        getDepenses().catch(() => []),
+        getProduits().catch(() => [])
       ]);
+      setAllProducts(productData);
       const filteredExpenses = (depenseData || []).filter(d => {
         const dDate = new Date(d.date);
         return dDate >= new Date(start) && dDate <= new Date(end);
@@ -89,13 +94,21 @@ export const NetProfit = () => {
   const handleAddDepense = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newDepense.montant <= 0) return showToast("Montant invalide", "error");
+    
+    // Validate lines if stock purchase
+    if (newDepense.categorie === 'Achat Stock / Fournisseur' && depenseLignes.length === 0) {
+      return showToast("Veuillez ajouter au moins un produit pour un achat de stock", "warning");
+    }
+
     try {
       await addDepense({
         ...newDepense,
+        lignes: depenseLignes as LigneDepense[],
         paye_par_id: currentUser?.id
       });
       showToast("Dépense enregistrée !", "success");
       setIsModalOpen(false);
+      setDepenseLignes([]);
       fetchData();
     } catch (error: any) {
       console.error("Error saving expense:", error);
@@ -298,9 +311,101 @@ export const NetProfit = () => {
                   <option>Divers</option>
                 </select>
               </div>
+              {newDepense.categorie === 'Achat Stock / Fournisseur' && (
+                <div style={{ marginBottom: '1.5rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '18px', border: '1px solid #e2e8f0' }}>
+                  <label className="form-label" style={{ fontWeight: 800, marginBottom: '1rem', display: 'flex', justifyContent: 'space-between' }}>
+                    Articles Achetés
+                    <span style={{ color: 'var(--primary)', fontSize: '0.8rem' }}>Stock auto-réconcilié</span>
+                  </label>
+                  
+                  {depenseLignes.map((l, idx) => (
+                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: '0.75rem', marginBottom: '0.75rem', alignItems: 'center' }}>
+                      <select 
+                        className="form-select" 
+                        style={{ height: '44px', fontSize: '0.85rem' }}
+                        value={l.produit_id}
+                        onChange={e => {
+                          const p = allProducts.find(prod => prod.id === e.target.value);
+                          const newLignes = [...depenseLignes];
+                          newLignes[idx] = { ...l, produit_id: p?.id, nom_produit: p?.nom };
+                          setDepenseLignes(newLignes);
+                        }}
+                      >
+                        <option value="">Produit...</option>
+                        {allProducts.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
+                      </select>
+                      <input 
+                        type="number" 
+                        placeholder="Qté" 
+                        className="form-input" 
+                        style={{ height: '44px', textAlign: 'center' }}
+                        value={l.quantite || ''}
+                        onChange={e => {
+                          const qty = Number(e.target.value);
+                          const newLignes = [...depenseLignes];
+                          newLignes[idx] = { ...l, quantite: qty, montant_ligne: qty * (l.prix_unitaire || 0) };
+                          setDepenseLignes(newLignes);
+                          // Sync total montant
+                          const total = newLignes.reduce((sum, curr) => sum + (curr.montant_ligne || 0), 0);
+                          setNewDepense(prev => ({ ...prev, montant: total }));
+                        }}
+                      />
+                      <input 
+                        type="number" 
+                        placeholder="Prix" 
+                        className="form-input" 
+                        style={{ height: '44px' }}
+                        value={l.prix_unitaire || ''}
+                        onChange={e => {
+                          const prx = Number(e.target.value);
+                          const newLignes = [...depenseLignes];
+                          newLignes[idx] = { ...l, prix_unitaire: prx, montant_ligne: prx * (l.quantite || 0) };
+                          setDepenseLignes(newLignes);
+                          // Sync total montant
+                          const total = newLignes.reduce((sum, curr) => sum + (curr.montant_ligne || 0), 0);
+                          setNewDepense(prev => ({ ...prev, montant: total }));
+                        }}
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          const nl = depenseLignes.filter((_, i) => i !== idx);
+                          setDepenseLignes(nl);
+                          const total = nl.reduce((sum, curr) => sum + (curr.montant_ligne || 0), 0);
+                          setNewDepense(prev => ({ ...prev, montant: total }));
+                        }}
+                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+
+                  <button 
+                    type="button" 
+                    className="btn btn-outline" 
+                    style={{ width: '100%', height: '40px', fontSize: '0.85rem', marginTop: '0.5rem', borderRadius: '12px' }}
+                    onClick={() => setDepenseLignes([...depenseLignes, { quantite: 1, prix_unitaire: 0, montant_ligne: 0 }])}
+                  >
+                    + Ajouter un article
+                  </button>
+                </div>
+              )}
               <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                <label className="form-label" style={{ fontWeight: 700, marginBottom: '0.6rem', display: 'block' }}>Montant (CFA)</label>
-                <input type="number" className="form-input" style={{ height: '54px', borderRadius: '14px', fontWeight: 800, fontSize: '1.2rem', color: '#f43f5e' }} required value={newDepense.montant || ''} onChange={e => setNewDepense({...newDepense, montant: Number(e.target.value)})} placeholder="0" />
+                <label className="form-label" style={{ fontWeight: 700, marginBottom: '0.6rem', display: 'block' }}>Montant Total (CFA)</label>
+                <input 
+                  type="number" 
+                  className="form-input" 
+                  style={{ height: '54px', borderRadius: '14px', fontWeight: 800, fontSize: '1.2rem', color: '#f43f5e' }} 
+                  required 
+                  value={newDepense.montant || ''} 
+                  onChange={e => setNewDepense({...newDepense, montant: Number(e.target.value)})} 
+                  placeholder="0" 
+                  disabled={newDepense.categorie === 'Achat Stock / Fournisseur'}
+                />
+                {newDepense.categorie === 'Achat Stock / Fournisseur' && (
+                  <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Calculé automatiquement à partir des articles.</p>
+                )}
               </div>
               <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                 <label className="form-label" style={{ fontWeight: 700, marginBottom: '0.6rem', display: 'block' }}>Date de Paiement</label>
@@ -319,7 +424,7 @@ export const NetProfit = () => {
                 <textarea className="form-input" style={{ borderRadius: '14px', padding: '1rem', fontWeight: 500 }} rows={2} value={newDepense.description} onChange={e => setNewDepense({...newDepense, description: e.target.value})} placeholder="Ex: Campagne Facebook Mars 2024" />
               </div>
               <div style={{ display: 'flex', gap: '1.25rem', marginTop: '3rem' }}>
-                <button type="button" className="btn btn-outline" style={{ flex: 1, height: '54px', borderRadius: '16px', fontWeight: 800 }} onClick={() => setIsModalOpen(false)}>Annuler</button>
+                <button type="button" className="btn btn-outline" style={{ flex: 1, height: '54px', borderRadius: '16px', fontWeight: 800 }} onClick={() => { setIsModalOpen(false); setDepenseLignes([]); }}>Annuler</button>
                 <button type="submit" className="btn btn-primary" style={{ flex: 1, height: '54px', borderRadius: '16px', fontWeight: 800 }}>Enregistrer</button>
               </div>
             </form>

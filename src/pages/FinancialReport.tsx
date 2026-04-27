@@ -154,7 +154,7 @@ export const FinancialReport = () => {
 
   // Rapprochement physique (audit)
   const cashPhysiqueRecus = data.retours.reduce((acc, r) => acc + (r.montant_remis_par_livreur || 0), 0);
-  const totalEcartCaisse = data.retours.reduce((acc, r) => acc + (r.ecart || 0), 0);
+  const totalEcartCaisse = (stats?.surplus_caisse || 0) - (stats?.manquant_caisse || 0);
 
 
   const totalProduitsNet = stats?.ca_net_produits || 0;

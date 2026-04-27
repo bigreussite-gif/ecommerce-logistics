@@ -113,73 +113,94 @@ export interface ClientFidelityStats {
 }
 
 export const getClientsWithIntelligence = async (): Promise<(Client & ClientFidelityStats & { identities: string[], locations: string[] })[]> => {
-  // Optimisation : On ne récupère que les colonnes essentielles pour le calcul de l'intelligence
-  const [clients, allOrdersResult] = await Promise.all([
-    getAllClients(),
-    insforge.database.from('commandes').select('id, client_id, montant_total, statut_commande, date_creation')
+  // 1. Fetch only essential columns for performance
+  const [clientsResult, ordersResult] = await Promise.all([
+    insforge.database.from('clients').select('id, nom_complet, telephone, telephone_secondaire, commune, quartier, adresse'),
+    insforge.database.from('commandes').select('client_id, montant_total, statut_commande, date_creation')
   ]);
 
-  const orders = allOrdersResult.data || [];
+  const clients = clientsResult.data || [];
+  const orders = ordersResult.data || [];
 
-  // Group clients by normalized phone
-  const clientsByPhone: Record<string, Client[]> = {};
+  // 2. Pre-index orders by client_id for O(1) lookup
+  const ordersByClientId: Record<string, any[]> = {};
+  orders.forEach(o => {
+    if (!ordersByClientId[o.client_id]) ordersByClientId[o.client_id] = [];
+    ordersByClientId[o.client_id].push(o);
+  });
+
+  // 3. Group clients by normalized phone
+  const phoneToClientsMap: Record<string, Client[]> = {};
   clients.forEach(c => {
     const norm = normalizePhone(c.telephone);
-    if (!clientsByPhone[norm]) clientsByPhone[norm] = [];
-    clientsByPhone[norm].push(c);
+    if (!phoneToClientsMap[norm]) phoneToClientsMap[norm] = [];
+    phoneToClientsMap[norm].push(c as any);
   });
 
-  // Group orders by normalized phone (via their clients)
-  const clientToPhoneMap: Record<string, string> = {};
-  clients.forEach(c => { clientToPhoneMap[c.id] = normalizePhone(c.telephone); });
+  const now = new Date();
+  const sixtyDaysAgo = now.getTime() - 60 * 24 * 60 * 60 * 1000;
 
-  const ordersByPhone: Record<string, Commande[]> = {};
-  orders.forEach(o => {
-    const phone = clientToPhoneMap[o.client_id];
-    if (phone) {
-      if (!ordersByPhone[phone]) ordersByPhone[phone] = [];
-      ordersByPhone[phone].push(o as any);
-    }
-  });
+  // 4. Process each unique phone identity
+  const uniqueIdentities = Object.keys(phoneToClientsMap).map(phone => {
+    const linkedClients = phoneToClientsMap[phone];
+    
+    // Gather all orders for all client_ids linked to this phone
+    const clientOrders: any[] = [];
+    const identitiesSet = new Set<string>();
+    const locationsSet = new Set<string>();
 
-  const uniqueIdentities = Object.keys(clientsByPhone).map(phone => {
-    const linkedClients = clientsByPhone[phone];
-    const clientOrders = ordersByPhone[phone] || [];
-    
-    // Aggregate metadata
-    const identities = Array.from(new Set(linkedClients.map(lc => lc.nom_complet)));
-    const locations = Array.from(new Set(linkedClients.map(lc => lc.commune).filter((c): c is string => !!c)));
-    
-    // Use the most recent or first client as the primary reference
-    const primaryClient = linkedClients[0];
+    linkedClients.forEach(lc => {
+      identitiesSet.add(lc.nom_complet);
+      if (lc.commune) locationsSet.add(lc.commune);
+      
+      const ordersForThisId = ordersByClientId[lc.id];
+      if (ordersForThisId) clientOrders.push(...ordersForThisId);
+    });
 
-    const total_brut = clientOrders.reduce((acc, o) => acc + (Number(o.montant_total) || 0), 0);
-    const settledOrders = clientOrders.filter(o => ['livree', 'terminee'].includes(o.statut_commande?.toLowerCase()));
-    const total_encaisse = settledOrders.reduce((acc, o) => acc + (Number(o.montant_total) || 0), 0);
-    const total_commandes = clientOrders.length;
+    // Use the first client record as the base
+    const primary = linkedClients[0];
+
+    // Calculate Stats
+    let total_brut = 0;
+    let total_encaisse = 0;
+    let settledCount = 0;
+    let lastOrderDate: Date | null = null;
+
+    clientOrders.forEach(o => {
+      const montant = Number(o.montant_total) || 0;
+      total_brut += montant;
+      
+      const s = o.statut_commande?.toLowerCase();
+      if (['livree', 'terminee'].includes(s)) {
+        total_encaisse += montant;
+        settledCount++;
+        
+        const d = new Date(o.date_creation);
+        if (!lastOrderDate || d > lastOrderDate) lastOrderDate = d;
+      }
+    });
+
+    // CRM Segmentation
+    let segment: ClientFidelityStats['segment'] = 'Nouveau 🆕';
+    if (settledCount >= 5 || total_encaisse > 150000) segment = 'Diamant 💎';
+    else if (settledCount >= 2) segment = 'Fidèle ✅';
     
-    let segment: any = 'Nouveau 🆕';
-    if (settledOrders.length >= 5 || total_encaisse > 150000) segment = 'Diamant 💎';
-    else if (settledOrders.length >= 2) segment = 'Fidèle ✅';
-    
-    const now = new Date();
-    const lastOrderDate = settledOrders.length > 0 ? new Date(settledOrders[0].date_creation) : null;
-    if (lastOrderDate && (now.getTime() - lastOrderDate.getTime()) > 60 * 24 * 60 * 60 * 1000) {
+    if (lastOrderDate && lastOrderDate.getTime() < sixtyDaysAgo) {
       segment = 'À relancer ⚠️';
     }
 
     return {
-      ...primaryClient,
-      identities,
-      locations,
-      total_commandes,
+      ...primary,
+      identities: Array.from(identitiesSet),
+      locations: Array.from(locationsSet),
+      total_commandes: clientOrders.length,
       total_brut,
       total_encaisse,
-      panier_moyen: settledOrders.length > 0 ? Math.round(total_encaisse / settledOrders.length) : 0,
+      panier_moyen: settledCount > 0 ? Math.round(total_encaisse / settledCount) : 0,
       derniere_commande: lastOrderDate,
       segment
     };
   });
 
-  return uniqueIdentities.sort((a, b) => b.total_commandes - a.total_commandes);
+  return uniqueIdentities.sort((a, b) => b.total_encaisse - a.total_encaisse);
 };

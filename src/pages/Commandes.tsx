@@ -4,7 +4,7 @@ import { CommandeList } from '../components/commandes/CommandeList';
 import { CommandeForm } from '../components/commandes/CommandeForm';
 import { BulkImportModal } from '../components/commandes/BulkImportModal';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
-import { subscribeToCommandes, deleteCommande, getCommandeWithLines, bulkUpdateCommandeStatus } from '../services/commandeService';
+import { subscribeToCommandes, deleteCommande, getCommandeWithLines, bulkUpdateCommandeStatus, getCommandesByIds } from '../services/commandeService';
 import { generateInvoicePDF } from '../services/pdfService';
 import type { Commande, LigneCommande } from '../types';
 import { useToast } from '../contexts/ToastContext';
@@ -86,7 +86,7 @@ export const Commandes = () => {
     if (selectedIds.length === 0) return;
     try {
       showToast("Préparation de l'export logistique...", "info");
-      const selectedCommandes = await Promise.all(selectedIds.map(id => getCommandeWithLines(id)));
+      const selectedCommandes = await getCommandesByIds(selectedIds);
       
       const headers = ['ID', 'Client', 'Téléphone', 'Commune', 'Adresse', 'Montant à Encaisser', 'Produits'];
       const rows = selectedCommandes.map(c => [

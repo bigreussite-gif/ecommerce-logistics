@@ -183,6 +183,16 @@ export interface CaisseRetour {
   caissiere_id?: string;
 }
 
+export interface LigneDepense {
+  id?: string;
+  depense_id?: string;
+  produit_id: string;
+  nom_produit: string;
+  quantite: number;
+  prix_unitaire: number;
+  montant_ligne: number;
+}
+
 export interface Depense {
   id: string;
   date: Date | string;
@@ -192,5 +202,6 @@ export interface Depense {
   piece_jointe_url?: string;
   paye_par_id?: string;
   mode_paiement?: string;
+  lignes?: LigneDepense[];
   created_at?: Date | any;
 }

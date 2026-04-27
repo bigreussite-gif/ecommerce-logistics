@@ -1,6 +1,23 @@
-import { Commande, FeuilleRoute } from '../types';
+import { Commande, FeuilleRoute, LigneCommande } from '../types';
 import { insforge } from '../lib/insforge';
 import { addMouvementStock } from './produitService';
+
+/**
+ * Helper to fetch and map livreur names to avoid duplication
+ */
+const fetchLivreurNames = async (data: any[]): Promise<Map<string, string>> => {
+  if (!data || data.length === 0) return new Map();
+  
+  const userIds = Array.from(new Set(data.map(f => f.livreur_id).filter(Boolean)));
+  if (userIds.length === 0) return new Map();
+
+  const { data: userData } = await insforge.database
+    .from('users')
+    .select('id, nom_complet')
+    .in('id', userIds);
+
+  return new Map(userData?.map(u => [u.id, u.nom_complet]) || []);
+};
 
 export const getFeuillesEnCours = async (livreurId?: string): Promise<FeuilleRoute[]> => {
   let query = insforge.database
@@ -17,14 +34,7 @@ export const getFeuillesEnCours = async (livreurId?: string): Promise<FeuilleRou
   
   if (!data || data.length === 0) return [];
 
-  // Fetch names separately to be bulletproof against join errors
-  const userIds = Array.from(new Set(data.map(f => f.livreur_id).filter(Boolean)));
-  const { data: userData } = await insforge.database
-    .from('users')
-    .select('id, nom_complet')
-    .in('id', userIds);
-
-  const nameMap = new Map(userData?.map(u => [u.id, u.nom_complet]) || []);
+  const nameMap = await fetchLivreurNames(data);
 
   return data.map((f: any) => ({
     ...f,
@@ -43,14 +53,7 @@ export const getCloturedFeuilles = async (): Promise<FeuilleRoute[]> => {
   
   if (!data || data.length === 0) return [];
 
-  // Safe fetch names
-  const userIds = Array.from(new Set(data.map(f => f.livreur_id).filter(Boolean)));
-  const { data: userData } = await insforge.database
-    .from('users')
-    .select('id, nom_complet')
-    .in('id', userIds);
-
-  const nameMap = new Map(userData?.map(u => [u.id, u.nom_complet]) || []);
+  const nameMap = await fetchLivreurNames(data);
 
   return data.map((f: any) => ({
     ...f,
@@ -74,9 +77,16 @@ export const getCommandesConcernees = async (feuilleRouteId: string): Promise<Co
   }));
 };
 
+export interface CaisseResolution {
+  id: string;
+  statut: string;
+  mode_paiement: string;
+  updatedLines?: LigneCommande[];
+}
+
 export const processCaisse = async (
   feuilleRouteId: string, 
-  resolutions: {id: string, statut: string, mode_paiement: string, updatedLines?: any[]}[], 
+  resolutions: CaisseResolution[], 
   montantPhysique: number, 
   ecart: number, 
   commentaire: string,
@@ -86,8 +96,11 @@ export const processCaisse = async (
 ): Promise<void> => {
   // 0. Record Prime as Expense if > 0
   if (primeLivreur > 0) {
-    // Get Livreur name for description
-    const { data: livreur } = await insforge.database.from('users').select('nom_complet').eq('id', livreurId).single();
+    const { data: livreur } = await insforge.database
+      .from('users')
+      .select('nom_complet')
+      .eq('id', livreurId)
+      .single();
     
     await insforge.database.from('depenses').insert([{
       date: new Date().toISOString(),
@@ -95,11 +108,12 @@ export const processCaisse = async (
       description: `Prime Livreur : ${livreur?.nom_complet || 'Agent'} - Feuille #${feuilleRouteId.slice(0,8)}`,
       montant: primeLivreur,
       mode_paiement: 'Espèces',
-      valide: true, // Auto-validated as it's part of caisse process
+      valide: true,
       cree_par: caissiereId
     }]);
   }
-  // 1. Update Feuille Route status and summary financials
+
+  // 1. Update Feuille Route status
   const { error: frError } = await insforge.database
     .from('feuilles_route')
     .update({
@@ -120,8 +134,8 @@ export const processCaisse = async (
 
   if (linesError) throw linesError;
   
-  // Parallelize the resolution processing
-  const resolutionPromises = resolutions.map(async (res) => {
+  // Process resolutions sequentially for stock to avoid race conditions 
+  for (const res of resolutions) {
     let finalStatus = res.statut;
     if (res.statut === 'livree') finalStatus = 'terminee';
     if (res.statut === 'retour_livreur' || res.statut === 'echouee') finalStatus = 'retour_stock';
@@ -135,9 +149,7 @@ export const processCaisse = async (
 
     if (!isDelivered) {
       updateData.feuille_route_id = null;
-    }
-    
-    if (isDelivered) {
+    } else {
       updateData.date_livraison_effective = new Date().toISOString();
     }
     
@@ -146,9 +158,14 @@ export const processCaisse = async (
       .update(updateData)
       .eq('id', res.id);
 
+    // Update lines and recalculate total if delivered and lines are provided
     if (isDelivered && res.updatedLines) {
-      // Recalculate total if lines changed
-      const { data: cmdRef } = await insforge.database.from('commandes').select('frais_livraison, remise_totale').eq('id', res.id).single();
+      const { data: cmdRef } = await insforge.database
+        .from('commandes')
+        .select('frais_livraison, remise_totale')
+        .eq('id', res.id)
+        .single();
+        
       const shipping = Number(cmdRef?.frais_livraison) || 0;
       const remise = Number(cmdRef?.remise_totale) || 0;
 
@@ -156,7 +173,8 @@ export const processCaisse = async (
       let newMontantTotal = 0;
 
       for (const l of res.updatedLines) {
-        const lineTotal = (Number(l.prix_unitaire) * Number(l.quantite)) + (l.choix_installation ? (Number(l.frais_installation) * Number(l.quantite)) : 0);
+        const lineTotal = (Number(l.prix_unitaire) * Number(l.quantite)) + 
+                          (l.choix_installation ? (Number(l.frais_installation) * Number(l.quantite)) : 0);
         newMontantTotal += lineTotal;
         if (l.choix_installation) newTotalPrimes += (Number(l.frais_installation) * Number(l.quantite));
 
@@ -168,30 +186,35 @@ export const processCaisse = async (
 
       await insforge.database
         .from('commandes')
-        .update({ montant_total: newMontantTotal + shipping - remise, total_primes_installation: newTotalPrimes })
+        .update({ 
+          montant_total: newMontantTotal + shipping - remise, 
+          total_primes_installation: newTotalPrimes 
+        })
         .eq('id', res.id);
     }
 
+    // Handle stock returns
     if (finalStatus === 'retour_stock' || finalStatus === 'annulee') {
-      const lignes = lignesCommandes.filter((l: any) => l.commande_id === res.id);
-      for (const l of lignes) {
+      const linesToReturn = lignesCommandes.filter((l: any) => l.commande_id === res.id);
+      for (const l of linesToReturn) {
+        // By default, we put back in stock as "retour_livreur" reference
+        // A warehouse audit will later determine if it's defective
         await addMouvementStock({
           produit_id: l.produit_id,
           type_mouvement: 'entree',
           quantite: l.quantite,
           reference: `Retour Echec cmd #${res.id.slice(0,5)}`,
+          commentaire: `Retour via Caisse - Feuille #${feuilleRouteId.slice(0,8)}`
         } as any);
       }
     }
-  });
+  }
 
-  await Promise.all(resolutionPromises);
-  
   // 2. Log formal Caisse Retour
-    const { error: retourError } = await insforge.database
-      .from('caisse_retours')
-      .insert([{ 
-        date: new Date().toISOString(), 
+  const { error: retourError } = await insforge.database
+    .from('caisse_retours')
+    .insert([{ 
+      date: new Date().toISOString(), 
       feuille_route_id: feuilleRouteId, 
       livreur_id: livreurId,
       caissiere_id: caissiereId,
@@ -202,11 +225,23 @@ export const processCaisse = async (
     }]);
 
   if (retourError) throw retourError;
+
+  // 3. Handle Cash Discrepancy (Ecart) as a Financial Entry
+  if (Math.abs(ecart) > 0) {
+    const isLoss = ecart < 0;
+    await insforge.database.from('depenses').insert([{
+      date: new Date().toISOString(),
+      categorie: isLoss ? 'Manquant Caisse' : 'Surplus Caisse',
+      description: `Écart de caisse - Livreur #${livreurId.slice(0,8)} - Feuille #${feuilleRouteId.slice(0,8)}`,
+      montant: Math.abs(ecart),
+      mode_paiement: 'Espèces',
+      created_at: new Date().toISOString()
+    }]);
+  }
 };
 
 export const reopenFeuilleRoute = async (id: string): Promise<void> => {
   // 1. Supprimer l'enregistrement caisse_retours associé
-  //    pour ne pas polluer les calculs du rapport journalier
   const { error: retourErr } = await insforge.database
     .from('caisse_retours')
     .delete()
@@ -227,8 +262,7 @@ export const reopenFeuilleRoute = async (id: string): Promise<void> => {
 
   if (error) throw error;
 
-  // 3. Remettre les commandes "terminee/livree" de cette feuille
-  //    en "en_cours_livraison" pour qu'elles soient re-traitées
+  // 3. Remettre les commandes "terminee/livree" en "en_cours_livraison"
   const { error: cmdErr } = await insforge.database
     .from('commandes')
     .update({
@@ -248,21 +282,19 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
   const end = endDateStr ? new Date(endDateStr) : new Date(startDateStr);
   end.setHours(23,59,59,999);
 
-  // 1. Get Caisse Retours for the range (Physical closure records)
+  const startStr = start.toISOString();
+  const endStr = end.toISOString();
+
+  // 1. Get Caisse Retours for the range
   const { data: retours, error: retoursError } = await insforge.database
     .from('caisse_retours')
     .select('*')
-    .gte('date', start.toISOString())
-    .lte('date', end.toISOString());
+    .gte('date', startStr)
+    .lte('date', endStr);
 
   if (retoursError) throw retoursError;
 
-  // 2. Get All Commandes delivered in range OR whose sheet was processed in range
-  // This is much more stable than updated_at
-  const startStr = start.toISOString();
-  const endStr = end.toISOString();
-  
-  // Fetch all sheets treated in range to include their orders (especially failures)
+  // 2. Get all sheets treated in range
   const { data: sheets } = await insforge.database
     .from('feuilles_route')
     .select('id')
@@ -271,10 +303,10 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
 
   const sheetIds = sheets?.map(s => s.id) || [];
   
-  // Filter: (date_livraison_effective in range) OR (feuille_route_id in sheetIds)
+  // Construct filter: (delivered in range) OR (part of a sheet processed in range)
   let filterStr = `and(date_livraison_effective.gte.${startStr},date_livraison_effective.lte.${endStr})`;
   if (sheetIds.length > 0) {
-    filterStr += `,feuille_route_id.in.(${sheetIds.join(',')})`;
+    filterStr = `or(${filterStr},feuille_route_id.in.(${sheetIds.join(',')}))`;
   }
 
   const { data: commandes, error: cmdError } = await insforge.database

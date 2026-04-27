@@ -14,13 +14,17 @@ export const getProduits = async (): Promise<Produit[]> => {
 
 export const subscribeToProduits = (callback: (produits: Produit[]) => void) => {
   const fetch = () => {
-    if (document.visibilityState === 'visible') {
-      getProduits().then(callback);
-    }
+    getProduits().then(callback).catch(console.error);
   };
+
   fetch();
-  const interval = setInterval(fetch, 5000);
-  return () => clearInterval(interval);
+  
+  // Listen for local updates
+  globalEventBus.on(EVENTS.STOCK_UPDATED, fetch);
+  
+  return () => {
+    globalEventBus.off(EVENTS.STOCK_UPDATED, fetch);
+  };
 };
 
 export const createProduit = async (produit: Omit<Produit, 'id'>): Promise<string> => {

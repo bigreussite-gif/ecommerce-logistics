@@ -2,11 +2,12 @@ import { insforge } from '../lib/insforge';
 import { Depense, Commande, LigneCommande } from '../types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { addMouvementStock, updateProduit } from './produitService';
 
 export const getDepenses = async (): Promise<Depense[]> => {
   const { data, error } = await insforge.database
     .from('depenses')
-    .select('*')
+    .select('*, lignes:lignes_depenses(*)')
     .order('date', { ascending: false });
   
   if (error) throw error;
@@ -14,11 +15,60 @@ export const getDepenses = async (): Promise<Depense[]> => {
 };
 
 export const addDepense = async (depense: Omit<Depense, 'id'>): Promise<void> => {
-  const { error } = await insforge.database
+  const { data: depData, error: depError } = await insforge.database
     .from('depenses')
-    .insert([depense]);
+    .insert([{
+      date: depense.date,
+      categorie: depense.categorie,
+      montant: depense.montant,
+      description: depense.description,
+      piece_jointe_url: depense.piece_jointe_url,
+      paye_par_id: depense.paye_par_id,
+      mode_paiement: depense.mode_paiement,
+      created_at: new Date().toISOString()
+    }])
+    .select();
   
-  if (error) throw error;
+  if (depError) throw depError;
+
+  const depId = depData?.[0]?.id;
+
+  if (depId && depense.lignes && depense.lignes.length > 0) {
+    for (const l of depense.lignes) {
+      // 1. Insert line items
+      const { error: lineError } = await insforge.database
+        .from('lignes_depenses')
+        .insert([{
+          depense_id: depId,
+          produit_id: l.produit_id,
+          nom_produit: l.nom_produit,
+          quantite: l.quantite,
+          prix_unitaire: l.prix_unitaire,
+          montant_ligne: l.montant_ligne
+        }]);
+      
+      if (lineError) console.error("Error inserting expense line:", lineError);
+
+      // 2. If it's a stock purchase, update stock and purchase price
+      if (depense.categorie === 'Achat Stock / Fournisseur') {
+        try {
+          await addMouvementStock({
+            produit_id: l.produit_id,
+            type_mouvement: 'entree',
+            quantite: l.quantite,
+            reference: `Achat #${depId.substring(0, 8)}`,
+            commentaire: depense.description
+          } as any);
+
+          await updateProduit(l.produit_id, {
+            prix_achat: l.prix_unitaire
+          });
+        } catch (stkErr) {
+          console.error("Error reconciling stock during expense entry:", stkErr);
+        }
+      }
+    }
+  }
 };
 
 export const deleteDepense = async (id: string): Promise<void> => {
@@ -50,14 +100,16 @@ export interface ProfitStats {
   taux_succes: number;
   marge_brute_percent: number;
   marge_nette_percent: number;
-  ca_global_vendu?: number;
-  total_sorties?: number;
-  cout_achat_total?: number;
-  valeur_stock?: number;
-  benefice_caisse?: number;
-  ads_spend?: number;
-  total_installation_primes?: number;
-  total_achats_stock?: number;
+  ca_global_vendu: number;
+  total_sorties: number;
+  cout_achat_total: number;
+  total_installation_primes: number;
+  total_achats_stock: number;
+  manquant_caisse: number;
+  surplus_caisse: number;
+  pertes_livraison: number;
+  benefice_caisse: number;
+  flux_tresorerie: number;
   flux_tresorerie?: number;
   roas?: number;
   cac?: number;
@@ -138,15 +190,22 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
   });
 
   const depenses_fixes_total = (depenses || [])
-    .filter(d => d.categorie !== 'Achat Stock / Fournisseur')
+    .filter(d => !['Achat Stock / Fournisseur', 'Surplus Caisse', 'Manquant Caisse'].includes(d.categorie))
     .reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
   
   const total_achats_stock = (depenses || [])
     .filter(d => d.categorie === 'Achat Stock / Fournisseur')
     .reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
+
+  const manquant_caisse = (depenses || [])
+    .filter(d => d.categorie === 'Manquant Caisse')
+    .reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
+  
+  const surplus_caisse = (depenses || [])
+    .filter(d => d.categorie === 'Surplus Caisse')
+    .reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
   
   const total_sorties_cash = (depenses || []).reduce((acc, d) => acc + (Number(d.montant) || 0), 0);
-  
   
   // CA Net = Total received - Shipping Fees
   const ca_net_produits = ca_brut - frais_livraison_reussis;
@@ -158,8 +217,8 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
   // Retenue based on percentage of net revenue
   const retenue_charges = ca_net_produits > 0 ? Math.round(ca_net_produits * RETENUE_PERCENT) : 0;
 
-  // Profit Net Brut = CA Net - COGS - Dépenses Fixes - Pertes Logistiques - Primes Installation
-  const profit_net_brut = ca_net_produits - cogs_total - depenses_fixes_total - pertes_livraison - installation_primes_total;
+  // Profit Net Brut = CA Net - COGS - Dépenses Fixes - Pertes Logistiques - Primes Installation - Manquant + Surplus
+  const profit_net_brut = ca_net_produits - cogs_total - depenses_fixes_total - pertes_livraison - installation_primes_total - manquant_caisse + surplus_caisse;
   
   // Profit Net Réel = Profit Net Brut - Extractions - Retenue
   const profit_net_reel = profit_net_brut - total_extractions - retenue_charges;
@@ -189,6 +248,9 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     cout_achat_total: cogs_total,
     total_installation_primes: installation_primes_total,
     total_achats_stock,
+    manquant_caisse,
+    surplus_caisse,
+    pertes_livraison,
     benefice_caisse: profit_net_reel,
     flux_tresorerie: ca_brut - total_sorties_cash
   };

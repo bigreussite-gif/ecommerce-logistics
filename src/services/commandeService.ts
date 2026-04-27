@@ -29,6 +29,35 @@ export const getCommandeWithLines = async (id: string): Promise<Commande & { lig
   };
 };
 
+/**
+ * Fetches multiple orders with their lines in optimized queries.
+ */
+export const getCommandesByIds = async (ids: string[]): Promise<(Commande & { lignes: LigneCommande[] })[]> => {
+  if (ids.length === 0) return [];
+
+  const { data: cmds, error: cmdError } = await insforge.database
+    .from('commandes')
+    .select('*, clients(*)')
+    .in('id', ids);
+
+  if (cmdError) throw cmdError;
+
+  const { data: allLines, error: linesError } = await insforge.database
+    .from('lignes_commandes')
+    .select('*')
+    .in('commande_id', ids);
+
+  if (linesError) throw linesError;
+
+  return (cmds || []).map(cmd => ({
+    ...cmd,
+    nom_client: cmd.clients?.nom_complet,
+    telephone_client: cmd.clients?.telephone,
+    telephone_secondaire: cmd.clients?.telephone_secondaire,
+    lignes: (allLines || []).filter(l => l.commande_id === cmd.id)
+  }));
+};
+
 export const getCommandes = async (limit: number | null = null, offset = 0): Promise<Commande[]> => {
   let query = insforge.database
     .from('commandes')
@@ -54,11 +83,10 @@ export const getCommandes = async (limit: number | null = null, offset = 0): Pro
 export const subscribeToCommandes = (callback: (commandes: Commande[]) => void) => {
   const fetch = () => {
     if (document.visibilityState === 'visible') {
-      getCommandes(null).then(callback); // Fetch all for reliability
+      getCommandes(null).then(callback); 
     }
   };
   fetch();
-  // Sync every 5 seconds for a more "real-time" feel
   const interval = setInterval(fetch, 5000);
   return () => clearInterval(interval);
 };
@@ -96,15 +124,11 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
   commande.date_creation = new Date();
   commande.statut_commande = 'en_attente_appel'; 
 
-  // Auto-set shipping fee from commune if not provided or 0
   if ((!commande.frais_livraison || commande.frais_livraison === 0) && commande.commune_livraison) {
      try {
         const zone = await getCommuneByName(commande.commune_livraison);
         if (zone) {
            commande.frais_livraison = zone.tarif_livraison;
-           // If montant_total was calculated without fee, add it (assuming UI sends total including fee)
-           // Actually, the UI usually calculates total = subtotal + fee. 
-           // If fee was 0, total = subtotal. We should update total.
         }
      } catch (e) { console.error("Could not fetch commune fee during creation", e); }
   }
@@ -138,6 +162,7 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
   const id = cmdData?.[0]?.id;
   if (!id) throw new Error("ID de commande non généré par la base de données.");
 
+  // Process items sequentially to avoid stock race conditions
   for (const l of lignes) {
     const { error: lineError } = await insforge.database
       .from('lignes_commandes')
@@ -173,8 +198,10 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
   return id;
 };
 
+// Helper for stock state machine
+const activeStates = ['en_attente_appel', 'validee', 'en_cours_livraison', 'livree', 'terminee', 'echouee', 'retour_livreur'];
+
 export const updateCommandeStatus = async (id: string, status: string, additionalData: any = {}): Promise<void> => {
-  // 1. Fetch current status and lines
   const { data: currentCmd } = await insforge.database
     .from('commandes')
     .select('statut_commande')
@@ -186,13 +213,10 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   const nextStatus = status;
 
   const resetRouteSheets = ['validee', 'a_rappeler', 'en_attente_appel', 'annulee'];
-  // 2. Prepare CLEAN update payload - VERY IMPORTANT to avoid 400 errors from unknown columns
   const updatePayload: any = { 
     statut_commande: nextStatus
   };
 
-  // Map only allowed fields from additionalData to correct DB columns
-  // REMOVED 'notes' to avoid PGRST204 cache error
   if (additionalData.notes_client !== undefined) updatePayload.notes_client = additionalData.notes_client;
   if (additionalData.notes_livreur !== undefined) updatePayload.notes_livreur = additionalData.notes_livreur;
   if (additionalData.commentaire_agent !== undefined) updatePayload.commentaire_agent = additionalData.commentaire_agent;
@@ -205,10 +229,10 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   if (additionalData.date_livraison_effective !== undefined) updatePayload.date_livraison_effective = additionalData.date_livraison_effective;
   if (additionalData.date_livraison_prevue !== undefined) updatePayload.date_livraison_prevue = additionalData.date_livraison_prevue;
   if (additionalData.date_validation_appel !== undefined) updatePayload.date_validation_appel = additionalData.date_validation_appel;
+  
   if (additionalData.frais_livraison !== undefined) {
     updatePayload.frais_livraison = additionalData.frais_livraison;
   } else if (additionalData.commune_livraison) {
-    // If commune changed but fee not provided, look it up
     try {
       const zone = await getCommuneByName(additionalData.commune_livraison);
       if (zone) updatePayload.frais_livraison = zone.tarif_livraison;
@@ -225,20 +249,11 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
     .update(updatePayload)
     .eq('id', id);
   
-  if (error) {
-    console.error("Order status update error:", error);
-    throw error;
-  }
-
-  // 3. Stock management state machine
-  // activeStates means the products are "out" of the main warehouse stock
-  // We include 'echouee' and 'retour_livreur' because the physical products are still in the field/with courier
-  const activeStates = ['en_attente_appel', 'validee', 'en_cours_livraison', 'livree', 'terminee', 'echouee', 'retour_livreur'];
+  if (error) throw error;
 
   const wasActive = activeStates.includes(prevStatus?.toLowerCase());
   const isNowActive = activeStates.includes(nextStatus?.toLowerCase());
 
-  // If transition changes active status, move stock
   if (wasActive !== isNowActive) {
     try {
       const { data: lines } = await insforge.database
@@ -264,41 +279,116 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
 };
 
-/**
- * Confirme la réintégration en stock ou le retrait définitif (défaillant)
- */
-export const confirmRMAMovement = async (id: string, choice: 'REUTILISABLE' | 'DEFAILLANT', notes: string = ''): Promise<void> => {
-  const { data: cmd, error: fetchErr } = await insforge.database
+export const bulkUpdateCommandeStatus = async (ids: string[], status: string, additionalData: any = {}): Promise<void> => {
+  if (ids.length === 0) return;
+
+  // 1. Get current statuses to determine stock movements
+  const { data: currentCmds } = await insforge.database
     .from('commandes')
-    .select('*, lignes:lignes_commandes(*)')
-    .eq('id', id)
-    .single();
+    .select('id, statut_commande')
+    .in('id', ids);
 
-  if (fetchErr || !cmd) throw new Error("Commande non trouvée");
+  if (!currentCmds) return;
 
-  // 1. Mettre à jour le statut de la commande
-  // Le passage à 'retour_stock' va déclencher l'auto-restock SI c'est REUTILISABLE.
-  // Mais attendez, si c'est DEFAILLANT, on veut AUSSI qu'elle soit inactive, mais on veut compenser la sortie.
+  const nextStatus = status;
+  const isNextActive = activeStates.includes(nextStatus.toLowerCase());
+
+  // 2. Perform bulk update on commandes table
+  const updatePayload: any = { statut_commande: nextStatus };
+  if (additionalData.agent_appel_id) updatePayload.agent_appel_id = additionalData.agent_appel_id;
+  if (additionalData.date_validation_appel) updatePayload.date_validation_appel = additionalData.date_validation_appel;
+  if (additionalData.notes_livreur) updatePayload.notes_livreur = additionalData.notes_livreur;
   
-  await updateCommandeStatus(id, 'retour_stock', {
-    notes_livreur: notes ? `${cmd.notes_livreur || ''} | RMA: ${choice} - ${notes}` : cmd.notes_livreur
-  });
+  // Clear route sheets if needed
+  const resetRouteSheets = ['validee', 'a_rappeler', 'en_attente_appel', 'annulee'];
+  if (resetRouteSheets.includes(nextStatus.toLowerCase())) {
+    updatePayload.feuille_route_id = null;
+    updatePayload.livreur_id = null;
+  }
 
-  // 2. Si c'est défaillant, on fait une sortie immédiate pour compenser le restock auto qui a eu lieu lors de updateCommandeStatus
-  if (choice === 'DEFAILLANT') {
-    if (cmd.lignes && cmd.lignes.length > 0) {
-      for (const l of cmd.lignes) {
+  const { error: bulkErr } = await insforge.database
+    .from('commandes')
+    .update(updatePayload)
+    .in('id', ids);
+
+  if (bulkErr) throw bulkErr;
+
+  // 3. Handle stock movements for commands that changed "active" state
+  const idsChangingState = currentCmds
+    .filter(c => activeStates.includes(c.statut_commande?.toLowerCase()) !== isNextActive)
+    .map(c => c.id);
+
+  if (idsChangingState.length > 0) {
+    const { data: lines } = await insforge.database
+      .from('lignes_commandes')
+      .select('*')
+      .in('commande_id', idsChangingState);
+
+    if (lines && lines.length > 0) {
+      // Group movements by product to minimize DB calls if possible, 
+      // but addMouvementStock is not bulk-friendly yet, so we process sequentially
+      for (const l of lines) {
         await addMouvementStock({
           produit_id: l.produit_id,
-          type_mouvement: 'sortie',
+          type_mouvement: isNextActive ? 'sortie' : 'entree',
           quantite: l.quantite,
-          reference: `Article Défaillant (Cmd #${id.slice(0,8)})`
+          reference: `Bulk ${isNextActive ? 'Sortie' : 'Retour'} (${nextStatus})`
         } as any);
       }
     }
   }
 
-  // 3. Enregistrer dans la table retours pour le suivi des défaillants
+  globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
+};
+
+export const confirmRMAMovement = async (id: string, choice: 'REUTILISABLE' | 'DEFAILLANT', notes: string = ''): Promise<void> => {
+  const { data: cmd, error: fetchErr } = await insforge.database
+    .from('commandes')
+    .select('*, lignes:lignes_commandes(*, produits(*))')
+    .eq('id', id)
+    .single();
+
+  if (fetchErr || !cmd) throw new Error("Commande non trouvée");
+
+  await updateCommandeStatus(id, 'retour_stock', {
+    notes_livreur: notes ? `${cmd.notes_livreur || ''} | RMA: ${choice} - ${notes}` : cmd.notes_livreur
+  });
+
+  if (choice === 'DEFAILLANT') {
+    let totalLossAmount = 0;
+    if (cmd.lignes && cmd.lignes.length > 0) {
+      for (const l of cmd.lignes) {
+        // Calculate loss amount based on purchase price
+        const prodData = Array.isArray(l.produits) ? l.produits[0] : l.produits;
+        const purchasePrice = l.prix_achat_unitaire || prodData?.prix_achat || 0;
+        totalLossAmount += (l.quantite * Number(purchasePrice));
+
+        // Mark as exit in stock history
+        await addMouvementStock({
+          produit_id: l.produit_id,
+          type_mouvement: 'sortie',
+          quantite: l.quantite,
+          reference: `Article Défaillant (Cmd #${id.slice(0,8)})`,
+          commentaire: notes
+        } as any);
+      }
+    }
+
+    // Record the loss as an expense
+    if (totalLossAmount > 0) {
+      await insforge.database
+        .from('depenses')
+        .insert([{
+          description: `Perte Stock RMA #${id.slice(-6).toUpperCase()}`,
+          montant: totalLossAmount,
+          categorie: 'Pertes & Dommages',
+          date: new Date().toISOString(),
+          created_at: new Date().toISOString()
+        }]);
+    }
+  }
+
+  // Record in retours table for audit trail
   if (cmd.lignes && cmd.lignes.length > 0) {
     for (const l of cmd.lignes) {
       await insforge.database
@@ -316,6 +406,7 @@ export const confirmRMAMovement = async (id: string, choice: 'REUTILISABLE' | 'D
   }
   
   globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
+  globalEventBus.emit(EVENTS.STOCK_UPDATED);
 };
 
 export const reactivateFailedCommande = async (id: string, notes?: string): Promise<void> => {
@@ -348,7 +439,6 @@ export const registerReturn = async (id: string, motif: string, solution: string
       quantite: productLine?.quantite || 1
     }]);
 
-  // wasDelivered is unused here
   const finalNotes = `[RETOUR CLIENT] ${etat_produit} - Motif: ${motif}. ${notes}${cmd.notes_client ? "\n---\n" + cmd.notes_client : ""}`;
   
   const { error: updateErr } = await insforge.database
@@ -384,17 +474,6 @@ export const registerReturn = async (id: string, motif: string, solution: string
   globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
 };
 
-export const bulkUpdateCommandeStatus = async (ids: string[], status: string, additionalData: any = {}): Promise<void> => {
-  // Parallelize updates for massive speed boost
-  const updatePromises = ids.map(id => 
-    updateCommandeStatus(id, status, additionalData).catch(e => {
-      console.error(`Error updating order ${id}:`, e);
-    })
-  );
-  await Promise.all(updatePromises);
-  globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
-};
-
 export const getTopSellingProducts = async (limit: number | null = null, days?: number, start?: string, end?: string): Promise<{ nom: string, nb_ventes: number, total_ca: number, total_sorties: number, taux_succes: number }[]> => {
   let query = insforge.database
     .from('lignes_commandes')
@@ -422,7 +501,6 @@ export const getTopSellingProducts = async (limit: number | null = null, days?: 
       aggregates[key] = { nb: 0, ca: 0, sorties: 0, livrees: 0, echecs: 0, name: l.nom_produit };
     }
     
-    // Support both object and array return from PostgREST join
     const cmd = Array.isArray(l.commandes) ? l.commandes[0] : l.commandes;
     if (!cmd) return;
 
@@ -545,13 +623,10 @@ export const getFinancialData = async (startDate?: string, endDate?: string): Pr
 };
 
 export const updateCommandeLignesAndStock = async (commandeId: string, oldLines: LigneCommande[], newLines: any[]): Promise<void> => {
-  // Identify added, updated, and removed lines
   const oldMap = new Map(oldLines.map(l => [l.id, l]));
   
-  // 1. Remove lines not in newLines
   for (const oldLine of oldLines) {
     if (!newLines.find(l => l.id === oldLine.id)) {
-      // Re-add stock
       await addMouvementStock({
         produit_id: oldLine.produit_id,
         type_mouvement: 'retour',
@@ -566,12 +641,8 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
     }
   }
 
-  // 2. Add or update new lines
   for (const newLine of newLines) {
     if (!newLine.id) {
-      // It's a new line - fetch cost price first
-      // It's a new line - skip fetch if not needed
-
       await insforge.database
         .from('lignes_commandes')
         .insert([{
@@ -583,7 +654,6 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
         .select()
         .single();
 
-      // Subtract stock
       await addMouvementStock({
         produit_id: newLine.produit_id,
         type_mouvement: 'sortie',
@@ -591,13 +661,11 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
         reference: `Sortie Nouvel Article Cmd #${commandeId.substring(0, 8)}`
       } as any);
     } else {
-      // It's an update
       const oldLine = oldMap.get(newLine.id);
       if (oldLine) {
         const diff = newLine.quantite - oldLine.quantite;
         
         if (diff !== 0) {
-          // Update quantity and amounts
           await insforge.database
             .from('lignes_commandes')
             .update({
@@ -608,7 +676,6 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
             })
             .eq('id', newLine.id);
 
-          // Update stock: if qty increased, sortie diff. If decreased, retour |diff|
           await addMouvementStock({
             produit_id: newLine.produit_id,
             type_mouvement: diff > 0 ? 'sortie' : 'retour',
@@ -626,7 +693,7 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
 export const logWhatsAppMessage = async (commandeId: string, _type: string): Promise<void> => {
   await insforge.database
     .from('commandes')
-    .update({ statut_commande: 'en_attente_appel' } as any) // dummy update to trigger something if needed
+    .update({ statut_commande: 'en_attente_appel' } as any) 
     .eq('id', commandeId);
   
   globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
@@ -636,7 +703,6 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
   if (!data || data.length === 0) return { count: 0 };
 
   try {
-    // 1. Charger tout le catalogue produits pour correspondance SKU
     const { data: products } = await insforge.database
       .from('produits')
       .select('id, nom, sku, prix_vente, stock_actuel');
@@ -648,12 +714,9 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
       productById.set(p.id, p);
     });
 
-    // 2. Gestion des clients en masse
     const cleanPhone = (p: any): string => String(p || '').replace(/\D/g, '').slice(-10);
-    
     const phonesInFile = Array.from(new Set(data.map(item => cleanPhone(item.client.telephone)).filter(p => p.length >= 8)));
     
-    // Charger UNIQUEMENT les clients existants concernés pour éviter les lenteurs sur gros catalogues
     const { data: existingClients } = await insforge.database
       .from('clients')
       .select('id, telephone, telephone_secondaire')
@@ -667,7 +730,6 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
       if (p2) clientMapByPhone.set(p2, c.id);
     });
 
-    // Identifier les nouveaux clients à créer
     const newClientsToCreate: any[] = [];
     const processedPhones = new Set<string>();
 
@@ -686,7 +748,6 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
       }
     });
 
-    // Insertion groupée des nouveaux clients
     if (newClientsToCreate.length > 0) {
       const { data: createdClients, error: clientErr } = await insforge.database
         .from('clients')
@@ -701,7 +762,6 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
       });
     }
 
-    // 3. Préparer les commandes et lignes
     const commandesToInsert: any[] = [];
     const itemsWithValidData: any[] = [];
     const now = new Date().toISOString();
@@ -750,7 +810,6 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
 
     if (commandesToInsert.length === 0) return { count: 0, error: "Aucune donnée valide à importer." };
 
-    // 4. Insertion groupée des commandes
     const { data: createdCmds, error: cmdErr } = await insforge.database
       .from('commandes')
       .insert(commandesToInsert)
@@ -758,7 +817,6 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
 
     if (cmdErr) throw new Error(`Erreur insertion commandes groupée: ${cmdErr.message}`);
 
-    // 5. Insertion groupée des lignes et mouvements de stock
     const linesToInsert: any[] = [];
     const stockMovesToInsert: any[] = [];
     const stockUpdatesMap = new Map<string, number>();
@@ -795,56 +853,22 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
         .from('mouvements_stock')
         .insert(stockMovesToInsert);
       
-      // Mise à jour groupée des stocks produits
-      const upsertData = Array.from(stockUpdatesMap.entries()).map(([prodId, delta]) => {
+      for (const [prodId, delta] of stockUpdatesMap.entries()) {
         const prod = productById.get(prodId);
-        return {
-          id: prodId,
-          stock_actuel: (prod?.stock_actuel || 0) - delta
-        };
-      });
-
-      if (upsertData.length > 0) {
-        const { error: upsertErr } = await insforge.database
-          .from('produits')
-          .upsert(upsertData, { onConflict: 'id' });
-        if (upsertErr) console.error("Erreur mise à jour stocks bulk:", upsertErr);
+        if (prod) {
+          await insforge.database
+            .from('produits')
+            .update({ stock_actuel: (Number(prod.stock_actuel) || 0) - delta })
+            .eq('id', prodId);
+        }
       }
     }
-    
+
     globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
-    globalEventBus.emit(EVENTS.STOCK_UPDATED);
-
     return { count: createdCmds?.length || 0 };
-  } catch (error: any) {
-    console.error("Bulk Import Error:", error);
-    return { count: 0, error: error.message };
+
+  } catch (e: any) {
+    console.error("Bulk Import Error:", e);
+    return { count: 0, error: e.message };
   }
-};
-
-export const updateCommandeBase = async (id: string, commande: Partial<Commande>, currentLines: LigneCommande[], newLines: any[]): Promise<void> => {
-  // 1. Update the main order record
-  const { error: cmdError } = await insforge.database
-    .from('commandes')
-    .update({
-      client_id: commande.client_id,
-      source_commande: commande.source_commande,
-      statut_commande: commande.statut_commande,
-      montant_total: commande.montant_total,
-      frais_livraison: commande.frais_livraison,
-      mode_paiement: commande.mode_paiement,
-      commune_livraison: commande.commune_livraison,
-      quartier_livraison: commande.quartier_livraison,
-      adresse_livraison: commande.adresse_livraison,
-      notes_client: commande.notes_client,
-      remise_totale: commande.remise_totale,
-      total_primes_installation: (newLines || []).reduce((acc, l) => acc + (!!l.choix_installation ? (Number(l.frais_installation) || 0) : 0), 0)
-    })
-    .eq('id', id);
-
-  if (cmdError) throw cmdError;
-
-  // 2. Synchronize lines and stock
-  await updateCommandeLignesAndStock(id, currentLines, newLines);
-  globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
 };

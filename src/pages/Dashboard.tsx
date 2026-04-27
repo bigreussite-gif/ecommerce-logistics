@@ -3,7 +3,8 @@ import { subscribeToCommandes, getTopSellingProducts, getCategoryPerformance } f
 import { calculateLogisticalStats, getDepenses, calculateProfitMetrics, calculateStockValue } from '../services/financialService';
 import { getProduits } from '../services/produitService';
 import type { Commande } from '../types';
-import { Activity, Percent, DollarSign, TrendingUp, Truck, AlertCircle, ShoppingBag, BarChart2, Calendar, MapPin, Tag } from 'lucide-react';
+import { globalEventBus, EVENTS } from '../utils/events';
+import { Activity, Percent, DollarSign, TrendingUp, Truck, AlertCircle, ShoppingBag, BarChart2, Calendar, MapPin, Tag, Clock } from 'lucide-react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   Tooltip, PieChart, Pie, Cell
@@ -19,7 +20,6 @@ export const Dashboard = () => {
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
   const [categoryStats, setCategoryStats] = useState<any[]>([]);
-  const [globalMetrics, setGlobalMetrics] = useState<any>(null);
   const [stockVal, setStockVal] = useState(0);
   const [expenses, setExpenses] = useState<any[]>([]);
 
@@ -33,158 +33,122 @@ export const Dashboard = () => {
     } catch (e) { console.error(e); }
   }, []);
 
+  const fetchGlobalData = useCallback(async () => {
+    if (document.visibilityState !== 'visible') return;
+    try {
+      const [allExpenses, allProds] = await Promise.all([
+        getDepenses(),
+        getProduits()
+      ]);
+      setExpenses(allExpenses);
+      const sVal = calculateStockValue(allProds);
+      setStockVal(sVal);
+    } catch (err) { console.error(err); }
+  }, []);
+
   useEffect(() => {
     const unsubscribe = subscribeToCommandes((data) => {
       setCommandes(data);
       setLoading(false);
     });
-    return () => unsubscribe();
-  }, []);
+    
+    // Auto-refresh stats when events happen
+    globalEventBus.on(EVENTS.COMMANDES_UPDATED, fetchGlobalData);
+    globalEventBus.on(EVENTS.STOCK_UPDATED, fetchGlobalData);
+    
+    return () => {
+      unsubscribe();
+      globalEventBus.off(EVENTS.COMMANDES_UPDATED, fetchGlobalData);
+      globalEventBus.off(EVENTS.STOCK_UPDATED, fetchGlobalData);
+    };
+  }, [fetchGlobalData]);
 
   useEffect(() => {
-    const fetchGlobalData = async () => {
-      if (document.visibilityState !== 'visible') return;
-      try {
-        const [allExpenses, allProds] = await Promise.all([
-          getDepenses(),
-          getProduits()
-        ]);
-        setExpenses(allExpenses);
-        const sVal = calculateStockValue(allProds);
-        setStockVal(sVal);
-      } catch (err) { console.error(err); }
+    fetchGlobalData();
+    const interval = setInterval(fetchGlobalData, 60000);
+    return () => clearInterval(interval);
+  }, [fetchGlobalData, commandes.length]);
+
+  useEffect(() => {
+    const fetchTopData = () => {
+      if (period === 'custom') {
+        fetchTop('custom', new Date(startDate).toISOString(), new Date(endDate + 'T23:59:59').toISOString());
+      } else {
+        fetchTop(period);
+      }
     };
     
-    fetchGlobalData();
-    const interval = setInterval(fetchGlobalData, 60000); // 1 minute is enough for these
-    return () => clearInterval(interval);
-  }, [commandes.length]);
-
-  useEffect(() => {
-    if (period === 'custom') {
-      fetchTop('custom', new Date(startDate).toISOString(), new Date(endDate + 'T23:59:59').toISOString());
-    } else {
-      fetchTop(period);
-    }
-    const interval = setInterval(() => {
-      if (period === 'custom') fetchTop('custom', new Date(startDate).toISOString(), new Date(endDate + 'T23:59:59').toISOString());
-      else fetchTop(period);
-    }, 60000);
+    fetchTopData();
+    const interval = setInterval(fetchTopData, 60000);
     return () => clearInterval(interval);
   }, [period, fetchTop, startDate, endDate]);
 
-  const filteredCommandes = useMemo(() => {
+  const filteredData = useMemo(() => {
     const now = new Date();
-    if (period === 'all') return commandes;
+    let start = new Date();
+    let end = new Date();
+    end.setHours(23, 59, 59, 999);
 
-    if (period === 'custom') {
-      const start = new Date(startDate);
-      start.setHours(0,0,0,0);
-      const end = new Date(endDate);
-      end.setHours(23,59,59,999);
-      
-      return commandes.filter(c => {
-        const dCreated = new Date(c.date_creation);
-        const dDelivered = c.date_livraison_effective ? new Date(c.date_livraison_effective) : null;
-        
-        const createdInRange = dCreated >= start && dCreated <= end;
-        const deliveredInRange = dDelivered && dDelivered >= start && dDelivered <= end;
-        
-        return createdInRange || deliveredInRange;
-      });
+    if (period === 'today') {
+      start.setHours(0, 0, 0, 0);
+    } else if (period === '7d') {
+      start.setDate(now.getDate() - 7);
+      start.setHours(0, 0, 0, 0);
+    } else if (period === '30d') {
+      start.setDate(now.getDate() - 30);
+      start.setHours(0, 0, 0, 0);
+    } else if (period === 'custom') {
+      start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+    } else {
+      // 'all'
+      start = new Date(0);
     }
 
-    const start = new Date();
-    if (period === 'today') start.setHours(0, 0, 0, 0);
-    else if (period === '7d') start.setDate(now.getDate() - 7);
-    else if (period === '30d') start.setDate(now.getDate() - 30);
-
-    return commandes.filter(c => {
-      const dCreated = new Date(c.date_creation);
+    const filteredCmds = commandes.filter(c => {
+      const d = new Date(c.date_creation);
       const dDelivered = c.date_livraison_effective ? new Date(c.date_livraison_effective) : null;
       
-      const createdInRange = dCreated.getTime() >= start.getTime();
-      const deliveredInRange = dDelivered && dDelivered.getTime() >= start.getTime();
-      
-      return createdInRange || deliveredInRange;
+      // We count it if either created or delivered in range
+      const inCreated = d >= start && d <= end;
+      const inDelivered = dDelivered && dDelivered >= start && dDelivered <= end;
+      return inCreated || inDelivered;
     });
-  }, [commandes, period, startDate, endDate]);
 
-  const filteredExpenses = useMemo(() => {
-    const now = new Date();
-    if (period === 'all') return expenses;
-
-    const start = new Date();
-    
-    if (period === 'custom') {
-      const s = new Date(startDate);
-      s.setHours(0,0,0,0);
-      const e = new Date(endDate);
-      e.setHours(23,59,59,999);
-      return expenses.filter(exp => {
-        const d = new Date(exp.date);
-        return d >= s && d <= e;
-      });
-    }
-
-    if (period === 'today') start.setHours(0, 0, 0, 0);
-    else if (period === '7d') start.setDate(now.getDate() - 7);
-    else if (period === '30d') start.setDate(now.getDate() - 30);
-
-    return expenses.filter(exp => {
+    const filteredExps = expenses.filter(exp => {
       const d = new Date(exp.date);
-      return d.getTime() >= start.getTime();
+      return d >= start && d <= end;
     });
-  }, [expenses, period, startDate, endDate]);
 
-  useEffect(() => {
-    if (filteredCommandes.length > 0 || filteredExpenses.length > 0) {
-      const gMetrics = calculateProfitMetrics(filteredCommandes, filteredExpenses);
-      setGlobalMetrics(gMetrics);
-    }
-  }, [filteredCommandes, filteredExpenses]);
+    // Centralized metrics from financialService
+    const metrics = calculateProfitMetrics(filteredCmds, filteredExps);
+    const logStats = calculateLogisticalStats(filteredCmds);
 
-  const memoizedAnalytics = useMemo(() => {
-    const getFrais = (c: Commande) => {
-       if (c.frais_livraison !== undefined && c.frais_livraison !== null) return Number(c.frais_livraison);
-       if (c.statut_commande === 'livree' || c.statut_commande === 'terminee') return 1000; 
-       return 0;
-    };
-
-    const pending = filteredCommandes.filter(c => ['en_attente_appel', 'a_rappeler', 'nouvelle'].includes(c.statut_commande));
-    const succes = filteredCommandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande || ''));
-    
-    const totalEncaisse = succes.reduce((acc, c) => acc + (c.montant_encaisse || c.montant_total), 0);
-    const totalFraisLivraison = succes.reduce((acc, c) => acc + getFrais(c), 0);
-    const caNetProduits = totalEncaisse - totalFraisLivraison;
-
-    const caPotentiel = filteredCommandes.filter(c => ['validee', 'en_cours_livraison'].includes(c.statut_commande || ''))
-                                         .reduce((acc, c) => acc + (c.montant_total - getFrais(c)), 0);
-    
-    const logStats = calculateLogisticalStats(filteredCommandes);
-    const tauxSuccesLivraison = logStats.taux_succes;
-    
-    // Status Distribution Data
+    // Status Distribution
     const statusCounts: Record<string, number> = {};
-    filteredCommandes.forEach(c => {
+    filteredCmds.forEach(c => {
       const s = c.statut_commande || 'Inconnu';
       statusCounts[s] = (statusCounts[s] || 0) + 1;
     });
     const statusData = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
 
-    // Zone Performance Data (Heatmap)
-    const zoneMetrics: Record<string, { total: number, delivered: number, failed: number, cancelled: number, risk: number, ca: number }> = {};
-    filteredCommandes.forEach(c => {
+    // Zone Heatmap & Best Zones
+    const zoneMetrics: Record<string, { total: number, delivered: number, failed: number, ca: number }> = {};
+    filteredCmds.forEach(c => {
       const z = c.commune_livraison || 'Hors Zone';
-      if (!zoneMetrics[z]) zoneMetrics[z] = { total: 0, delivered: 0, failed: 0, cancelled: 0, risk: 0, ca: 0 };
+      if (!zoneMetrics[z]) zoneMetrics[z] = { total: 0, delivered: 0, failed: 0, ca: 0 };
       
       zoneMetrics[z].total++;
-      if (['livree', 'terminee'].includes(c.statut_commande)) {
+      const s = c.statut_commande?.toLowerCase();
+      if (['livree', 'terminee'].includes(s)) {
         zoneMetrics[z].delivered++;
-        zoneMetrics[z].ca += (c.montant_encaisse || c.montant_total) - getFrais(c);
+        const shipping = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : 1000;
+        zoneMetrics[z].ca += (Number(c.montant_encaisse || c.montant_total) || 0) - shipping;
+      } else if (['echouee', 'retour_livreur', 'retour_stock', 'retour_client'].includes(s)) {
+        zoneMetrics[z].failed++;
       }
-      else if (['echouee', 'retour_livreur', 'retour_stock'].includes(c.statut_commande)) zoneMetrics[z].failed++;
-      else if (c.statut_commande === 'annulee') zoneMetrics[z].cancelled++;
     });
 
     const heatmapData = Object.entries(zoneMetrics).map(([name, m]) => {
@@ -198,49 +162,15 @@ export const Dashboard = () => {
       };
     }).sort((a, b) => b.risk - a.risk);
 
-    const bestZonesData = Object.entries(zoneMetrics).map(([name, m]) => {
-      const taux_reussite = m.total > 0 ? (m.delivered / m.total) * 100 : 0;
-      return {
-        name,
-        colis: m.total,
-        ca: m.ca,
-        taux_reussite: Math.round(taux_reussite),
-        delivered: m.delivered
-      };
-    }).sort((a, b) => b.taux_reussite !== a.taux_reussite ? b.taux_reussite - a.taux_reussite : b.ca - a.ca);
+    const bestZonesData = Object.entries(zoneMetrics).map(([name, m]) => ({
+      name,
+      colis: m.total,
+      ca: m.ca,
+      taux_reussite: m.total > 0 ? Math.round((m.delivered / m.total) * 100) : 0,
+      delivered: m.delivered
+    })).sort((a, b) => b.ca - a.ca);
 
-    // Comparative Analytics
-    const getPeriodDays = () => {
-      if (period === 'today') return 1;
-      if (period === '7d') return 7;
-      if (period === '30d') return 30;
-      if (period === 'custom') {
-        const diffTime = Math.abs(new Date(endDate).getTime() - new Date(startDate).getTime());
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-      }
-      return 0;
-    };
-
-    const days = getPeriodDays();
-    const prevPeriodData = days > 0 ? commandes.filter(c => {
-      const d = new Date(c.date_creation);
-      const now = new Date();
-      const endPrev = new Date(now.getTime() - (days * 24 * 60 * 60 * 1000));
-      const startPrev = new Date(now.getTime() - (2 * days * 24 * 60 * 60 * 1000));
-      return d >= startPrev && d < endPrev;
-    }) : [];
-
-    const succesPrev = prevPeriodData.filter(c => c.statut_commande === 'livree' || c.statut_commande === 'terminee');
-    const totalEncaissePrev = succesPrev.reduce((acc, c) => acc + (c.montant_encaisse || c.montant_total), 0);
-    const totalFraisPrev = succesPrev.reduce((acc, c) => acc + getFrais(c), 0);
-    const caNetPrev = totalEncaissePrev - totalFraisPrev;
-    const logStatsPrev = calculateLogisticalStats(prevPeriodData);
-    const tauxSuccesPrev = logStatsPrev.taux_succes;
-
-    const diffCA = caNetPrev > 0 ? Math.round(((caNetProduits - caNetPrev) / caNetPrev) * 100) : 0;
-    const diffTaux = tauxSuccesPrev > 0 ? Math.round((tauxSuccesLivraison - tauxSuccesPrev)) : 0;
-
-    // Prepare history data based on current period
+    // History Data for Chart
     const dayCount = period === 'today' ? 1 : period === '7d' ? 7 : period === '30d' ? 30 : 15;
     const historyPoints = Array.from({length: dayCount}, (_, i) => {
       const d = new Date();
@@ -248,16 +178,16 @@ export const Dashboard = () => {
       return { date: d.toISOString().split('T')[0], revenue: 0, count: 0 };
     });
 
-    filteredCommandes.forEach(c => {
-      const isSucces = c.statut_commande === 'livree' || c.statut_commande === 'terminee';
-      const dString = new Date((isSucces && c.date_livraison_effective) ? c.date_livraison_effective : c.date_creation).toISOString().split('T')[0];
+    filteredCmds.forEach(c => {
+      const s = c.statut_commande?.toLowerCase();
+      const isSuccess = ['livree', 'terminee'].includes(s);
+      const dString = new Date(isSuccess && c.date_livraison_effective ? c.date_livraison_effective : c.date_creation).toISOString().split('T')[0];
       const match = historyPoints.find(d => d.date === dString);
       if (match) {
         match.count++;
-        if(isSucces) {
-          const montant = c.montant_encaisse || c.montant_total;
-          const frais = getFrais(c);
-          match.revenue += (montant - frais);
+        if (isSuccess) {
+          const shipping = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : 1000;
+          match.revenue += (Number(c.montant_encaisse || c.montant_total) || 0) - shipping;
         }
       }
     });
@@ -268,30 +198,19 @@ export const Dashboard = () => {
       CA: d.revenue
     }));
 
-    return { 
-      stats: { 
-        total: filteredCommandes.length, 
-        pending: pending.length, 
-        succes: succes.length, 
-        tauxSuccesLivraison, 
-        caNetProduits, 
-        totalFraisLivraison, 
-        caPotentiel, 
-        totalEncaisse,
-        diffCA,
-        diffTaux,
-        logStats
-      }, 
-      historyData,
+    return {
+      metrics,
+      logStats,
       statusData,
-      zoneData: [], // Replaced by heatmap below
       heatmapData,
-      bestZonesData
+      bestZonesData,
+      historyData,
+      pendingCount: filteredCmds.filter(c => ['en_attente_appel', 'a_rappeler', 'nouvelle'].includes(c.statut_commande)).length
     };
-  }, [filteredCommandes, period, commandes, startDate, endDate]);
+  }, [commandes, expenses, period, startDate, endDate]);
 
-  const { stats, historyData, statusData, heatmapData, bestZonesData } = memoizedAnalytics;
-  const { logStats, tauxSuccesLivraison } = stats;
+  const { metrics, logStats, statusData, heatmapData, bestZonesData, historyData, pendingCount } = filteredData;
+
 
   if (loading) return <div className="p-8 text-center">Chargement...</div>;
 
@@ -349,24 +268,24 @@ export const Dashboard = () => {
       <div className="res-grid-sm" style={{ marginBottom: '2.5rem' }}>
         <div className="card glass-effect" style={{ padding: '1.25rem', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: 'white', border: 'none' }}>
            <p style={{ opacity: 0.6, fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Chiffre d'Affaires Global</p>
-           <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{globalMetrics?.ca_brut?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{metrics?.ca_brut?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
         </div>
         <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
            <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Sorties / Charges Totales</p>
-           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#ef4444' }}>{globalMetrics?.total_sorties?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#ef4444' }}>{metrics?.total_sorties?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
         </div>
         <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
            <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Payé Fournisseurs (COGS)</p>
-           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--primary)' }}>{globalMetrics?.cout_achat_total?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--primary)' }}>{metrics?.cout_achat_total?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
         </div>
         <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
            <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Profit Net Estimé</p>
-           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#10b981' }}>{globalMetrics?.benefice_caisse?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#10b981' }}>{metrics?.benefice_caisse?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
         </div>
         <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
            <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Flux de Trésorerie Réel</p>
-           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: (globalMetrics?.flux_tresorerie || 0) >= 0 ? '#10b981' : '#ef4444' }}>
-             {globalMetrics?.flux_tresorerie?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: (metrics?.flux_tresorerie || 0) >= 0 ? '#10b981' : '#ef4444' }}>
+             {metrics?.flux_tresorerie?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span>
            </div>
         </div>
         <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
@@ -381,18 +300,13 @@ export const Dashboard = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
             <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>CA Net Produits</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-               {stats.diffCA !== 0 && (
-                 <span style={{ fontSize: '0.75rem', fontWeight: 900, color: stats.diffCA > 0 ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center' }}>
-                   {stats.diffCA > 0 ? '+' : ''}{stats.diffCA}%
-                 </span>
-               )}
                <DollarSign size={20} color="var(--primary)" />
             </div>
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)' }}>{stats.caNetProduits.toLocaleString()} <span style={{ fontSize: '0.9rem' }}>CFA</span></div>
-          <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total encaissé: {stats.totalEncaisse.toLocaleString()} CFA</p>
+          <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)' }}>{metrics.ca_net_produits.toLocaleString()} <span style={{ fontSize: '0.9rem' }}>CFA</span></div>
+          <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Basé sur les ventes réussies</p>
           <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#10b981', fontSize: '0.85rem', fontWeight: 700 }}>
-            <TrendingUp size={14} /> <span>Potentiel : {stats.caPotentiel.toLocaleString()} CFA</span>
+            <TrendingUp size={14} /> <span>CA Brut : {metrics.ca_brut.toLocaleString()} CFA</span>
           </div>
         </div>
 
@@ -401,23 +315,16 @@ export const Dashboard = () => {
             <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Livraison Encaissé</span>
             <Truck size={20} color="#6366f1" />
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 900, color: '#6366f1' }}>{stats.totalFraisLivraison.toLocaleString()} <span style={{ fontSize: '0.9rem' }}>CFA</span></div>
-          <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Part destinataires finaux</p>
+          <div style={{ fontSize: '2rem', fontWeight: 900, color: '#6366f1' }}>{metrics.frais_livraison_total.toLocaleString()} <span style={{ fontSize: '0.9rem' }}>CFA</span></div>
+          <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total (Réussis + Pertes)</p>
         </div>
 
         <div className="card glass-effect" style={{ padding: '1.75rem', borderLeft: '5px solid #f59e0b' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
             <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Taux de Succès</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-               {stats.diffTaux !== 0 && (
-                 <span style={{ fontSize: '0.75rem', fontWeight: 900, color: stats.diffTaux >= 0 ? '#10b981' : '#ef4444', display: 'flex', alignItems: 'center' }}>
-                   {stats.diffTaux >= 0 ? '+' : ''}{stats.diffTaux}%
-                 </span>
-               )}
-               <Percent size={20} color="#f59e0b" />
-            </div>
+            <Percent size={20} color="#f59e0b" />
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)' }}>{tauxSuccesLivraison}%</div>
+          <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)' }}>{logStats.taux_succes}%</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', marginTop: '0.8rem' }}>
              <div className="badge badge-success" style={{ borderRadius: '6px', fontSize: '0.7rem' }}>{logStats.livrees} L</div>
              <div className="badge badge-info" style={{ borderRadius: '6px', fontSize: '0.7rem' }}>{logStats.retours} R</div>
@@ -429,9 +336,9 @@ export const Dashboard = () => {
         <div className="card glass-effect" style={{ padding: '1.75rem', borderLeft: '5px solid #ef4444' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
             <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>À Traiter</span>
-            <Activity size={stats.pending > 0 ? 20 : 18} color="#ef4444" />
+            <Activity size={pendingCount > 0 ? 20 : 18} color="#ef4444" />
           </div>
-          <div style={{ fontSize: '2rem', fontWeight: 900, color: '#ef4444' }}>{stats.pending}</div>
+          <div style={{ fontSize: '2rem', fontWeight: 900, color: '#ef4444' }}>{pendingCount}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.8rem', color: '#f59e0b' }}>
              <AlertCircle size={14} />
              <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Action requise</span>
@@ -690,6 +597,36 @@ export const Dashboard = () => {
                 </div>
               ))}
            </div>
+        </div>
+      </div>
+
+      {/* Recent Activity Feed */}
+      <div className="card" style={{ padding: '2rem', marginTop: '2.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
+          <Clock size={24} color="var(--primary)" />
+          <h3 style={{ margin: 0, fontWeight: 800 }}>Dernières Activités</h3>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          {commandes.slice(0, 10).map((c) => (
+            <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ShoppingBag size={20} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{c.nom_client} - #{c.id.slice(-6).toUpperCase()}</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{new Date(c.date_creation).toLocaleString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                <div style={{ fontWeight: 900, fontSize: '1rem' }}>{Number(c.montant_total).toLocaleString()} CFA</div>
+                <span className={`badge badge-${c.statut_commande === 'livree' ? 'success' : c.statut_commande === 'en_cours_livraison' ? 'info' : c.statut_commande === 'echouee' ? 'danger' : 'warning'}`} style={{ borderRadius: '8px', minWidth: '100px', textAlign: 'center' }}>
+                  {c.statut_commande}
+                </span>
+              </div>
+            </div>
+          ))}
+          {commandes.length === 0 && <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Aucune activité récente.</p>}
         </div>
       </div>
     </div>
