@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getFournisseurs, createFournisseur, updateFournisseur, deleteFournisseur, Fournisseur, payDebt } from '../services/fournisseurService';
 import { getAchatsStock } from '../services/achatService';
-import { Building2, Plus, Search, Phone, Trash2, Edit2, Wallet, X, User, ArrowRight, CheckCircle2, Package, Star, CreditCard, DollarSign } from 'lucide-react';
+import { Building2, Plus, Search, Phone, Trash2, Edit2, Wallet, X, User, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { globalEventBus, EVENTS } from '../utils/events';
 
