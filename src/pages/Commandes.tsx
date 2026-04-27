@@ -334,7 +334,7 @@ export const Commandes = () => {
         )}
 
         {/* Dashboard Analytics Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+        <div className="res-grid" style={{ marginBottom: '3rem' }}>
           {[
             { label: 'Flux Total', value: stats.total, color: 'var(--primary)', icon: <ShoppingBag size={24} />, trend: 'Volume Global' },
             { label: 'En Validation', value: stats.processing, color: '#f59e0b', icon: <Clock size={24} />, trend: 'Flux entrant' },

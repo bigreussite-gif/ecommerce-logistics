@@ -346,7 +346,7 @@ export const Dashboard = () => {
       </div>
 
       {/* Global Heritage Section */}
-      <div style={{ marginBottom: '2.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+      <div className="res-grid-sm" style={{ marginBottom: '2.5rem' }}>
         <div className="card glass-effect" style={{ padding: '1.25rem', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: 'white', border: 'none' }}>
            <p style={{ opacity: 0.6, fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Chiffre d'Affaires Global</p>
            <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{globalMetrics?.ca_brut?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
@@ -376,7 +376,7 @@ export const Dashboard = () => {
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+      <div className="res-grid" style={{ marginBottom: '2.5rem' }}>
         <div className="card glass-effect" style={{ padding: '1.75rem', borderLeft: '5px solid var(--primary)', position: 'relative' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
             <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>CA Net Produits</span>
@@ -439,7 +439,7 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '2rem', marginBottom: '2.5rem' }}>
+      <div className="res-grid" style={{ marginBottom: '2.5rem' }}>
         {/* Status Distribution (Pie Chart) */}
         <div className="card" style={{ padding: '2rem' }}>
           <h3 style={{ marginBottom: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -526,7 +526,7 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '2rem' }}>
+      <div className="res-grid" style={{ gap: '2rem' }}>
         {/* Revenue Trend */}
         <div className="card" style={{ padding: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>

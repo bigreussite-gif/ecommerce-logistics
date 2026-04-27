@@ -218,9 +218,9 @@ export const Clients = () => {
 
         {/* Clients Table/Grid */}
         <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
-          <div className="table-container">
+          <div className="table-container table-to-cards">
             <table style={{ borderCollapse: 'separate', borderSpacing: '0' }}>
-              <thead>
+              <thead className="mobile-hide">
                 <tr style={{ background: '#f8fafc' }}>
                   <th style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0' }}>Client</th>
                   <th style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0' }}>Segment</th>
@@ -244,9 +244,9 @@ export const Clients = () => {
                   </td></tr>
                 ) : filteredClients.map((client) => (
                   <tr key={client.id} className="hover-row" onClick={() => openClientDetails(client)} style={{ cursor: 'pointer', transition: 'background 0.2s' }}>
-                    <td style={{ padding: '1.25rem 1.5rem' }}>
+                    <td data-label="Client" style={{ padding: '1.25rem 1.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'linear-gradient(135deg, var(--primary), #4f46e5)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.2rem', boxShadow: '0 4px 10px rgba(99, 102, 255, 0.2)' }}>
+                        <div className="mobile-hide" style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'linear-gradient(135deg, var(--primary), #4f46e5)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.2rem', boxShadow: '0 4px 10px rgba(99, 102, 255, 0.2)' }}>
                           {client.nom_complet.charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -255,7 +255,7 @@ export const Clients = () => {
                         </div>
                       </div>
                     </td>
-                    <td style={{ padding: '1.25rem' }}>
+                    <td data-label="Segment" style={{ padding: '1.25rem' }}>
                       <span style={{ 
                         padding: '0.5rem 1rem', 
                         borderRadius: '12px', 
@@ -268,23 +268,23 @@ export const Clients = () => {
                         {client.segment}
                       </span>
                     </td>
-                    <td style={{ padding: '1.25rem', textAlign: 'center' }}>
+                    <td data-label="Achats" style={{ padding: '1.25rem', textAlign: 'center' }}>
                       <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{client.total_commandes}</div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Bordereaux</div>
                     </td>
-                    <td style={{ padding: '1.25rem' }}>
+                    <td data-label="Dernier" style={{ padding: '1.25rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: 'var(--text-main)' }}>
                         <Calendar size={14} color="var(--primary)" />
                         {client.derniere_commande ? format(new Date(client.derniere_commande), 'dd MMM yyyy', { locale: fr }) : 'Jamais'}
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '1.4rem' }}>{client.locations[0] || 'Zone inconnue'}</div>
+                      <div className="mobile-hide" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '1.4rem' }}>{client.locations[0] || 'Zone inconnue'}</div>
                     </td>
-                    <td style={{ padding: '1.25rem', textAlign: 'right' }}>
+                    <td data-label="Total" style={{ padding: '1.25rem', textAlign: 'right' }}>
                       <div style={{ fontWeight: 900, color: 'var(--primary)', fontSize: '1.1rem' }}>{client.total_encaisse.toLocaleString()}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>Panier: {client.panier_moyen.toLocaleString()} F</div>
                     </td>
-                    <td style={{ padding: '1.25rem', textAlign: 'right' }}>
-                      <button className="btn btn-outline btn-sm" style={{ borderRadius: '10px' }} onClick={(e) => { e.stopPropagation(); openClientDetails(client); }}>
+                    <td data-label="Action" style={{ padding: '1.25rem', textAlign: 'right' }}>
+                      <button className="btn btn-outline btn-sm" style={{ borderRadius: '10px', width: 'auto' }} onClick={(e) => { e.stopPropagation(); openClientDetails(client); }}>
                         <Eye size={16} />
                       </button>
                     </td>

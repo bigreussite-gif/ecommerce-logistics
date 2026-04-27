@@ -335,7 +335,7 @@ export const Caisse = () => {
 
         {/* ETAPE 3: RECONCILIATION */}
         {feuille && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '2.5rem', alignItems: 'start' }}>
+          <div className="res-grid" style={{ alignItems: 'start' }}>
             
             <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
               <div style={{ padding: '1.5rem 2.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
@@ -386,9 +386,9 @@ export const Caisse = () => {
                  </button>
               </div>
 
-              <div className="table-container">
+              <div className="table-container table-to-cards">
                 <table>
-                  <thead>
+                  <thead className="mobile-hide">
                     <tr>
                       <th>Colis</th>
                       <th>Client / Zone</th>
@@ -401,11 +401,11 @@ export const Caisse = () => {
                     {commandes.map(c => (
                       <Fragment key={c.id}>
                         <tr>
-                          <td>
+                          <td data-label="Colis">
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                               <button 
                                 className="btn btn-outline" 
-                                style={{ padding: '0.4rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}
+                                style={{ padding: '0.4rem', borderRadius: '8px', border: '1px solid #e2e8f0', width: 'auto' }}
                                 onClick={() => setSelectedOrderId(c.id)}
                               >
                                 <Eye size={14} />
@@ -413,14 +413,14 @@ export const Caisse = () => {
                               <span style={{ fontWeight: 800, color: 'var(--text-muted)' }}>#{c.id.slice(0, 5).toUpperCase()}</span>
                             </div>
                           </td>
-                          <td>
+                          <td data-label="Client">
                             <div style={{ fontWeight: 800, color: 'var(--text-main)' }}>{c.nom_client || `Anonyme`}</div>
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>{c.commune_livraison}</div>
                           </td>
-                          <td style={{ fontWeight: 900, textAlign: 'right', fontSize: '1.05rem' }}>
+                          <td data-label="Dû" style={{ fontWeight: 900, textAlign: 'right', fontSize: '1.05rem' }}>
                             {calculateOrderTotalLocally(c.id).toLocaleString()}
                           </td>
-                          <td>
+                          <td data-label="Statut">
                             <select 
                               className="form-select" 
                               style={{ 
@@ -441,7 +441,7 @@ export const Caisse = () => {
                               <option value="annulee">Annulé 🚫</option>
                             </select>
                           </td>
-                          <td>
+                          <td data-label="Paiement">
                             {resolutions[c.id]?.statut === 'livree' ? (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                 <select 

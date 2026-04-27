@@ -25,7 +25,7 @@ export const Landing = () => {
         <div style={{ position: 'absolute', top: '10%', right: '10%', width: '500px', height: '500px', background: 'var(--primary)', filter: 'blur(150px)', opacity: 0.15, borderRadius: '50%', zIndex: 0 }}></div>
         <div style={{ position: 'absolute', bottom: '10%', left: '5%', width: '400px', height: '400px', background: '#a855f7', filter: 'blur(150px)', opacity: 0.15, borderRadius: '50%', zIndex: 0 }}></div>
 
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '4rem', alignItems: 'center', position: 'relative', zIndex: 10 }}>
+        <div className="res-grid" style={{ maxWidth: '1200px', margin: '0 auto', alignItems: 'center', position: 'relative', zIndex: 10, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', background: 'rgba(99, 102, 255, 0.1)', border: '1px solid rgba(99, 102, 255, 0.2)', borderRadius: '100px', marginBottom: '1.5rem' }}>
               <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#6366f1', boxShadow: '0 0 10px #6366f1' }}></span>
@@ -59,7 +59,7 @@ export const Landing = () => {
                       <TrendingUp size={18} /> +24%
                    </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="res-grid-sm" style={{ gap: '1rem' }}>
                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)' }}>
                       <Activity size={20} color="#818cf8" style={{ marginBottom: '0.5rem' }} />
                       <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Succès Livraison</div>
@@ -84,7 +84,7 @@ export const Landing = () => {
                <p style={{ color: '#94a3b8', fontSize: '1.1rem', maxWidth: '600px', margin: '0 auto' }}>Une suite d'outils puissants conçus pour maximiser vos marges et éliminer les frictions.</p>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+            <div className="res-grid">
                {[
                  { icon: ShieldCheck, title: 'Sécurité & Contrôle Caissière', desc: 'Gestion stricte des encaissements et retours avec audit financier quotidien.', color: '#10b981' },
                  { icon: Zap, title: 'Call Center Intégré', desc: 'Qualification des commandes en temps réel pour réduire les échecs de livraison.', color: '#f59e0b' },

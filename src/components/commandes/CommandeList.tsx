@@ -99,9 +99,9 @@ export const CommandeList = ({
   }
 
   return (
-    <div className="table-container" style={{ margin: '0 -1rem' }}>
+    <div className="table-container table-to-cards" style={{ margin: '0 -1rem' }}>
       <table style={{ width: '100%', borderSpacing: '0 0.75rem', borderCollapse: 'separate' }}>
-        <thead>
+        <thead className="mobile-hide">
           <tr style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase' }}>
             <th style={{ padding: '1rem', width: '40px', textAlign: 'center' }}>
               <input 
@@ -142,9 +142,9 @@ export const CommandeList = ({
                   />
                 </td>
                 
-                <td style={{ padding: '1.25rem' }}>
+                <td data-label="Référence" style={{ padding: '1.25rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '10px', color: '#64748b' }}>
+                    <div className="mobile-hide" style={{ padding: '0.5rem', background: '#f8fafc', borderRadius: '10px', color: '#64748b' }}>
                       <Hash size={16} />
                     </div>
                     <div>
@@ -154,9 +154,9 @@ export const CommandeList = ({
                   </div>
                 </td>
 
-                <td style={{ padding: '1.25rem' }}>
+                <td data-label="Client" style={{ padding: '1.25rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ width: '36px', height: '36px', background: 'var(--primary)10', color: 'var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.8rem' }}>
+                    <div className="mobile-hide" style={{ width: '36px', height: '36px', background: 'var(--primary)10', color: 'var(--primary)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.8rem' }}>
                       {c.nom_client?.charAt(0) || <User size={16} />}
                     </div>
                     <div>
@@ -166,24 +166,24 @@ export const CommandeList = ({
                   </div>
                 </td>
 
-                <td style={{ padding: '1.25rem' }}>
+                <td data-label="Destination" style={{ padding: '1.25rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <MapPin size={14} color="#64748b" />
+                    <MapPin className="mobile-hide" size={14} color="#64748b" />
                     <div>
                       <div style={{ fontWeight: 800, color: '#1e293b', fontSize: '0.9rem' }}>{c.commune_livraison}</div>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600, maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.adresse_livraison}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>{c.adresse_livraison}</div>
                     </div>
                   </div>
                 </td>
 
-                <td style={{ padding: '1.25rem' }}>
+                <td data-label="Montant" style={{ padding: '1.25rem' }}>
                   <div style={{ fontWeight: 900, color: 'var(--primary)', fontSize: '1.1rem' }}>
                     {Number(c.montant_total).toLocaleString()} <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>F</span>
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700 }}>{c.lignes?.length || 0} articles</div>
                 </td>
 
-                <td style={{ padding: '1.25rem' }}>
+                <td data-label="Statut" style={{ padding: '1.25rem' }}>
                   {getStatusBadge(c.statut_commande)}
                 </td>
 

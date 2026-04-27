@@ -43,9 +43,9 @@ export const ProduitList = ({ produits, onEdit, onStock }: ProduitListProps) => 
   }
 
   return (
-    <div className="table-container">
+    <div className="table-container table-to-cards">
       <table>
-        <thead>
+        <thead className="mobile-hide">
           <tr>
             <th style={{ width: '80px' }}>Visuel</th>
             <th>ID / SKU</th>
@@ -63,7 +63,7 @@ export const ProduitList = ({ produits, onEdit, onStock }: ProduitListProps) => 
             
             return (
               <tr key={produit.id} style={{ opacity: produit.actif ? 1 : 0.55, transition: 'all 0.3s ease' }} className="hover-card">
-                <td>
+                <td data-label="Visuel">
                   <div style={{ position: 'relative', width: '56px', height: '56px', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 10px rgba(0,0,0,0.1)', border: '2px solid white' }}>
                     {resolvedImage ? (
                       <img 
@@ -82,21 +82,21 @@ export const ProduitList = ({ produits, onEdit, onStock }: ProduitListProps) => 
                     )}
                   </div>
                 </td>
-              <td>
+              <td data-label="ID / SKU">
                 <div style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.85rem', color: 'var(--primary)' }}>#{produit.sku || produit.id.slice(0, 8).toUpperCase()}</div>
                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>Catalogue Central</div>
               </td>
-              <td>
+              <td data-label="Désignation">
                 <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1.05rem' }}>{produit.nom}</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Catégorie Générale</div>
               </td>
-              <td>
+              <td data-label="Modèle Eco">
                 <div style={{ fontWeight: 900, color: 'var(--text-main)' }}>{getPrixActif(produit)}</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: '0.2rem' }}>
                   Coût Achat: <span style={{ color: '#64748b' }}>{produit.prix_achat?.toLocaleString()} CFA</span>
                 </div>
               </td>
-              <td>
+              <td data-label="Stock">
                 <div style={{ 
                   display: 'inline-flex', 
                   alignItems: 'center', 
@@ -124,7 +124,7 @@ export const ProduitList = ({ produits, onEdit, onStock }: ProduitListProps) => 
                    </div>
                 )}
               </td>
-              <td>
+              <td data-label="Visibilité">
                 <div 
                   onClick={() => toggleActive(produit)}
                   style={{ 

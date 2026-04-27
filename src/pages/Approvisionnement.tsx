@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { getAchatsStock, registerBulkAchatsStock } from '../services/achatService';
+import { getAchatsStock, registerBulkAchatsStock, updateAchatStock, deleteAchatStock } from '../services/achatService';
 import { getFournisseurs, Fournisseur } from '../services/fournisseurService';
 import { getProduits } from '../services/produitService';
 import { Produit } from '../types';
-import { Plus, Search, Calendar, Package, CreditCard, DollarSign, X, Filter, ShoppingBag, CheckCircle2, Trash2 } from 'lucide-react';
+import { Plus, Search, Calendar, Package, CreditCard, DollarSign, X, Filter, ShoppingBag, CheckCircle2, Trash2, Edit3 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -26,6 +26,8 @@ export const Approvisionnement = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingAchat, setEditingAchat] = useState<any | null>(null);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   
   const [items, setItems] = useState<AchatLine[]>([
     { id: Math.random().toString(), produit_id: '', fournisseur_id: '', quantite: 1, prix_achat_unitaire: 0, mode_paiement: 'Cash', statut_paiement: 'Payé' }
@@ -164,7 +166,7 @@ export const Approvisionnement = () => {
       </div>
 
       {/* Stats Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+      <div className="res-grid-sm" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
         <div className="card glass-effect hover-card" style={{ padding: '1.5rem', borderLeft: '5px solid var(--primary)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
             <div style={{ padding: '0.6rem', background: 'var(--primary-light)', borderRadius: '12px', color: 'var(--primary)' }}>
@@ -236,7 +238,7 @@ export const Approvisionnement = () => {
           <p style={{ fontWeight: 700, color: 'var(--text-muted)' }}>Synchronisation des flux d'achat...</p>
         </div>
       ) : (
-        <div className="card glass-effect" style={{ padding: 0, overflow: 'hidden', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 20px 40px -15px rgba(0,0,0,0.05)' }}>
+        <div className="card glass-effect table-to-cards" style={{ padding: 0, overflow: 'hidden', borderRadius: '28px', border: '1px solid rgba(255,255,255,0.8)', boxShadow: '0 20px 40px -15px rgba(0,0,0,0.05)' }}>
           <div className="table-container">
             <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0 }}>
               <thead>
@@ -249,6 +251,7 @@ export const Approvisionnement = () => {
                   <th style={{ padding: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'right', letterSpacing: '0.05em' }}>Investissement</th>
                   <th style={{ padding: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.05em' }}>Méthode</th>
                   <th style={{ padding: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.05em' }}>État</th>
+                  <th style={{ padding: '1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', textAlign: 'right', letterSpacing: '0.05em' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -257,7 +260,7 @@ export const Approvisionnement = () => {
                 ) : (
                   filteredAchats.map(a => (
                     <tr key={a.id} className="table-row-hover">
-                      <td style={{ padding: '1.25rem 1.5rem', fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 500 }}>
+                      <td data-label="Horodatage" style={{ padding: '1.25rem 1.5rem', fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 500 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                           <Calendar size={15} opacity={0.6} />
                           {format(new Date(a.date_achat), 'dd MMM yyyy • HH:mm', { locale: fr })}
@@ -300,6 +303,24 @@ export const Approvisionnement = () => {
                           {a.statut_paiement}
                         </span>
                       </td>
+                      <td data-label="Actions" style={{ padding: '1.25rem 1.5rem', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                          <button 
+                            className="btn btn-outline" 
+                            style={{ padding: '0.4rem', height: '32px', width: '32px', borderRadius: '8px' }}
+                            onClick={() => setEditingAchat(a)}
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                          <button 
+                            className="btn btn-outline" 
+                            style={{ padding: '0.4rem', height: '32px', width: '32px', borderRadius: '8px', color: '#ef4444' }}
+                            onClick={() => setIsDeleting(a.id)}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -327,109 +348,215 @@ export const Approvisionnement = () => {
             </div>
 
             <form onSubmit={handleSubmit} style={{ flex: 1, overflowY: 'auto', padding: '2.5rem' }}>
-              <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 1rem' }}>
-                <thead>
-                  <tr style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    <th style={{ textAlign: 'left', padding: '0 1rem' }}>Produit</th>
-                    <th style={{ textAlign: 'left', padding: '0 1rem' }}>Fournisseur</th>
-                    <th style={{ textAlign: 'center', width: '120px' }}>Quantité</th>
-                    <th style={{ textAlign: 'right', width: '150px' }}>Prix Unitaire (F)</th>
-                    <th style={{ textAlign: 'center', width: '150px' }}>Mode</th>
-                    <th style={{ textAlign: 'right', padding: '0 1rem', width: '150px' }}>Sous-total</th>
-                    <th style={{ width: '50px' }}></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => (
-                    <tr key={item.id} style={{ background: '#f8fafc', borderRadius: '20px' }}>
-                      <td style={{ padding: '1rem', borderRadius: '20px 0 0 20px' }}>
-                        <select 
-                          className="form-select" 
-                          required 
-                          value={item.produit_id} 
-                          onChange={e => updateLine(item.id, { produit_id: e.target.value })}
-                          style={{ borderRadius: '12px', height: '3.5rem', fontWeight: 600, border: '1px solid #e2e8f0' }}
-                        >
-                          <option value="">Produit...</option>
-                          {produits.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
-                        </select>
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <select 
-                          className="form-select" 
-                          required 
-                          value={item.fournisseur_id} 
-                          onChange={e => updateLine(item.id, { fournisseur_id: e.target.value })}
-                          style={{ borderRadius: '12px', height: '3.5rem', fontWeight: 600, border: '1px solid #e2e8f0' }}
-                        >
-                          <option value="">Fournisseur...</option>
-                          {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
-                        </select>
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <input 
-                          type="number" 
-                          className="form-input text-center" 
-                          required 
-                          min="1" 
-                          value={item.quantite} 
-                          onChange={e => updateLine(item.id, { quantite: Number(e.target.value) })}
-                          style={{ borderRadius: '12px', height: '3.5rem', fontWeight: 800, fontSize: '1.1rem' }}
-                        />
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <input 
-                          type="number" 
-                          className="form-input text-right" 
-                          required 
-                          min="0" 
-                          value={item.prix_achat_unitaire} 
-                          onChange={e => updateLine(item.id, { prix_achat_unitaire: Number(e.target.value) })}
-                          style={{ borderRadius: '12px', height: '3.5rem', fontWeight: 800, fontSize: '1.1rem', color: 'var(--primary)' }}
-                        />
-                      </td>
-                      <td style={{ padding: '1rem' }}>
-                        <select 
-                          className="form-select" 
-                          value={item.mode_paiement} 
-                          onChange={e => updateLine(item.id, { mode_paiement: e.target.value as any })}
-                          style={{ borderRadius: '12px', height: '3.5rem', fontWeight: 700, background: item.mode_paiement === 'Cash' ? '#ecfdf5' : '#fffbeb', color: item.mode_paiement === 'Cash' ? '#065f46' : '#92400e', border: '1px solid #e2e8f0' }}
-                        >
-                          <option value="Cash">CASH</option>
-                          <option value="Crédit">CRÉDIT</option>
-                        </select>
-                      </td>
-                      <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 900, fontSize: '1.1rem', color: 'var(--text-main)' }}>
-                        {(item.quantite * item.prix_achat_unitaire).toLocaleString()} F
-                      </td>
-                      <td style={{ padding: '1rem', borderRadius: '0 20px 20px 0' }}>
-                        <button type="button" onClick={() => handleRemoveLine(item.id)} disabled={items.length === 1} style={{ background: 'none', border: 'none', color: '#ef4444', opacity: items.length === 1 ? 0.3 : 1, cursor: 'pointer' }}>
-                          <Trash2 size={20} />
-                        </button>
-                      </td>
+              <div className="table-to-cards">
+                <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0 1rem' }}>
+                  <thead className="mobile-hide">
+                    <tr style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <th style={{ textAlign: 'left', padding: '0 1rem' }}>Produit</th>
+                      <th style={{ textAlign: 'left', padding: '0 1rem' }}>Fournisseur</th>
+                      <th style={{ textAlign: 'center', width: '120px' }}>Quantité</th>
+                      <th style={{ textAlign: 'right', width: '150px' }}>Prix Unitaire (F)</th>
+                      <th style={{ textAlign: 'center', width: '150px' }}>Mode</th>
+                      <th style={{ textAlign: 'right', padding: '0 1rem', width: '150px' }}>Sous-total</th>
+                      <th style={{ width: '50px' }}></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {items.map((item) => (
+                      <tr key={item.id} style={{ background: '#f8fafc', borderRadius: '20px' }}>
+                        <td data-label="Produit" style={{ padding: '1rem', borderRadius: '20px 0 0 20px' }}>
+                          <select 
+                            className="form-select" 
+                            required 
+                            value={item.produit_id} 
+                            onChange={e => updateLine(item.id, { produit_id: e.target.value })}
+                            style={{ borderRadius: '12px', height: '3.5rem', fontWeight: 600, border: '1px solid #e2e8f0' }}
+                          >
+                            <option value="">Produit...</option>
+                            {produits.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
+                          </select>
+                        </td>
+                        <td data-label="Fournisseur" style={{ padding: '1rem' }}>
+                          <select 
+                            className="form-select" 
+                            required 
+                            value={item.fournisseur_id} 
+                            onChange={e => updateLine(item.id, { fournisseur_id: e.target.value })}
+                            style={{ borderRadius: '12px', height: '3.5rem', fontWeight: 600, border: '1px solid #e2e8f0' }}
+                          >
+                            <option value="">Fournisseur...</option>
+                            {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+                          </select>
+                        </td>
+                        <td data-label="Quantité" style={{ padding: '1rem' }}>
+                          <input 
+                            type="number" 
+                            className="form-input text-center" 
+                            required 
+                            min="1" 
+                            value={item.quantite} 
+                            onChange={e => updateLine(item.id, { quantite: Number(e.target.value) })}
+                            style={{ borderRadius: '12px', height: '3.5rem', fontWeight: 800, fontSize: '1.1rem' }}
+                          />
+                        </td>
+                        <td data-label="Prix Unitaire" style={{ padding: '1rem' }}>
+                          <input 
+                            type="number" 
+                            className="form-input text-right" 
+                            required 
+                            min="0" 
+                            value={item.prix_achat_unitaire} 
+                            onChange={e => updateLine(item.id, { prix_achat_unitaire: Number(e.target.value) })}
+                            style={{ borderRadius: '12px', height: '3.5rem', fontWeight: 800, fontSize: '1.1rem', color: 'var(--primary)' }}
+                          />
+                        </td>
+                        <td data-label="Mode" style={{ padding: '1rem' }}>
+                          <select 
+                            className="form-select" 
+                            value={item.mode_paiement} 
+                            onChange={e => updateLine(item.id, { mode_paiement: e.target.value as any })}
+                            style={{ borderRadius: '12px', height: '3.5rem', fontWeight: 700, background: item.mode_paiement === 'Cash' ? '#ecfdf5' : '#fffbeb', color: item.mode_paiement === 'Cash' ? '#065f46' : '#92400e', border: '1px solid #e2e8f0' }}
+                          >
+                            <option value="Cash">CASH</option>
+                            <option value="Crédit">CRÉDIT</option>
+                          </select>
+                        </td>
+                        <td data-label="Sous-total" style={{ padding: '1rem', textAlign: 'right', fontWeight: 900, fontSize: '1.1rem', color: 'var(--text-main)' }}>
+                          {(item.quantite * item.prix_achat_unitaire).toLocaleString()} F
+                        </td>
+                        <td style={{ padding: '1rem', borderRadius: '0 20px 20px 0', textAlign: 'right' }}>
+                          <button type="button" onClick={() => handleRemoveLine(item.id)} disabled={items.length === 1} style={{ background: 'none', border: 'none', color: '#ef4444', opacity: items.length === 1 ? 0.3 : 1, cursor: 'pointer' }}>
+                            <Trash2 size={20} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               <button type="button" onClick={handleAddLine} className="btn btn-outline" style={{ width: '100%', height: '3.5rem', borderRadius: '16px', border: '2px dashed #cbd5e1', color: 'var(--text-muted)', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', marginTop: '1rem' }}>
                 <Plus size={20} strokeWidth={3} /> Ajouter une ligne d'article
               </button>
 
               {/* Summary and Footer */}
-              <div style={{ marginTop: '3rem', padding: '2.5rem', background: '#f8fafc', borderRadius: '28px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <span style={{ fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '0.08em' }}>Investissement Global</span>
-                  <div style={{ fontSize: '3rem', fontWeight: 950, color: 'var(--primary)', marginTop: '0.4rem', letterSpacing: '-0.03em' }}>{globalTotal.toLocaleString()} <span style={{ fontSize: '1.2rem', opacity: 0.7 }}>F</span></div>
+              <div className="mobile-stack" style={{ marginTop: '3rem', padding: '2rem', background: '#f8fafc', borderRadius: '28px', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div className="mobile-center">
+                  <span style={{ fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.8rem', letterSpacing: '0.08em' }}>Investissement Global</span>
+                  <div style={{ fontSize: '2.5rem', fontWeight: 950, color: 'var(--primary)', marginTop: '0.2rem', letterSpacing: '-0.03em' }}>{globalTotal.toLocaleString()} <span style={{ fontSize: '1rem', opacity: 0.7 }}>F</span></div>
                 </div>
-                <div style={{ display: 'flex', gap: '1.5rem' }}>
-                  <button type="button" className="btn btn-outline" onClick={() => setIsModalOpen(false)} style={{ height: '4.5rem', padding: '0 2.5rem', borderRadius: '18px', fontWeight: 800, fontSize: '1.1rem' }}>Annuler</button>
-                  <button type="submit" className="btn btn-primary btn-premium-shadow" disabled={loading} style={{ height: '4.5rem', padding: '0 3rem', borderRadius: '18px', fontWeight: 950, fontSize: '1.2rem', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    {loading ? <div className="spinner-white"></div> : <><CheckCircle2 size={24} /> Valider l'Approvisionnement</>}
+                <div className="mobile-stack" style={{ display: 'flex', gap: '1rem', width: '100%', maxWidth: '400px' }}>
+                  <button type="button" className="btn btn-outline" onClick={() => setIsModalOpen(false)} style={{ height: '4rem', borderRadius: '18px', fontWeight: 800 }}>Annuler</button>
+                  <button type="submit" className="btn btn-primary btn-premium-shadow" disabled={loading} style={{ height: '4rem', borderRadius: '18px', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {loading ? <div className="spinner-white"></div> : <><CheckCircle2 size={22} /> Valider</>}
                   </button>
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'édition d'un achat */}
+      {editingAchat && (
+        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, backdropFilter: 'blur(12px)', backgroundColor: 'rgba(15, 23, 42, 0.7)' }}>
+          <div className="modal-content card" style={{ width: '100%', maxWidth: '600px', padding: '2.5rem', borderRadius: '32px' }}>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 900, marginBottom: '0.5rem', color: 'var(--primary)' }}>Corriger l'Approvisionnement</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Rectifiez les erreurs de saisie pour cet article.</p>
+
+            <div style={{ display: 'grid', gap: '1.5rem' }}>
+              <div className="form-group">
+                <label className="form-label">Fournisseur</label>
+                <select 
+                  className="form-select" 
+                  value={editingAchat.fournisseur_id} 
+                  onChange={e => setEditingAchat({...editingAchat, fournisseur_id: e.target.value})}
+                >
+                  {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Quantité</label>
+                <input 
+                  type="number" 
+                  className="form-input" 
+                  value={editingAchat.quantite} 
+                  onChange={e => setEditingAchat({...editingAchat, quantite: Number(e.target.value)})}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Mode de Paiement</label>
+                <select 
+                  className="form-select" 
+                  value={editingAchat.mode_paiement} 
+                  onChange={e => setEditingAchat({...editingAchat, mode_paiement: e.target.value as any})}
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="Crédit">Crédit</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setEditingAchat(null)}>Annuler</button>
+                <button 
+                  className="btn btn-primary" 
+                  style={{ flex: 1 }} 
+                  onClick={async () => {
+                    try {
+                      setLoading(true);
+                      await updateAchatStock(editingAchat.id, {
+                        fournisseur_id: editingAchat.fournisseur_id,
+                        quantite: editingAchat.quantite,
+                        mode_paiement: editingAchat.mode_paiement,
+                        statut_paiement: editingAchat.mode_paiement === 'Cash' ? 'Payé' : 'En attente',
+                        montant_total: editingAchat.quantite * editingAchat.prix_achat_unitaire
+                      });
+                      showToast("Approvisionnement mis à jour.", "success");
+                      setEditingAchat(null);
+                    } catch (e) {
+                      showToast("Erreur lors de la mise à jour.", "error");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  Valider
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmation Suppression */}
+      {isDeleting && (
+        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2100, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="card" style={{ maxWidth: '400px', padding: '2rem', textAlign: 'center' }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '1rem' }}>Confirmer la suppression</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>Cette action annulera l'entrée en stock et rectifiera les dettes/dépenses associées.</p>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setIsDeleting(null)}>Annuler</button>
+              <button 
+                className="btn btn-primary" 
+                style={{ flex: 1, background: '#ef4444', border: 'none' }} 
+                onClick={async () => {
+                  try {
+                    setLoading(true);
+                    await deleteAchatStock(isDeleting);
+                    showToast("Approvisionnement supprimé.");
+                    setIsDeleting(null);
+                  } catch (e) {
+                    showToast("Erreur lors de la suppression.", "error");
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+              >
+                Supprimer
+              </button>
+            </div>
           </div>
         </div>
       )}

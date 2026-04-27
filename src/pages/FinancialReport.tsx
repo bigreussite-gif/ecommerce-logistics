@@ -355,7 +355,7 @@ export const FinancialReport = () => {
       )}
 
       {/* Main Stats Grid - REORDERED */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+      <div className="res-grid" style={{ marginBottom: '2.5rem' }}>
         <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
           <span style={{ color: '#059669', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ESPÈCES ENCAISSÉES (CASH)</span>
           <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
@@ -410,7 +410,7 @@ export const FinancialReport = () => {
         <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--text-main)' }}>
            Analyse Complémentaire
         </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+        <div className="res-grid" style={{ marginBottom: '1.5rem' }}>
           
           <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #3b82f6', background: 'rgba(59, 130, 246, 0.05)' }}>
             <span style={{ color: '#2563eb', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>PAIEMENTS DIGITAUX</span>
@@ -433,7 +433,7 @@ export const FinancialReport = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))', gap: '2.5rem' }}>
+      <div className="res-grid" style={{ gap: '2.5rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <div className="card" style={{ padding: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
@@ -470,7 +470,7 @@ export const FinancialReport = () => {
               <PieChart size={20} style={{ color: 'var(--primary)' }} /> 
               Analyse de Performance
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+            <div className="res-grid-sm">
                {insights.map((ins, i) => (
                 <div key={i} style={{ 
                   display: 'flex', gap: '1rem', padding: '1.25rem', borderRadius: '16px',
@@ -550,9 +550,9 @@ export const FinancialReport = () => {
           <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Package size={20} style={{ color: 'var(--primary)' }} /> Bilan par Produit
           </h3>
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-container table-to-cards">
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
+              <thead className="mobile-hide">
                 <tr style={{ borderBottom: '2px solid #f1f5f9' }}>
                   <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Produit</th>
                   <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Vendus</th>
@@ -566,11 +566,11 @@ export const FinancialReport = () => {
                    <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Aucune donnée</td></tr>
                 ) : productROI.map(p => (
                   <tr key={p.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.2s', cursor: 'default' }} onMouseOver={e => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseOut={e => e.currentTarget.style.backgroundColor = 'transparent'}>
-                    <td style={{ padding: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>{p.nom}</td>
-                    <td style={{ padding: '1rem', fontWeight: 900, color: '#10b981' }}>{p.ventes_reussies}</td>
-                    <td style={{ padding: '1rem', fontWeight: 800, color: '#ef4444' }}>{p.echecs}</td>
-                    <td style={{ padding: '1rem', fontWeight: 800 }}>{p.ca_produits.toLocaleString()} CFA</td>
-                    <td style={{ padding: '1rem', fontWeight: 900, color: p.profit_net >= 0 ? '#10b981' : '#ef4444' }}>
+                    <td data-label="Produit" style={{ padding: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>{p.nom}</td>
+                    <td data-label="Vendus" style={{ padding: '1rem', fontWeight: 900, color: '#10b981' }}>{p.ventes_reussies}</td>
+                    <td data-label="Échecs" style={{ padding: '1rem', fontWeight: 800, color: '#ef4444' }}>{p.echecs}</td>
+                    <td data-label="CA" style={{ padding: '1rem', fontWeight: 800 }}>{p.ca_produits.toLocaleString()} CFA</td>
+                    <td data-label="Profit" style={{ padding: '1rem', fontWeight: 900, color: p.profit_net >= 0 ? '#10b981' : '#ef4444' }}>
                       {p.profit_net > 0 ? '+' : ''}{p.profit_net.toLocaleString()} CFA
                     </td>
                   </tr>

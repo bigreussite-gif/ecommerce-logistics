@@ -103,7 +103,7 @@ export const Logistique = () => {
         <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginTop: '0.4rem', fontWeight: 500 }}>Optimisez vos tournées et affectez vos colis aux livreurs disponibles.</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) 350px', gap: '2rem', alignItems: 'start' }} className="responsive-grid">
+      <div className="res-grid" style={{ alignItems: 'start', gridTemplateColumns: 'minmax(0, 2fr) 350px' }}>
         
         {/* LISTE DES COMMANDES */}
         <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
@@ -119,9 +119,9 @@ export const Logistique = () => {
             </div>
           </div>
 
-          <div className="table-container">
+          <div className="table-container table-to-cards">
             <table>
-              <thead>
+              <thead className="mobile-hide">
                 <tr>
                   <th style={{ width: 60 }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -152,7 +152,7 @@ export const Logistique = () => {
                       backgroundColor: selectedCommands.has(c.id) ? 'rgba(99, 102, 255, 0.03)' : 'transparent' 
                     }}
                   >
-                    <td>
+                    <td data-label="Sélection">
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <input 
                           type="checkbox" 
@@ -163,15 +163,15 @@ export const Logistique = () => {
                         />
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Client">
                       <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{c.nom_client || `Client #${(c.client_id || '').slice(0,5)}`}</div>
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 500 }}>{c.telephone_client}</div>
                     </td>
-                    <td>
+                    <td data-label="Zone">
                       <span className="badge badge-info" style={{ fontWeight: 700, padding: '0.3rem 0.7rem' }}>{c.commune_livraison}</span>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem', fontStyle: 'italic' }}>{c.adresse_livraison?.slice(0, 40)}</div>
+                      <div className="mobile-hide" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem', fontStyle: 'italic' }}>{c.adresse_livraison?.slice(0, 40)}</div>
                     </td>
-                    <td style={{ textAlign: 'right' }}>
+                    <td data-label="Valeur" style={{ textAlign: 'right' }}>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem' }}>
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ fontWeight: 800 }}>{Number(c.montant_total).toLocaleString()} CFA</div>
@@ -179,7 +179,7 @@ export const Logistique = () => {
                         </div>
                         <button 
                           className="btn btn-outline" 
-                          style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}
+                          style={{ padding: '0.5rem', borderRadius: '10px', border: '1px solid #e2e8f0', width: 'auto' }}
                           onClick={(e) => { e.stopPropagation(); setSelectedCommandeId(c.id); }}
                         >
                           <Eye size={16} />

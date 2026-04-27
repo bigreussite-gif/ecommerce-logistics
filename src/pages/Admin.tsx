@@ -33,7 +33,7 @@ export const Admin = () => {
         </p>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2.5rem', padding: '0.4rem', background: '#f1f5f9', borderRadius: '16px', width: 'fit-content' }}>
+      <div className="mobile-stack" style={{ gap: '0.5rem', marginBottom: '2.5rem', padding: '0.4rem', background: '#f1f5f9', borderRadius: '16px', width: 'fit-content', overflowX: 'auto' }}>
         {canManageUsers && (
           <button 
             className="btn"
@@ -234,7 +234,7 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
             {(editingId === 'new' || (editingId && users.find(u => u.id === editingId))) && (
               <tr style={{ background: '#f8fafc' }}>
                 <td colSpan={4}>
-                  <div style={{ padding: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+                  <div className="res-grid" style={{ padding: '2rem' }}>
                     <div className="form-group">
                       <label className="form-label">Nom Complet</label>
                       <input className="form-input" value={form.nom_complet || ''} onChange={e => setForm({...form, nom_complet: e.target.value})} />
@@ -286,7 +286,7 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
                     )}
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label className="form-label">Permissions d'Accès</label>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem', marginTop: '0.75rem', background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                      <div className="res-grid-sm" style={{ marginTop: '0.75rem', background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                         {PERMISSIONS_LIST.map(p => (
                           <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 500 }}>
                             <input type="checkbox" checked={form.permissions?.includes(p.id)} onChange={() => togglePermission(p.id)} style={{ width: '18px', height: '18px' }} />
@@ -419,8 +419,8 @@ const CommunesManager = ({ showToast }: { showToast: any }) => {
           <tbody>
             {(editingId === 'new' || communes.some(c => c.id === editingId)) && editingId !== null && (
                <tr style={{ background: '#f8fafc' }}>
-                 <td colSpan={3}>
-                    <div style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <td colSpan={3}>
+                    <div className="res-grid" style={{ padding: '1.5rem', alignItems: 'flex-end' }}>
                       <div className="form-group" style={{ flex: 2, minWidth: '200px' }}>
                         <label className="form-label">Nom de la Zone</label>
                         <input className="form-input" value={form.nom || ''} onChange={e => setForm({...form, nom: e.target.value})} />
@@ -539,7 +539,7 @@ const CategoriesManager = ({ showToast }: { showToast: any }) => {
             {(editingId === 'new' || categories.some(c => c.id === editingId)) && editingId !== null && (
                <tr style={{ background: '#f8fafc' }}>
                  <td colSpan={3}>
-                    <div style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                    <div className="res-grid" style={{ padding: '1.5rem', alignItems: 'flex-end' }}>
                       <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
                         <label className="form-label">Nom</label>
                         <input className="form-input" value={form.nom || ''} onChange={e => setForm({...form, nom: e.target.value})} placeholder="Ex: Électronique" />
@@ -663,7 +663,7 @@ const FournisseursManager = ({ showToast }: { showToast: any }) => {
             {(editingId === 'new' || fournisseurs.some(f => f.id === editingId)) && editingId !== null && (
               <tr style={{ background: '#f8fafc' }}>
                 <td colSpan={4}>
-                  <div style={{ padding: '1.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                  <div className="res-grid" style={{ padding: '1.5rem' }}>
                     <div className="form-group">
                       <label className="form-label">Nom du fournisseur</label>
                       <input className="form-input" placeholder="Nom du fournisseur" value={form.nom || ''} onChange={e => setForm({...form, nom: e.target.value})} />
@@ -742,7 +742,7 @@ const MarketingManager = () => {
       <h3 style={{ marginBottom: '1.5rem', fontWeight: 800 }}>Gestion Marketing & Sources</h3>
       <p style={{ color: 'var(--text-muted)' }}>Configuration des sources d'acquisition et des budgets publicitaires.</p>
       
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginTop: '2rem' }}>
+      <div className="res-grid" style={{ marginTop: '2rem' }}>
         <div style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '18px' }}>
           <h4 style={{ marginBottom: '1rem' }}>Sources de Vente</h4>
           <ul style={{ listStyle: 'none', padding: 0 }}>

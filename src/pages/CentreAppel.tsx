@@ -130,7 +130,7 @@ export const CentreAppel = () => {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '2rem', alignItems: 'start' }}>
+        <div className="res-grid" style={{ gridTemplateColumns: 'minmax(0, 1fr) 350px', alignItems: 'start' }}>
           {/* Main Area: Order List */}
           <div className="card glass-effect" style={{ padding: '2rem', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>

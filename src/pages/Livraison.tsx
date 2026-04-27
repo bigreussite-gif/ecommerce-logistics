@@ -185,12 +185,7 @@ export const Livraison = () => {
         </div>
 
         {/* ADMIN GLOBAL STATS */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', 
-          gap: '1.5rem', 
-          marginBottom: '3rem' 
-        }}>
+        <div className="res-grid" style={{ marginBottom: '3rem' }}>
           {[
             { label: 'Argent sur le terrain', value: adminStats?.totalObjectif?.toLocaleString() + ' F', color: 'var(--primary)', icon: <Truck size={24} /> },
             { label: 'Colis en circulation', value: adminStats?.totalCommandes, color: '#6366f1', icon: <Eye size={24} /> },
@@ -207,7 +202,7 @@ export const Livraison = () => {
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '2rem' }}>
+        <div className="res-grid">
           {filteredFeuilles.length === 0 ? (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '5rem', background: '#f8fafc', borderRadius: '32px', color: '#94a3b8' }}>
                <Truck size={48} style={{ opacity: 0.3, marginBottom: '1rem' }} />
@@ -402,7 +397,7 @@ export const Livraison = () => {
           <div style={{ width: `${progressPercent}%`, height: '100%', background: 'linear-gradient(90deg, var(--primary) 0%, #8b5cf6 100%)', borderRadius: '6px', transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)' }} />
         </div>
 
-        <div style={{ display: 'grid', gap: '1.25rem', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+        <div className="res-grid-sm">
           <div className="card glass-effect" style={{ padding: '1.5rem', border: 'none', background: 'white', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>À Collecter</div>
             <div style={{ fontSize: '1.6rem', fontWeight: 950, color: 'var(--text-main)' }}>{currentFeuilleTotal.toLocaleString()} <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>F</span></div>
