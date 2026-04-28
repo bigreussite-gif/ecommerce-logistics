@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Filter, Package, AlertTriangle, TrendingUp, Tag, Download } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, TrendingUp, Tag, Download } from 'lucide-react';
 import { ProduitList } from '../components/produits/ProduitList';
 import { ProduitForm } from '../components/produits/ProduitForm';
 import { StockForm } from '../components/produits/StockForm';
