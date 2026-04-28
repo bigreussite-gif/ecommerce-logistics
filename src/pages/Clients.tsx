@@ -137,7 +137,7 @@ export const Clients = () => {
 
         {/* ZONE A: HEADER */}
         <section style={{ marginBottom: '3rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem' }}>
+          <div className="header-flex" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '0.5rem' }}>
                 <div style={{ padding: '0.8rem', background: 'linear-gradient(135deg, var(--primary) 0%, #4338ca 100%)', borderRadius: '18px', color: 'white', boxShadow: '0 10px 20px rgba(99, 102, 255, 0.2)' }}>
@@ -147,8 +147,8 @@ export const Clients = () => {
               </div>
               <p style={{ color: '#64748b', fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>Analyse comportementale et fidélisation client.</p>
             </div>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'white', padding: '0.6rem', borderRadius: '22px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid #e2e8f0' }}>
-              <button className="btn btn-primary" onClick={exportToCSV} style={{ height: '44px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 800, padding: '0 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className="actions-wrapper" style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'white', padding: '0.6rem', borderRadius: '22px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid #e2e8f0' }}>
+              <button className="btn btn-primary" onClick={exportToCSV} style={{ height: '44px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 800, padding: '0 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
                 <Download size={18} /> Exporter la base
               </button>
             </div>
@@ -182,7 +182,7 @@ export const Clients = () => {
         <section style={{ marginBottom: '1.5rem' }}>
           <div className="card" style={{ padding: '1.25rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
-              <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', padding: '2px', scrollbarWidth: 'none' }}>
+              <div className="tabs-container" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', padding: '2px', scrollbarWidth: 'none' }}>
                 {['All', 'Diamant', 'Fidèle', 'relancer', 'Nouveau'].map(s => (
                   <button
                     key={s}
@@ -198,7 +198,7 @@ export const Clients = () => {
                   </button>
                 ))}
               </div>
-              <div style={{ position: 'relative', minWidth: '320px', flex: 1, maxWidth: '500px' }}>
+              <div className="search-wrapper" style={{ position: 'relative', minWidth: '320px', flex: 1, maxWidth: '500px' }}>
                 <Search size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                 <input
                   type="text"
@@ -308,11 +308,11 @@ export const Clients = () => {
           <div className="modal-content" style={{ maxWidth: '900px', padding: 0, borderRadius: '32px', overflow: 'hidden', boxShadow: '0 30px 60px -12px rgba(0, 0, 0, 0.25)' }} onClick={e => e.stopPropagation()}>
             {/* Modal Header */}
             <div style={{ padding: '3rem', background: 'linear-gradient(135deg, #f8fafc, #eff6ff)', position: 'relative' }}>
-              <button onClick={() => setSelectedClient(null)} style={{ position: 'absolute', top: '2rem', right: '2rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '0.6rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+              <button onClick={() => setSelectedClient(null)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '0.6rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', zIndex: 10 }}>
                 <X size={24} />
               </button>
               
-              <div style={{ display: 'flex', gap: '2.5rem', alignItems: 'center' }}>
+              <div className="modal-header-flex" style={{ display: 'flex', gap: '2.5rem', alignItems: 'center' }}>
                 <div style={{ width: '100px', height: '100px', borderRadius: '32px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 900, boxShadow: '0 15px 30px rgba(99, 102, 255, 0.3)' }}>
                   {selectedClient.client.nom_complet.charAt(0).toUpperCase()}
                 </div>
@@ -344,9 +344,9 @@ export const Clients = () => {
             </div>
 
             {/* Modal Content */}
-            <div style={{ padding: '3rem', maxHeight: '65vh', overflowY: 'auto' }}>
+            <div style={{ padding: '2rem', maxHeight: '65vh', overflowY: 'auto' }}>
               {/* KPIs */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '3.5rem' }}>
+              <div className="stats-grid-modal" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '3.5rem' }}>
                 <div style={{ padding: '1.5rem', borderRadius: '24px', background: '#f8fafc', border: '1px solid #f1f5f9' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
                     <CreditCard size={18} color="var(--primary)" />
@@ -373,7 +373,7 @@ export const Clients = () => {
               {/* Marketing Actions */}
               <div style={{ marginBottom: '3.5rem' }}>
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 900, marginBottom: '1.5rem', color: '#0f172a' }}>Actions Marketing</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+                <div className="stats-grid-modal" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
                   <button onClick={() => sendWhatsApp(selectedClient.client, 'friendly')} className="btn" style={{ height: '64px', background: '#dcfce7', color: '#166534', border: 'none', borderRadius: '20px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', transition: 'transform 0.2s' }}>
                     <MessageCircle size={20} /> Client Care 👋
                   </button>
@@ -461,7 +461,59 @@ export const Clients = () => {
           height: 40px;
           animation: spin 1s linear infinite;
         }
-        .res-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+        .res-grid { 
+          display: grid; 
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+          gap: 1.5rem;
+        }
+        .tabs-container {
+          display: flex;
+          gap: 0.5rem;
+          overflow-x: auto;
+          padding: 4px 2px;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          -webkit-overflow-scrolling: touch;
+        }
+        .tabs-container::-webkit-scrollbar { display: none; }
+        
+        @media (max-width: 768px) {
+          .header-flex {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1.5rem !important;
+          }
+          .actions-wrapper {
+            width: 100%;
+            justify-content: space-between;
+          }
+          .search-wrapper {
+            min-width: 100% !important;
+          }
+          .res-grid {
+            grid-template-columns: 1fr;
+          }
+          .modal-content {
+            padding: 1.5rem !important;
+          }
+          .modal-header-flex {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1rem !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .actions-wrapper {
+            flex-direction: column;
+            width: 100%;
+          }
+          .actions-wrapper .btn {
+            width: 100%;
+          }
+          .stats-grid-modal {
+            grid-template-columns: 1fr !important;
+          }
+        }
       `}</style>
     </>
   );

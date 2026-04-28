@@ -65,7 +65,7 @@ export const Produits = () => {
 
         {/* ZONE A: VISION & ACTIONS */}
         <section style={{ marginBottom: '3rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem' }}>
+          <div className="header-flex" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem' }}>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '0.5rem' }}>
                 <div style={{ padding: '0.8rem', background: 'linear-gradient(135deg, var(--primary) 0%, #4338ca 100%)', borderRadius: '18px', color: 'white', boxShadow: '0 10px 20px rgba(99, 102, 255, 0.2)' }}>
@@ -80,8 +80,8 @@ export const Produits = () => {
               </p>
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'white', padding: '0.6rem', borderRadius: '22px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid #e2e8f0' }}>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <div className="actions-wrapper" style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'white', padding: '0.6rem', borderRadius: '22px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
                 <button
                   onClick={() => setIsBulkOpen(true)}
                   className="btn btn-outline"
@@ -131,7 +131,7 @@ export const Produits = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
 
               {/* Filtre catégorie sous forme de tabs */}
-              <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', padding: '2px', scrollbarWidth: 'none' }}>
+              <div className="tabs-container" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', padding: '2px', scrollbarWidth: 'none' }}>
                 <button
                   onClick={() => setSelectedCategory('')}
                   style={{
@@ -166,7 +166,7 @@ export const Produits = () => {
               </div>
 
               {/* Barre de recherche */}
-              <div style={{ position: 'relative', minWidth: '320px', flex: 1, maxWidth: '500px' }}>
+              <div className="search-wrapper" style={{ position: 'relative', minWidth: '320px', flex: 1, maxWidth: '500px' }}>
                 <Search size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                 <input
                   type="text"
@@ -226,7 +226,49 @@ export const Produits = () => {
 
       <style>{`
         @keyframes pageEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .res-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+        .res-grid { 
+          display: grid; 
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+          gap: 1.5rem;
+        }
+        .tabs-container {
+          display: flex;
+          gap: 0.5rem;
+          overflow-x: auto;
+          padding: 4px 2px;
+          scrollbar-width: none; /* Firefox */
+          -ms-overflow-style: none;  /* IE/Edge */
+          -webkit-overflow-scrolling: touch;
+        }
+        .tabs-container::-webkit-scrollbar {
+          display: none; /* Chrome/Safari */
+        }
+        @media (max-width: 768px) {
+          .header-flex {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1.5rem !important;
+          }
+          .actions-wrapper {
+            width: 100%;
+            justify-content: space-between;
+          }
+          .search-wrapper {
+            min-width: 100% !important;
+          }
+          .res-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 480px) {
+          .actions-wrapper {
+            flex-direction: column;
+            width: 100%;
+          }
+          .actions-wrapper .btn {
+            width: 100%;
+          }
+        }
       `}</style>
     </div>
   );
