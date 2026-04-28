@@ -44,16 +44,25 @@ export const ProduitList = ({ produits, onEdit, onStock }: ProduitListProps) => 
 
   return (
     <div className="table-container table-to-cards">
-      <table>
-        <thead className="mobile-hide">
-          <tr>
-            <th style={{ width: '80px' }}>Visuel</th>
-            <th>ID / SKU</th>
-            <th>Désignation Article</th>
-            <th>Modèle Économique</th>
-            <th>Niveau Stock</th>
-            <th>Visibilité</th>
-            <th style={{ textAlign: 'right' }}>Actions</th>
+      <table style={{ tableLayout: 'fixed', width: '100%', borderCollapse: 'separate', borderSpacing: '0' }}>
+        <colgroup>
+          <col style={{ width: '80px' }} />
+          <col style={{ width: '140px' }} />
+          <col style={{ width: '25%' }} />
+          <col style={{ width: '20%' }} />
+          <col style={{ width: '15%' }} />
+          <col style={{ width: '12%' }} />
+          <col style={{ width: '100px' }} />
+        </colgroup>
+        <thead className="mobile-hide" style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+          <tr style={{ background: '#f8fafc' }}>
+            <th style={{ padding: '1.25rem 1rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Visuel</th>
+            <th style={{ padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>ID / SKU</th>
+            <th style={{ padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Désignation Article</th>
+            <th style={{ padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Modèle Économique</th>
+            <th style={{ padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Niveau Stock</th>
+            <th style={{ padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Visibilité</th>
+            <th style={{ textAlign: 'right', padding: '1.25rem 1rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Actions</th>
           </tr>
         </thead>
         <tbody>

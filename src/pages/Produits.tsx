@@ -130,39 +130,42 @@ export const Produits = () => {
           <div className="card" style={{ padding: '1.25rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
 
-              {/* Filtre catégorie sous forme de tabs */}
-              <div className="tabs-container" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', padding: '2px', scrollbarWidth: 'none' }}>
-                <button
-                  onClick={() => setSelectedCategory('')}
-                  style={{
-                    padding: '0.6rem 1.25rem', borderRadius: '14px', fontSize: '0.85rem', fontWeight: 800,
-                    whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', transition: 'all 0.2s',
-                    background: selectedCategory === '' ? 'var(--primary)10' : 'transparent',
-                    color: selectedCategory === '' ? 'var(--primary)' : '#64748b',
-                    display: 'flex', alignItems: 'center', gap: '0.6rem'
-                  }}
-                >
-                  Tous <span style={{ fontSize: '0.75rem', fontWeight: 900, opacity: selectedCategory === '' ? 1 : 0.6 }}>{stats.total}</span>
-                </button>
-                {categories.map(c => {
-                  const count = produits.filter(p => p.categorie_id === c.id).length;
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => setSelectedCategory(c.id)}
-                      style={{
-                        padding: '0.6rem 1.25rem', borderRadius: '14px', fontSize: '0.85rem', fontWeight: 800,
-                        whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', transition: 'all 0.2s',
-                        background: selectedCategory === c.id ? 'var(--primary)10' : 'transparent',
-                        color: selectedCategory === c.id ? 'var(--primary)' : '#64748b',
-                        display: 'flex', alignItems: 'center', gap: '0.6rem'
-                      }}
-                    >
-                      {c.nom}
-                      <span style={{ fontSize: '0.75rem', fontWeight: 900, opacity: selectedCategory === c.id ? 1 : 0.6 }}>{count}</span>
-                    </button>
-                  );
-                })}
+              {/* Filtre catégorie - Menu Déroulant Premium */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: '1', minWidth: '300px' }}>
+                <div style={{ position: 'relative', width: '100%', maxWidth: '350px' }}>
+                  <Tag size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', zIndex: 1 }} />
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: '48px',
+                      padding: '0 1.5rem 0 3.5rem',
+                      borderRadius: '16px',
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      fontSize: '0.95rem',
+                      fontWeight: 700,
+                      color: '#1e293b',
+                      appearance: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <option value="">Toutes les catégories ({stats.total})</option>
+                    {categories.map(c => {
+                      const count = produits.filter(p => p.categorie_id === c.id).length;
+                      return (
+                        <option key={c.id} value={c.id}>
+                          {c.nom} ({count})
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <div style={{ position: 'absolute', right: '1.25rem', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#94a3b8' }}>
+                    <Search size={14} style={{ transform: 'rotate(90deg)' }} /> {/* Custom arrow look */}
+                  </div>
+                </div>
               </div>
 
               {/* Barre de recherche */}
