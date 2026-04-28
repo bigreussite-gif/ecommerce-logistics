@@ -132,91 +132,88 @@ export const Clients = () => {
 
   return (
     <>
-      <div style={{ animation: 'pageEnter 0.6s ease', paddingBottom: '4rem' }}>
-        {/* Header Section */}
-        <div style={{ marginBottom: '3rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1.5rem' }}>
+      <div style={{ position: 'relative', minHeight: '100vh', padding: '1rem', background: '#f8fafc', paddingBottom: '4rem' }}>
+        <div style={{ maxWidth: '1600px', margin: '0 auto', animation: 'pageEnter 0.6s ease' }}>
+
+        {/* ZONE A: HEADER */}
+        <section style={{ marginBottom: '3rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem' }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.5rem' }}>
-                <div style={{ padding: '0.75rem', background: 'var(--primary)', borderRadius: '16px', color: 'white' }}>
-                  <Users size={32} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '0.5rem' }}>
+                <div style={{ padding: '0.8rem', background: 'linear-gradient(135deg, var(--primary) 0%, #4338ca 100%)', borderRadius: '18px', color: 'white', boxShadow: '0 10px 20px rgba(99, 102, 255, 0.2)' }}>
+                  <Users size={28} />
                 </div>
-                <h1 className="text-premium" style={{ fontSize: '2.5rem', fontWeight: 900, margin: 0 }}>CRM Intelligence</h1>
+                <h1 style={{ fontSize: '2.2rem', fontWeight: 950, margin: 0, letterSpacing: '-0.02em', color: '#1e293b' }}>CRM Intelligence</h1>
               </div>
-              <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: 600 }}>Analyse comportementale et fidélisation client.</p>
+              <p style={{ color: '#64748b', fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>Analyse comportementale et fidélisation client.</p>
             </div>
-            
-            <button className="btn btn-primary" onClick={exportToCSV} style={{ height: '52px', borderRadius: '14px', padding: '0 2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <Download size={20} /> Exporter la base
-            </button>
-          </div>
-        </div>
-
-        {/* Stats Mini-Dashboard */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-          <div className="card glass-effect" style={{ padding: '2rem', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', right: '-20px', bottom: '-20px', opacity: 0.05 }}>
-              <TrendingUp size={120} />
-            </div>
-            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Valeur Portefeuille</span>
-            <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--primary)', marginTop: '0.5rem' }}>{stats.totalRevenue.toLocaleString()} <span style={{ fontSize: '1rem' }}>CFA</span></div>
-            <div style={{ fontSize: '0.85rem', color: '#10b981', fontWeight: 700, marginTop: '0.5rem' }}>Basé sur {clients.length} clients uniques</div>
-          </div>
-
-          <div className="card glass-effect" style={{ padding: '2rem', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Clients VIP (Diamant)</span>
-            <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#3b82f6', marginTop: '0.5rem' }}>{stats.vips}</div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: '0.5rem' }}>{Math.round((stats.vips / clients.length) * 100)}% de l'audience totale</div>
-          </div>
-
-          <div className="card glass-effect" style={{ padding: '2rem', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Taux de Rétention</span>
-            <div style={{ fontSize: '2.2rem', fontWeight: 900, color: '#f59e0b', marginTop: '0.5rem' }}>{Math.round(((stats.vips + stats.loyal) / clients.length) * 100)}%</div>
-            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: '0.5rem' }}>Clients ayant acheté plus de 2 fois</div>
-          </div>
-        </div>
-
-        {/* Filters & Search */}
-        <div style={{ marginBottom: '2.5rem' }}>
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ position: 'relative', flex: 1, minWidth: '300px' }}>
-              <Search size={20} style={{ position: 'absolute', top: '50%', left: '1.25rem', transform: 'translateY(-50%)', color: 'var(--primary)' }} />
-              <input 
-                type="text" 
-                className="form-input" 
-                placeholder="Rechercher un nom, un téléphone..." 
-                style={{ paddingLeft: '3.5rem', height: '60px', borderRadius: '18px', fontSize: '1.05rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.5rem', background: '#f1f5f9', padding: '0.4rem', borderRadius: '16px' }}>
-              {['All', 'Diamant', 'Fidèle', 'relancer', 'Nouveau'].map(s => (
-                <button
-                  key={s}
-                  onClick={() => setSegmentFilter(s)}
-                  style={{
-                    padding: '0.6rem 1.25rem',
-                    borderRadius: '12px',
-                    border: 'none',
-                    fontWeight: 700,
-                    fontSize: '0.9rem',
-                    background: segmentFilter === s ? 'white' : 'transparent',
-                    color: segmentFilter === s ? 'var(--primary)' : 'var(--text-muted)',
-                    boxShadow: segmentFilter === s ? '0 4px 12px rgba(0,0,0,0.05)' : 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  {s === 'All' ? 'Tous' : s === 'relancer' ? 'À relancer' : s}
-                </button>
-              ))}
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'white', padding: '0.6rem', borderRadius: '22px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid #e2e8f0' }}>
+              <button className="btn btn-primary" onClick={exportToCSV} style={{ height: '44px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 800, padding: '0 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <Download size={18} /> Exporter la base
+              </button>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Clients Table/Grid */}
+        {/* ZONE B: STATS */}
+        <section style={{ marginBottom: '3rem' }}>
+          <div className="res-grid" style={{ gap: '1.5rem' }}>
+            {[
+              { label: 'Valeur Portefeuille', value: `${stats.totalRevenue.toLocaleString()} CFA`, color: 'var(--primary)', icon: <TrendingUp size={22} />, desc: `${clients.length} clients uniques` },
+              { label: 'Clients VIP', value: stats.vips, color: '#3b82f6', icon: <Users size={22} />, desc: `${clients.length ? Math.round((stats.vips / clients.length) * 100) : 0}% de l'audience` },
+              { label: 'Taux de Rétention', value: `${clients.length ? Math.round(((stats.vips + stats.loyal) / clients.length) * 100) : 0}%`, color: '#f59e0b', icon: <TrendingUp size={22} />, desc: 'Acheteurs récurrents' },
+              { label: 'Total Clients', value: clients.length, color: '#10b981', icon: <Users size={22} />, desc: 'Base active' },
+            ].map((item, idx) => (
+              <div key={idx} className="card" style={{ padding: '1.5rem', borderRadius: '24px', border: '1px solid #e2e8f0', background: 'white', display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
+                <div style={{ width: '54px', height: '54px', borderRadius: '16px', background: `${item.color}10`, color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  {item.icon}
+                </div>
+                <div>
+                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#1e293b', lineHeight: 1 }}>{item.value}</div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', marginTop: '0.25rem' }}>{item.label}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 800, color: item.color, marginTop: '0.2rem', textTransform: 'uppercase' }}>{item.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ZONE C: FILTRES */}
+        <section style={{ marginBottom: '1.5rem' }}>
+          <div className="card" style={{ padding: '1.25rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', padding: '2px', scrollbarWidth: 'none' }}>
+                {['All', 'Diamant', 'Fidèle', 'relancer', 'Nouveau'].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => setSegmentFilter(s)}
+                    style={{
+                      padding: '0.6rem 1.25rem', borderRadius: '14px', fontSize: '0.85rem', fontWeight: 800,
+                      whiteSpace: 'nowrap', border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+                      background: segmentFilter === s ? 'rgba(99,102,255,0.08)' : 'transparent',
+                      color: segmentFilter === s ? 'var(--primary)' : '#64748b',
+                    }}
+                  >
+                    {s === 'All' ? 'Tous' : s === 'relancer' ? 'À relancer' : s}
+                  </button>
+                ))}
+              </div>
+              <div style={{ position: 'relative', minWidth: '320px', flex: 1, maxWidth: '500px' }}>
+                <Search size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Rechercher un nom, un téléphone..."
+                  style={{ paddingLeft: '3.5rem', height: '48px', borderRadius: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', fontWeight: 600, fontSize: '0.95rem' }}
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ZONE D: LISTE */}
         <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
           <div className="table-container table-to-cards">
             <table style={{ tableLayout: 'fixed', width: '100%', borderCollapse: 'separate', borderSpacing: '0' }}>
@@ -302,7 +299,8 @@ export const Clients = () => {
             </table>
           </div>
         </div>
-      </div>
+        </div>{/* end maxWidth wrapper */}
+      </div>{/* end outer bg */}
 
       {/* Client Detail Modal */}
       {selectedClient && (
@@ -463,6 +461,7 @@ export const Clients = () => {
           height: 40px;
           animation: spin 1s linear infinite;
         }
+        .res-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
       `}</style>
     </>
   );

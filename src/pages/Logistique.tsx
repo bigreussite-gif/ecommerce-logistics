@@ -91,17 +91,56 @@ export const Logistique = () => {
     }
   };
 
-  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Chargement...</div>;
+  if (loading) return (
+    <div style={{ position: 'relative', minHeight: '100vh', padding: '1rem', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div className="loading-spinner" style={{ margin: '0 auto 1.5rem' }}></div>
+        <p style={{ fontWeight: 700, color: '#64748b' }}>Chargement des données logistiques...</p>
+      </div>
+    </div>
+  );
 
   return (
-    <div style={{ animation: 'pageEnter 0.6s ease' }}>
-      <div style={{ marginBottom: '2.5rem' }}>
-        <h1 className="text-premium" style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <Truck size={36} strokeWidth={2.5} />
-          Logistique & Affectation
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginTop: '0.4rem', fontWeight: 500 }}>Optimisez vos tournées et affectez vos colis aux livreurs disponibles.</p>
-      </div>
+    <div style={{ position: 'relative', minHeight: '100vh', padding: '1rem', background: '#f8fafc' }}>
+      <div style={{ maxWidth: '1600px', margin: '0 auto', animation: 'pageEnter 0.6s ease' }}>
+
+      {/* ZONE A: HEADER */}
+      <section style={{ marginBottom: '3rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '0.5rem' }}>
+              <div style={{ padding: '0.8rem', background: 'linear-gradient(135deg, var(--primary) 0%, #4338ca 100%)', borderRadius: '18px', color: 'white', boxShadow: '0 10px 20px rgba(99, 102, 255, 0.2)' }}>
+                <Truck size={28} />
+              </div>
+              <h1 style={{ fontSize: '2.2rem', fontWeight: 950, margin: 0, letterSpacing: '-0.02em', color: '#1e293b' }}>Logistique & Affectation</h1>
+            </div>
+            <p style={{ color: '#64748b', fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>Optimisez vos tournées et affectez vos colis aux livreurs disponibles.</p>
+          </div>
+        </div>
+      </section>
+
+      {/* ZONE B: STATS */}
+      <section style={{ marginBottom: '3rem' }}>
+        <div className="res-grid" style={{ gap: '1.5rem' }}>
+          {[
+            { label: 'À Affecter', value: commandes.length, color: 'var(--primary)', icon: <Truck size={22} />, desc: 'Commandes validées' },
+            { label: 'Livreurs Actifs', value: livreurs.length, color: '#10b981', icon: <Clock size={22} />, desc: 'Disponibles' },
+            { label: 'Sélectionnées', value: selectedCommands.size, color: '#f59e0b', icon: <Printer size={22} />, desc: 'En cours de sélection' },
+            { label: 'Tournées en cours', value: activeFeuilles.length, color: '#6366f1', icon: <Clock size={22} />, desc: 'Feuilles actives' },
+          ].map((item, idx) => (
+            <div key={idx} className="card" style={{ padding: '1.5rem', borderRadius: '24px', border: '1px solid #e2e8f0', background: 'white', display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
+              <div style={{ width: '54px', height: '54px', borderRadius: '16px', background: `${item.color}10`, color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {item.icon}
+              </div>
+              <div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#1e293b', lineHeight: 1 }}>{item.value}</div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', marginTop: '0.25rem' }}>{item.label}</div>
+                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: item.color, marginTop: '0.2rem', textTransform: 'uppercase' }}>{item.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="res-grid" style={{ alignItems: 'start', gridTemplateColumns: 'minmax(0, 2fr) 350px' }}>
         
@@ -297,6 +336,11 @@ export const Logistique = () => {
           onClose={() => setSelectedCommandeId(null)} 
         />
       )}
+      </div>{/* end maxWidth */}
+      <style>{`
+        @keyframes pageEnter { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .res-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+      `}</style>
     </div>
   );
 };
