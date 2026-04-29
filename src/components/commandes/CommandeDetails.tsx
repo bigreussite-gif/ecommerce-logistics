@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, ShoppingBag, User, MapPin, Receipt, Phone, RefreshCw, RotateCcw, PackageX, MessageCircle, AlertCircle } from 'lucide-react';
+import { X, ShoppingBag, User, MapPin, Receipt, Phone, RefreshCw, RotateCcw, PackageX, MessageCircle, AlertCircle, CheckCircle } from 'lucide-react';
 import { getCommandeWithLines, updateCommandeStatus, reactivateFailedCommande, registerReturn, logWhatsAppMessage } from '../../services/commandeService';
 import { useToast } from '../../contexts/ToastContext';
 import type { Commande, LigneCommande } from '../../types';
@@ -269,9 +269,20 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
                     </a>
                    </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'start', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
-                   <MapPin size={16} style={{ marginTop: '0.1rem' }} /> 
-                   <span>{commande.adresse_livraison}{commande.quartier_livraison ? `, ${commande.quartier_livraison}` : ''}, {commande.commune_livraison}</span>
+                <div style={{ marginTop: '0.75rem', background: '#f1f5f9', borderRadius: '14px', padding: '0.75rem 1rem' }}>
+                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
+                     <MapPin size={14} color="var(--primary)" />
+                     <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>Adresse de livraison</span>
+                   </div>
+                   <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#1e293b', lineHeight: 1.5 }}>
+                     {commande.adresse_livraison || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Adresse non précisée</span>}
+                   </div>
+                   {commande.quartier_livraison && (
+                     <div style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>Quartier : {commande.quartier_livraison}</div>
+                   )}
+                   <div style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 800, marginTop: '0.25rem' }}>
+                     📍 {commande.commune_livraison || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Commune non précisée</span>}
+                   </div>
                 </div>
              </div>
 
@@ -356,8 +367,46 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
           </div>
         </div>
 
-        <div style={{ padding: '1.5rem 2rem', background: '#f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ padding: '1.5rem 2rem', background: '#f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+            {/* ✅ Boutons de validation directe pour commandes en attente */}
+            {['nouvelle', 'en_attente_appel', 'a_rappeler'].includes(commande.statut_commande?.toLowerCase()) && (
+              <>
+                <button 
+                  className="btn btn-primary" 
+                  onClick={async () => {
+                    setIsUpdating(true);
+                    try {
+                      await updateCommandeStatus(commande.id, 'validee', { agent_appel_id: undefined, date_validation_appel: new Date() });
+                      showToast('Commande validée avec succès !', 'success');
+                      onClose();
+                    } catch(e) { showToast('Erreur lors de la validation.', 'error'); }
+                    finally { setIsUpdating(false); }
+                  }}
+                  disabled={isUpdating}
+                  style={{ borderRadius: '12px', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#10b981', border: 'none' }}
+                >
+                  <CheckCircle size={18} /> Valider
+                </button>
+                <button 
+                  className="btn"
+                  onClick={async () => {
+                    setIsUpdating(true);
+                    try {
+                      await updateCommandeStatus(commande.id, 'a_rappeler', {});
+                      showToast('Commande mise en attente de rappel.', 'success');
+                      onClose();
+                    } catch(e) { showToast('Erreur.', 'error'); }
+                    finally { setIsUpdating(false); }
+                  }}
+                  disabled={isUpdating}
+                  style={{ borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f59e0b', color: 'white', border: 'none' }}
+                >
+                  <RefreshCw size={18} /> À Rappeler
+                </button>
+              </>
+            )}
+
             {!['livree', 'terminee', 'annulee', 'retour_client'].includes(commande.statut_commande?.toLowerCase()) && (
               <button 
                 className="btn btn-danger" 
@@ -376,7 +425,7 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
                 disabled={isUpdating}
                 style={{ borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
               >
-                <RefreshCw size={18} /> Réactiver Annulation
+                <RefreshCw size={18} /> Réactiver
               </button>
             )}
 

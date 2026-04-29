@@ -285,6 +285,8 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
   const startStr = start.toISOString();
   const endStr = end.toISOString();
 
+  const selectCols = 'id, montant_total, statut_commande, mode_paiement, frais_livraison, updated_at, date_creation, date_livraison_effective, total_primes_installation, clients(nom_complet, telephone_secondaire), lignes:lignes_commandes(*, produits(prix_achat))';
+
   // 1. Get Caisse Retours for the range
   const { data: retours, error: retoursError } = await insforge.database
     .from('caisse_retours')
@@ -294,35 +296,46 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
 
   if (retoursError) throw retoursError;
 
-  // 2. Get all sheets treated in range
+  // 2. Get orders delivered in range
+  const { data: deliveredOrders, error: err1 } = await insforge.database
+    .from('commandes')
+    .select(selectCols)
+    .gte('date_livraison_effective', startStr)
+    .lte('date_livraison_effective', endStr);
+
+  if (err1) throw err1;
+
+  // 3. Get all sheets treated in range and find their orders
   const { data: sheets } = await insforge.database
     .from('feuilles_route')
     .select('id')
     .gte('date_traitement', startStr)
     .lte('date_traitement', endStr);
 
-  const sheetIds = sheets?.map(s => s.id) || [];
-  
-  // Construct filter: (delivered in range) OR (part of a sheet processed in range)
-  let filterStr = `and(date_livraison_effective.gte."${startStr}",date_livraison_effective.lte."${endStr}")`;
+  const sheetIds = sheets?.map((s: any) => s.id) || [];
+  let sheetOrders: any[] = [];
+
   if (sheetIds.length > 0) {
-    const quotedIds = sheetIds.map(id => `"${id}"`).join(',');
-    filterStr = `or(${filterStr},feuille_route_id.in.(${quotedIds}))`;
+    const { data: so, error: err2 } = await insforge.database
+      .from('commandes')
+      .select(selectCols)
+      .in('feuille_route_id', sheetIds);
+    if (!err2 && so) sheetOrders = so;
   }
 
-  const { data: commandes, error: cmdError } = await insforge.database
-    .from('commandes')
-    .select('id, montant_total, statut_commande, mode_paiement, frais_livraison, updated_at, date_creation, date_livraison_effective, total_primes_installation, clients(nom_complet, telephone_secondaire), lignes:lignes_commandes(*, produits(prix_achat))')
-    .or(filterStr);
+  // 4. Merge and deduplicate orders by id
+  const allOrdersMap = new Map<string, any>();
+  [...(deliveredOrders || []), ...sheetOrders].forEach(o => {
+    if (o?.id) allOrdersMap.set(o.id, o);
+  });
+  const commandes = Array.from(allOrdersMap.values());
 
-  if (cmdError) throw cmdError;
-
-  // 3. Get Depenses in range
+  // 5. Get Depenses in range
   const { data: depenses } = await insforge.database
     .from('depenses')
     .select('*')
     .gte('date', startStr)
     .lte('date', endStr);
 
-  return { retours, commandes: commandes || [], depenses: depenses || [] };
+  return { retours: retours || [], commandes, depenses: depenses || [] };
 };
