@@ -172,9 +172,10 @@ export const Commandes = () => {
     const cancelled = filteredByDateCommandes.filter((c: Commande) => ['annulee'].includes(c.statut_commande?.toLowerCase())).length;
     const retours = filteredByDateCommandes.filter((c: Commande) => c.statut_commande === 'retour_client').length;
     
-    const successRate = (delivered + failed) > 0 ? Math.round((delivered / (delivered + failed)) * 100) : 0;
+    const deliveryRate = total > 0 ? Math.round((delivered / total) * 100) : 0;
+    const failureRate = total > 0 ? Math.round(((failed + cancelled + retours) / total) * 100) : 0;
 
-    return { total, processing, inDelivery, delivered, failed, cancelled, retours, successRate };
+    return { total, processing, inDelivery, delivered, failed, cancelled, retours, deliveryRate, failureRate };
   }, [filteredByDateCommandes]);
 
   const filteredCommandes = filteredByDateCommandes.filter((c: Commande) => {
@@ -320,17 +321,17 @@ export const Commandes = () => {
             {[
               { label: 'Flux Total', value: stats.total, color: 'var(--primary)', icon: <ShoppingBag size={22} />, desc: 'Commandes traitées' },
               { label: 'Validation', value: stats.processing, color: '#f59e0b', icon: <Clock size={22} />, desc: 'En attente de tri' },
-              { label: 'En Route', value: stats.inDelivery, color: '#6366f1', icon: <Truck size={22} />, desc: 'Sorties logistique' },
-              { label: 'Livrées', value: stats.delivered, color: '#10b981', icon: <CheckCircle size={22} />, desc: `${stats.successRate}% succès` },
-              { label: 'Perturbées', value: stats.failed, color: '#ef4444', icon: <AlertCircle size={22} />, desc: 'Échecs & Retours' }
+              { label: 'En Livraison', value: stats.inDelivery, color: '#6366f1', icon: <Truck size={22} />, desc: 'Sorties logistique' },
+              { label: 'Livraisons', value: `${stats.deliveryRate}%`, color: '#10b981', icon: <CheckCircle size={22} />, desc: `${stats.delivered} colis livrés` },
+              { label: 'Perturbations', value: `${stats.failureRate}%`, color: '#ef4444', icon: <AlertCircle size={22} />, desc: `${stats.failed + stats.cancelled + stats.retours} échecs/retours` }
             ].map((item, idx) => (
-              <div key={idx} className="card" style={{ padding: '1.5rem', borderRadius: '24px', border: '1px solid #e2e8f0', background: 'white', display: 'flex', gap: '1.25rem', alignItems: 'center', transition: 'transform 0.2s' }}>
+              <div key={idx} className="card" style={{ padding: '1.5rem', borderRadius: '24px', border: '1px solid #e2e8f0', background: 'white', display: 'flex', gap: '1.25rem', alignItems: 'center', transition: 'all 0.3s ease', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
                 <div style={{ width: '54px', height: '54px', borderRadius: '16px', background: `${item.color}10`, color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {item.icon}
                 </div>
                 <div>
-                  <div style={{ fontSize: '1.6rem', fontWeight: 900, color: '#1e293b', lineHeight: 1 }}>{item.value}</div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#64748b', marginTop: '0.25rem' }}>{item.label}</div>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 950, color: '#1e293b', lineHeight: 1, letterSpacing: '-0.02em' }}>{item.value}</div>
+                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginTop: '0.3rem' }}>{item.label}</div>
                   <div style={{ fontSize: '0.7rem', fontWeight: 800, color: item.color, marginTop: '0.2rem', textTransform: 'uppercase' }}>{item.desc}</div>
                 </div>
               </div>
