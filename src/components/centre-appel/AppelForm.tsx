@@ -325,6 +325,40 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
                   WhatsApp
                 </a>
               </div>
+
+              {/* Adresse de livraison affichée dans le header */}
+              <div style={{ 
+                marginTop: '1rem', 
+                display: 'flex', 
+                flexWrap: 'wrap',
+                gap: '0.5rem',
+                alignItems: 'center'
+              }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>📍 Livraison :</span>
+                {(commande.commune_livraison || communeLocal) ? (
+                  <span style={{ padding: '0.25rem 0.75rem', background: 'rgba(99,102,255,0.1)', color: 'var(--primary)', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 800 }}>
+                    {communeLocal || commande.commune_livraison}
+                  </span>
+                ) : (
+                  <span style={{ padding: '0.25rem 0.75rem', background: '#fef3c7', color: '#92400e', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700 }}>
+                    ⚠️ Commune non définie
+                  </span>
+                )}
+                {(commande.quartier_livraison) && (
+                  <span style={{ padding: '0.25rem 0.75rem', background: '#f1f5f9', color: '#475569', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600 }}>
+                    Qtier: {commande.quartier_livraison}
+                  </span>
+                )}
+                {(commande.adresse_livraison || adresseLocal) ? (
+                  <span style={{ padding: '0.25rem 0.75rem', background: '#f0fdf4', color: '#166534', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 600, border: '1px solid #bbf7d0' }}>
+                    {adresseLocal || commande.adresse_livraison}
+                  </span>
+                ) : (
+                  <span style={{ padding: '0.25rem 0.75rem', background: '#fef3c7', color: '#92400e', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700 }}>
+                    ⚠️ Adresse non définie
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
