@@ -42,6 +42,30 @@ export const getFeuillesEnCours = async (livreurId?: string): Promise<FeuilleRou
   }));
 };
 
+export const getFeuillesDuJour = async (): Promise<FeuilleRoute[]> => {
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+
+  const { data, error } = await insforge.database
+    .from('feuilles_route')
+    .select('*')
+    .in('statut_feuille', ['en_cours', 'cloturee'])
+    .gte('date', todayStart.toISOString())
+    .lte('date', todayEnd.toISOString())
+    .order('date', { ascending: false });
+
+  if (error) throw error;
+  if (!data || data.length === 0) return [];
+
+  const nameMap = await fetchLivreurNames(data);
+  return data.map((f: any) => ({
+    ...f,
+    nom_livreur: nameMap.get(f.livreur_id) || `Livreur #${f.livreur_id?.slice(0,5)}`
+  }));
+};
+
 export const getCloturedFeuilles = async (): Promise<FeuilleRoute[]> => {
   const { data, error } = await insforge.database
     .from('feuilles_route')

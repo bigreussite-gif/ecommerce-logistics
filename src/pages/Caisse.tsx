@@ -1,6 +1,6 @@
 import { useState, useEffect, Fragment, useMemo, useCallback } from 'react';
 import { getAvailableLivreurs, reassignCommandeToFeuille } from '../services/logistiqueService';
-import { getFeuillesEnCours, getCommandesConcernees, processCaisse, CaisseResolution } from '../services/caisseService';
+import { getFeuillesEnCours, getFeuillesDuJour, getCommandesConcernees, processCaisse, CaisseResolution } from '../services/caisseService';
 import { insforge } from '../lib/insforge';
 import type { User, Commande, FeuilleRoute } from '../types';
 import { Calculator, CheckCircle2, ChevronRight, Plus, Search, Eye, X, AlertCircle } from 'lucide-react';
@@ -17,7 +17,11 @@ export const Caisse = () => {
   const [livreurs, setLivreurs] = useState<User[]>([]);
   const [selectedLivreur, setSelectedLivreur] = useState<string>('');
   const [feuilles, setFeuilles] = useState<FeuilleRoute[]>([]);
-  
+  const [feuillesDuJour, setFeuillesDuJour] = useState<FeuilleRoute[]>([]);
+  const [feuilleSearch, setFeuilleSearch] = useState('');
+  const [feuilleSearchResults, setFeuilleSearchResults] = useState<FeuilleRoute[]>([]);
+  const [searchingFeuille, setSearchingFeuille] = useState(false);
+
   const [feuille, setFeuille] = useState<FeuilleRoute | null>(null);
   const [commandes, setCommandes] = useState<(Commande & { lignes?: any[] })[]>([]);
   const [resolutions, setResolutions] = useState<Record<string, CaisseResolution>>({});
@@ -33,7 +37,45 @@ export const Caisse = () => {
 
   useEffect(() => {
     getAvailableLivreurs().then(setLivreurs);
+    getFeuillesDuJour().then(setFeuillesDuJour).catch(console.error);
   }, []);
+
+  const handleFeuilleSearch = async (term: string) => {
+    setFeuilleSearch(term);
+    if (term.trim().length < 2) { setFeuilleSearchResults([]); return; }
+    setSearchingFeuille(true);
+    try {
+      // Search commandes by client name or phone
+      const { data: cmdData } = await (insforge as any).database
+        .from('commandes')
+        .select('feuille_route_id')
+        .not('feuille_route_id', 'is', null)
+        .or(`nom_client.ilike.%${term}%,telephone_client.ilike.%${term}%`)
+        .limit(20);
+
+      const ids: string[] = [...new Set((cmdData || []).map((c: any) => c.feuille_route_id).filter(Boolean))];
+      if (ids.length === 0) { setFeuilleSearchResults([]); return; }
+
+      const { data: frData } = await (insforge as any).database
+        .from('feuilles_route')
+        .select('*')
+        .in('id', ids)
+        .in('statut_feuille', ['en_cours', 'cloturee']);
+
+      if (!frData || frData.length === 0) { setFeuilleSearchResults([]); return; }
+
+      // Fetch livreur names
+      const userIds = [...new Set(frData.map((f: any) => f.livreur_id).filter(Boolean))];
+      let nameMap = new Map<string, string>();
+      if (userIds.length > 0) {
+        const { data: uData } = await (insforge as any).database
+          .from('users').select('id, nom_complet').in('id', userIds);
+        nameMap = new Map((uData || []).map((u: any) => [u.id, u.nom_complet]));
+      }
+      setFeuilleSearchResults(frData.map((f: any) => ({ ...f, nom_livreur: nameMap.get(f.livreur_id) || `Livreur #${f.livreur_id?.slice(0,5)}` })));
+    } catch(e) { console.error(e); }
+    finally { setSearchingFeuille(false); }
+  };
 
   const loadLivreur = async (livreurId: string) => {
     setSelectedLivreur(livreurId);
@@ -284,71 +326,126 @@ export const Caisse = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', alignItems: 'start' }}>
         
         {/* SELECTION */}
-        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-          <div className="card glass-effect" style={{ flex: 1, minWidth: '320px', padding: '1.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
-                <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>1</span>
-                Agent Livreur
+        {!feuille && (
+        <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+
+          {/* LEFT: Feuilles du jour */}
+          <div className="card" style={{ flex: 2, minWidth: '320px', padding: 0, overflow: 'hidden', border: '1px solid #e2e8f0', borderRadius: '24px' }}>
+            <div style={{ padding: '1.25rem 1.5rem', background: 'linear-gradient(135deg, var(--primary) 0%, #4338ca 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontWeight: 900, color: 'white', fontSize: '1rem' }}>
+                📋 Feuilles du jour
               </h3>
-              {selectedLivreur && (
-                <button onClick={() => loadLivreur('')} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', fontWeight: 700 }}>
-                  <X size={14} /> Réinitialiser
-                </button>
-              )}
+              <span style={{ background: 'rgba(255,255,255,0.2)', color: 'white', borderRadius: '20px', padding: '0.2rem 0.8rem', fontSize: '0.8rem', fontWeight: 800 }}>
+                {feuillesDuJour.length} active{feuillesDuJour.length > 1 ? 's' : ''}
+              </span>
             </div>
-            <select className="form-select" style={{ height: '48px', fontWeight: 700 }} value={selectedLivreur} onChange={(e) => loadLivreur(e.target.value)}>
-              <option value="">Sélectionner un agent...</option>
-              {livreurs.map(l => (
-                <option key={l.id} value={l.id}>{l.nom_complet}</option>
-              ))}
-            </select>
+            {feuillesDuJour.length === 0 ? (
+              <div style={{ padding: '2.5rem', textAlign: 'center' }}>
+                <p style={{ color: 'var(--text-muted)', fontWeight: 600, margin: 0 }}>Aucune feuille créée aujourd'hui.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {feuillesDuJour.map(f => (
+                  <div
+                    key={f.id}
+                    onClick={() => { setSelectedLivreur(f.livreur_id || ''); loadFeuille(f); }}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderBottom: '1px solid #f1f5f9', cursor: 'pointer', transition: 'background 0.15s', background: 'white' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'white')}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#1e293b' }}>#{f.id.slice(0, 8).toUpperCase()}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: '2px' }}>
+                        🚚 {(f as any).nom_livreur || 'Livreur'} &nbsp;&bull;&nbsp; {f.total_commandes} colis
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <span style={{ padding: '0.25rem 0.75rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800,
+                        background: f.statut_feuille === 'en_cours' ? '#dcfce7' : '#fef3c7',
+                        color: f.statut_feuille === 'en_cours' ? '#166534' : '#92400e'
+                      }}>{f.statut_feuille === 'en_cours' ? 'En cours' : 'Clôturée'}</span>
+                      <ChevronRight size={18} color="var(--primary)" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {(selectedLivreur && !feuille) && (
-            <div className="card glass-effect" style={{ flex: 1.5, minWidth: '320px', padding: '1.5rem', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>2</span>
-                Feuille de Route
-              </h3>
-               {feuilles.length === 0 ? (
-                 <div style={{ padding: '1.5rem', textAlign: 'center', background: 'rgba(0,0,0,0.02)', borderRadius: '16px', border: '2px dashed #e2e8f0' }}>
-                   <p style={{ color: 'var(--text-muted)', fontWeight: 600, margin: 0, fontSize: '0.9rem' }}>Aucune feuille active.</p>
-                 </div>
-               ) : (
-                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                   {feuilles.map(f => (
-                     <div 
-                       key={f.id} 
-                       style={{ 
-                         display: 'flex', 
-                         justifyContent: 'space-between', 
-                         alignItems: 'center', 
-                         padding: '1rem', 
-                         border: '1px solid #e2e8f0', 
-                         borderRadius: '16px', 
-                         cursor: 'pointer', 
-                         backgroundColor: 'white',
-                         transition: 'var(--transition-smooth)'
-                       }} 
-                       onClick={() => loadFeuille(f)}
-                       className="hover-card"
-                     >
-                        <div>
-                          <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1rem' }}>#{f.id.slice(0, 8).toUpperCase()}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                            {format(new Date(f.date), 'dd MMM yyyy')} • {f.total_commandes} colis
-                          </div>
-                        </div>
-                        <ChevronRight size={20} style={{ color: 'var(--primary)' }}/>
-                     </div>
-                   ))}
-                 </div>
-               )}
-            </div>
-          )}
-        </div>
+          {/* RIGHT: Recherche + Sélection livreur */}
+          <div style={{ flex: 1, minWidth: '280px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
+            {/* Recherche par nom/téléphone */}
+            <div className="card" style={{ padding: '1.5rem', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+              <h4 style={{ margin: '0 0 0.5rem', fontWeight: 800, fontSize: '0.9rem', color: 'var(--primary)' }}>🔍 Rechercher une feuille</h4>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>Par nom ou numéro du client</p>
+              <div style={{ position: 'relative' }}>
+                <Search size={16} style={{ position: 'absolute', left: '0.9rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Ex: Koné Amara ou 07..."
+                  style={{ paddingLeft: '2.5rem', height: '44px', borderRadius: '12px' }}
+                  value={feuilleSearch}
+                  onChange={e => handleFeuilleSearch(e.target.value)}
+                />
+              </div>
+              {searchingFeuille && <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Recherche...</p>}
+              {!searchingFeuille && feuilleSearch.length >= 2 && feuilleSearchResults.length === 0 && (
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: '#ef4444', fontWeight: 600 }}>Aucune feuille trouvée.</p>
+              )}
+              {feuilleSearchResults.length > 0 && (
+                <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {feuilleSearchResults.map(f => (
+                    <div
+                      key={f.id}
+                      onClick={() => { setSelectedLivreur(f.livreur_id || ''); loadFeuille(f); setFeuilleSearch(''); setFeuilleSearchResults([]); }}
+                      style={{ padding: '0.75rem 1rem', background: '#f8fafc', borderRadius: '12px', cursor: 'pointer', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#eff6ff')}
+                      onMouseLeave={e => (e.currentTarget.style.background = '#f8fafc')}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>#{f.id.slice(0,8).toUpperCase()}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{(f as any).nom_livreur} &bull; {f.total_commandes} colis</div>
+                      </div>
+                      <ChevronRight size={16} color="var(--primary)" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Sélection par livreur (optionnelle) */}
+            <div className="card glass-effect" style={{ padding: '1.5rem', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '20px' }}>
+              <h4 style={{ margin: '0 0 0.75rem', fontWeight: 800, fontSize: '0.9rem' }}>Par livreur</h4>
+              <select className="form-select" style={{ height: '44px', fontWeight: 700 }} value={selectedLivreur} onChange={e => loadLivreur(e.target.value)}>
+                <option value="">Sélectionner un agent...</option>
+                {livreurs.map(l => <option key={l.id} value={l.id}>{l.nom_complet}</option>)}
+              </select>
+              {selectedLivreur && feuilles.length > 0 && (
+                <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {feuilles.map(f => (
+                    <div key={f.id} onClick={() => loadFeuille(f)}
+                      style={{ padding: '0.75rem 1rem', background: 'white', borderRadius: '12px', cursor: 'pointer', border: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = '#f8fafc')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'white')}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>#{f.id.slice(0,8).toUpperCase()}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{format(new Date(f.date), 'dd MMM yyyy')} &bull; {f.total_commandes} colis</div>
+                      </div>
+                      <ChevronRight size={16} color="var(--primary)" />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedLivreur && feuilles.length === 0 && (
+                <p style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Aucune feuille active pour cet agent.</p>
+              )}
+            </div>
+          </div>
+        </div>
+        )}
         {/* RECONCILIATION */}
         {feuille && (
           <div className="res-grid" style={{ alignItems: 'start' }}>
