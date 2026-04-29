@@ -3,7 +3,7 @@ import { getAvailableLivreurs, reassignCommandeToFeuille } from '../services/log
 import { getFeuillesEnCours, getFeuillesDuJour, getCommandesConcernees, processCaisse, CaisseResolution } from '../services/caisseService';
 import { insforge } from '../lib/insforge';
 import type { User, Commande, FeuilleRoute } from '../types';
-import { Calculator, CheckCircle2, ChevronRight, Plus, Search, Eye, X, AlertCircle } from 'lucide-react';
+import { Calculator, CheckCircle2, ChevronRight, Plus, Search, Eye, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -53,7 +53,7 @@ export const Caisse = () => {
         .or(`nom_client.ilike.%${term}%,telephone_client.ilike.%${term}%`)
         .limit(20);
 
-      const ids: string[] = [...new Set((cmdData || []).map((c: any) => c.feuille_route_id).filter(Boolean))];
+      const ids = [...new Set((cmdData || []).map((c: any) => c.feuille_route_id as string).filter(Boolean))];
       if (ids.length === 0) { setFeuilleSearchResults([]); return; }
 
       const { data: frData } = await (insforge as any).database
