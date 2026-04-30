@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getUtilisateurs } from '../services/utilisateurService';
 import { getCommandes } from '../services/commandeService';
 import { getProduits } from '../services/produitService';
@@ -51,6 +52,7 @@ interface ProductCreatorStats {
 }
 
 export const StaffPerformance = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'livreurs' | 'agents' | 'produits'>('livreurs');
   const [livreurStats, setLivreurStats] = useState<StaffStats[]>([]);
   const [agentStats, setAgentStats] = useState<AgentStats[]>([]);
@@ -246,6 +248,7 @@ export const StaffPerformance = () => {
             <th style={{ textAlign: 'center' }}>Reports</th>
             <th style={{ textAlign: 'right' }}>CA Brut</th>
             <th style={{ textAlign: 'right' }}>Paye Staff</th>
+            <th style={{ textAlign: 'right' }}>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -284,6 +287,9 @@ export const StaffPerformance = () => {
                 <div style={{ whiteSpace: 'nowrap' }}>{s.paye.toLocaleString()} CFA</div>
                 {s.primes > 0 && <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>(incl. {s.primes} prime)</div>}
               </td>
+              <td style={{ textAlign: 'right' }}>
+                <button onClick={() => navigate(`/staff/${s.id}/historique`)} className="btn btn-outline btn-sm" style={{ borderRadius: '10px' }}>Historique</button>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -307,6 +313,7 @@ export const StaffPerformance = () => {
             <th style={{ textAlign: 'right' }}>CA Généré</th>
             <th style={{ textAlign: 'center' }}>🔌 Connexions</th>
             <th style={{ textAlign: 'right' }}>Taux Conversion</th>
+            <th style={{ textAlign: 'right' }}>Action</th>
           </tr>
         </thead>
         <tbody>
@@ -352,6 +359,9 @@ export const StaffPerformance = () => {
                 <div style={{ fontWeight: 900, fontSize: '1.1rem', color: s.taux_conversion > 60 ? '#10b981' : s.taux_conversion > 40 ? '#f59e0b' : '#f43f5e' }}>
                   {s.taux_conversion}%
                 </div>
+              </td>
+              <td style={{ textAlign: 'right' }}>
+                <button onClick={() => navigate(`/staff/${s.id}/historique`)} className="btn btn-outline btn-sm" style={{ borderRadius: '10px' }}>Historique</button>
               </td>
             </tr>
           ))}

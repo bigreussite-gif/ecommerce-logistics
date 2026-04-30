@@ -42,6 +42,8 @@ const Login = lazyWithRetry(() => import('./pages/Login').then(m => ({ default: 
 const FinancialReport = lazyWithRetry(() => import('./pages/FinancialReport').then(m => ({ default: m.FinancialReport })));
 const Home = lazyWithRetry(() => import('./pages/Home').then(m => ({ default: m.Home })));
 const StaffPerformance = lazyWithRetry(() => import('./pages/StaffPerformance').then(m => ({ default: m.StaffPerformance })));
+const StaffHistorique = lazyWithRetry(() => import('./pages/StaffHistorique').then(m => ({ default: m.StaffHistorique })));
+const CommandeHistorique = lazyWithRetry(() => import('./pages/CommandeHistorique').then(m => ({ default: m.CommandeHistorique })));
 const NetProfit = lazyWithRetry(() => import('./pages/NetProfit').then(m => ({ default: m.NetProfit })));
 const AdminTresorerie = lazyWithRetry(() => import('./pages/AdminTresorerie').then(m => ({ default: m.AdminTresorerie })));
 const AuditTresorerie = lazyWithRetry(() => import('./pages/AuditTresorerie').then(m => ({ default: m.AuditTresorerie })));
@@ -132,9 +134,12 @@ const AppRoutes = () => {
           <ProtectedRoute requiredPermission="PRODUITS"><FournisseurAchats /></ProtectedRoute>
         } />
         
-        {/* Module 2: Commandes */}
+        {/* Hub Commandes */}
         <Route path="commandes" element={
           <ProtectedRoute requiredPermission="COMMANDES"><Commandes /></ProtectedRoute>
+        } />
+        <Route path="commandes/:id/historique" element={
+          <ProtectedRoute requiredPermission="COMMANDES"><CommandeHistorique /></ProtectedRoute>
         } />
         
         {/* Module 3: Centre d'Appel */}
@@ -186,6 +191,9 @@ const AppRoutes = () => {
         {/* Staff Performance */}
         <Route path="performance-staff" element={
           <ProtectedRoute requiredPermission="GESTION_LIVREURS"><StaffPerformance /></ProtectedRoute>
+        } />
+        <Route path="staff/:id/historique" element={
+          <ProtectedRoute requiredPermission="GESTION_LIVREURS"><StaffHistorique /></ProtectedRoute>
         } />
 
         {/* Net Profit & Expenses */}

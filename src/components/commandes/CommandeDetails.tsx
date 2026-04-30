@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, ShoppingBag, User, MapPin, Receipt, Phone, RefreshCw, RotateCcw, PackageX, MessageCircle, AlertCircle, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, ShoppingBag, User, MapPin, Receipt, Phone, RefreshCw, RotateCcw, PackageX, MessageCircle, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import { getCommandeWithLines, updateCommandeStatus, reactivateFailedCommande, registerReturn, logWhatsAppMessage } from '../../services/commandeService';
 import { useToast } from '../../contexts/ToastContext';
 import type { Commande, LigneCommande } from '../../types';
@@ -10,6 +11,7 @@ interface CommandeDetailsProps {
 }
 
 export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) => {
+  const navigate = useNavigate();
   const { showToast } = useToast();
   const [commande, setCommande] = useState<(Commande & { lignes: LigneCommande[] }) | null>(null);
   const [loading, setLoading] = useState(true);
@@ -203,10 +205,17 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
             <div style={{ padding: '0.6rem', background: 'rgba(99, 102, 255, 0.2)', borderRadius: '12px' }}>
               <Receipt size={24} color="#818cf8" />
             </div>
-            <div>
+            <div style={{ flex: 1 }}>
               <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Commande #{(commande.id || '').slice(0, 8).toUpperCase()}</h2>
               <p style={{ margin: 0, opacity: 0.7, fontSize: '0.9rem', fontWeight: 500 }}>Statut actuel: <span style={{ color: '#818cf8', fontWeight: 700 }}>{commande.statut_commande.replace(/_/g, ' ')}</span></p>
             </div>
+            <button 
+              onClick={() => { onClose(); navigate(`/commandes/${commande.id}/historique`); }}
+              className="btn btn-outline btn-sm" 
+              style={{ borderRadius: '10px', display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.1)', color: 'white', border: '1px solid rgba(255,255,255,0.2)', marginRight: '2rem' }}
+            >
+              <Clock size={16} /> Historique Complet
+            </button>
           </div>
         </div>
 
