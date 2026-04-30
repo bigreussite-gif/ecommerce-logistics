@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getFournisseurs, createFournisseur, updateFournisseur, deleteFournisseur, Fournisseur, payDebt } from '../services/fournisseurService';
 import { getAchatsStock } from '../services/achatService';
-import { Building2, Plus, Search, Phone, Trash2, Edit2, Wallet, X, User, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Building2, Plus, Search, Phone, Trash2, Edit2, Wallet, X, User, ArrowRight, CheckCircle2, ShoppingBag, ExternalLink, Package } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { globalEventBus, EVENTS } from '../utils/events';
 
 export const Fournisseurs = () => {
+  const navigate = useNavigate();
   const [fournisseurs, setFournisseurs] = useState<Fournisseur[]>([]);
   const [achats, setAchats] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [statsModalFournisseur, setStatsModalFournisseur] = useState<Fournisseur | null>(null);
   const [editingFournisseur, setEditingFournisseur] = useState<Fournisseur | null>(null);
   const [selectedFournisseur, setSelectedFournisseur] = useState<Fournisseur | null>(null);
   const [payAmount, setPayAmount] = useState<string>('');
@@ -74,6 +77,21 @@ export const Fournisseurs = () => {
     const topProduct = Object.entries(productCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
 
     return { cash, credit, itemsCount, topProduct };
+  };
+
+  // Résumé articles par fournisseur (pour le popup)
+  const getArticlesSummary = (supplierId: string) => {
+    const sAchats = achats.filter(a => a.fournisseur_id === supplierId);
+    const map: Record<string, { nom: string; quantite: number; montant: number; transactions: number }> = {};
+    sAchats.forEach(a => {
+      const nom = a.produits?.nom || 'Article inconnu';
+      const pid = a.produit_id || nom;
+      if (!map[pid]) map[pid] = { nom, quantite: 0, montant: 0, transactions: 0 };
+      map[pid].quantite += Number(a.quantite || 0);
+      map[pid].montant += Number(a.montant_total || 0);
+      map[pid].transactions += 1;
+    });
+    return Object.values(map).sort((a, b) => b.montant - a.montant);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -264,11 +282,147 @@ export const Fournisseurs = () => {
                   )}
                   {(!f.solde_dette || Number(f.solde_dette) <= 0) && <div style={{ color: '#15803d', opacity: 0.5 }}><CheckCircle2 size={28} /></div>}
                 </div>
+
+                {/* Bouton Voir Achats */}
+                <button
+                  onClick={() => setStatsModalFournisseur(f)}
+                  style={{
+                    marginTop: '1rem',
+                    width: '100%',
+                    padding: '0.75rem',
+                    borderRadius: '14px',
+                    border: '1.5px solid rgba(99,102,255,0.2)',
+                    background: 'rgba(99,102,255,0.04)',
+                    color: 'var(--primary)',
+                    fontWeight: 800,
+                    fontSize: '0.88rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.5rem',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,255,0.1)'; e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(99,102,255,0.2)'; }}
+                >
+                  <ShoppingBag size={16} strokeWidth={2.5} />
+                  Voir les Achats
+                </button>
               </div>
             );
           })}
         </div>
       )}
+
+      {/* === POPUP RÉSUMÉ ARTICLES === */}
+      {statsModalFournisseur && (() => {
+        const articles = getArticlesSummary(statsModalFournisseur.id);
+        const totalMontant = articles.reduce((acc, a) => acc + a.montant, 0);
+        const totalQte = articles.reduce((acc, a) => acc + a.quantite, 0);
+        return (
+          <div className="modal-backdrop" onClick={() => setStatsModalFournisseur(null)}>
+            <div
+              className="modal-content card"
+              style={{ padding: 0, overflow: 'hidden', maxWidth: '640px', width: '96%' }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header popup */}
+              <div style={{ background: 'linear-gradient(135deg, var(--primary), #4f46e5)', padding: '2rem 2.5rem', color: 'white', position: 'relative' }}>
+                <button
+                  onClick={() => setStatsModalFournisseur(null)}
+                  style={{ position: 'absolute', right: '1.25rem', top: '1.25rem', background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', padding: '0.5rem', borderRadius: '10px', cursor: 'pointer' }}
+                >
+                  <X size={20} />
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                  <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.6rem', borderRadius: '12px' }}>
+                    <Building2 size={22} />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900 }}>{statsModalFournisseur.nom}</h2>
+                    <p style={{ margin: 0, opacity: 0.85, fontSize: '0.85rem', fontWeight: 500 }}>Résumé des articles achetés</p>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1rem' }}>
+                  <div>
+                    <div style={{ fontSize: '0.7rem', opacity: 0.75, fontWeight: 700, textTransform: 'uppercase' }}>Articles distincts</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{articles.length}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.7rem', opacity: 0.75, fontWeight: 700, textTransform: 'uppercase' }}>Qté Totale</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{totalQte.toLocaleString()} u.</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.7rem', opacity: 0.75, fontWeight: 700, textTransform: 'uppercase' }}>Volume Total</div>
+                    <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{totalMontant.toLocaleString()} F</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Corps liste articles */}
+              <div style={{ padding: '1.5rem 2rem', maxHeight: '380px', overflowY: 'auto' }}>
+                {articles.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '2.5rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    <Package size={40} strokeWidth={1.5} style={{ marginBottom: '0.75rem', opacity: 0.4 }} />
+                    <p style={{ margin: 0 }}>Aucun achat enregistré pour ce fournisseur.</p>
+                  </div>
+                ) : articles.map((art, i) => (
+                  <div key={i} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '0.9rem 1rem', borderRadius: '14px',
+                    background: i % 2 === 0 ? '#fafafa' : 'white',
+                    border: '1px solid #f1f5f9', marginBottom: '0.5rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(99,102,255,0.08)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '0.85rem', flexShrink: 0 }}>
+                        {i + 1}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-main)' }}>{art.nom}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                          {art.transactions} achat{art.transactions > 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 900, fontSize: '1rem', color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
+                        {art.montant.toLocaleString()} F
+                      </div>
+                      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--primary)', background: 'rgba(99,102,255,0.08)', padding: '0.1rem 0.5rem', borderRadius: '6px', display: 'inline-block', marginTop: '0.15rem' }}>
+                        {art.quantite.toLocaleString()} u.
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Footer bouton détail */}
+              <div style={{ padding: '1rem 2rem 1.5rem', borderTop: '1px solid #f1f5f9', display: 'flex', gap: '0.75rem' }}>
+                <button
+                  onClick={() => setStatsModalFournisseur(null)}
+                  style={{ flex: 1, padding: '0.85rem', borderRadius: '14px', border: '1.5px solid #e2e8f0', background: 'white', fontWeight: 800, cursor: 'pointer', color: 'var(--text-muted)' }}
+                >
+                  Fermer
+                </button>
+                <button
+                  onClick={() => { setStatsModalFournisseur(null); navigate(`/fournisseurs/${statsModalFournisseur.id}/achats`); }}
+                  style={{
+                    flex: 2, padding: '0.85rem', borderRadius: '14px', border: 'none',
+                    background: 'linear-gradient(135deg, var(--primary), #4f46e5)',
+                    color: 'white', fontWeight: 900, fontSize: '0.95rem',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem',
+                    boxShadow: '0 4px 16px rgba(99,102,255,0.35)'
+                  }}
+                >
+                  <ExternalLink size={18} strokeWidth={2.5} />
+                  Voir Détail Complet
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modal Fournisseur Refined */}
       {isModalOpen && (
