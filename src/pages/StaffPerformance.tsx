@@ -56,7 +56,12 @@ export const StaffPerformance = () => {
   const [agentStats, setAgentStats] = useState<AgentStats[]>([]);
   const [productCreatorStats, setProductCreatorStats] = useState<ProductCreatorStats[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month' | 'all'>('month');
+  const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month' | 'all' | 'custom'>('month');
+  const today = new Date().toISOString().split('T')[0];
+  const [customDateRange, setCustomDateRange] = useState<{ startDate: string; endDate: string }>({
+    startDate: subDays(new Date(), 7).toISOString().split('T')[0],
+    endDate: today,
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -77,7 +82,9 @@ export const StaffPerformance = () => {
         const startOfInterval = timeFilter === 'today' ? startOfDay(now) : 
                               timeFilter === 'week' ? subDays(now, 7) : 
                               timeFilter === 'month' ? subDays(now, 30) : 
+                              timeFilter === 'custom' ? new Date(customDateRange.startDate + 'T00:00:00') :
                               new Date(0);
+        const endOfInterval = timeFilter === 'custom' ? new Date(customDateRange.endDate + 'T23:59:59') : now;
 
         // --- 1. Calculate Livreur Stats ---
         const livreurs = users_data.filter(u => u.role === 'LIVREUR' || u.role === 'AGENT_MIXTE');
@@ -93,7 +100,7 @@ export const StaffPerformance = () => {
           const lCmds = (ordersByLivreur[l.id] || []).filter((c: Commande) => {
             // Pour la performance, on prend la date d'activité la plus récente (livraison, mise à jour ou création)
             const activeDate = new Date(c.date_livraison_effective || c.updated_at || c.date_creation);
-            return isAfter(activeDate, startOfInterval);
+            return isAfter(activeDate, startOfInterval) && activeDate <= endOfInterval;
           });
           
           const logStats = calculateLogisticalStats(lCmds);
@@ -139,7 +146,7 @@ export const StaffPerformance = () => {
         const aStats: AgentStats[] = agents.map((a: any) => {
           const aCmds = (ordersByAgent[a.id] || []).filter((c: Commande) => {
             const activeDate = new Date(c.updated_at || c.date_creation);
-            return isAfter(activeDate, startOfInterval);
+            return isAfter(activeDate, startOfInterval) && activeDate <= endOfInterval;
           });
           const total = aCmds.length;
           
@@ -150,7 +157,7 @@ export const StaffPerformance = () => {
           const reprogrammees = aCmds.filter((c: Commande) => c.statut_commande?.toLowerCase() === 'a_rappeler').length;
           const annulees = aCmds.filter((c: Commande) => c.statut_commande?.toLowerCase() === 'annulee').length;
           
-          const userLogins = allLogins.filter((l: any) => l.user_id === a.id && isAfter(new Date(l.login_time), startOfInterval)).length;
+          const userLogins = allLogins.filter((l: any) => l.user_id === a.id && isAfter(new Date(l.login_time), startOfInterval) && new Date(l.login_time) <= endOfInterval).length;
           
           // CA Brut Généré par l'agent
           const ca_genere = aCmds.reduce((acc: number, c: Commande) => 
@@ -189,10 +196,10 @@ export const StaffPerformance = () => {
         });
 
         const pStats: ProductCreatorStats[] = creators.map(c => {
-          const cProds = (prodsByCreator[c.id] || []).filter(p => p.created_at && isAfter(new Date(p.created_at), startOfInterval));
+          const cProds = (prodsByCreator[c.id] || []).filter(p => p.created_at && isAfter(new Date(p.created_at), startOfInterval) && new Date(p.created_at) <= endOfInterval);
           const weeks = Math.max(1, differenceInWeeks(now, startOfInterval));
           const freq = Math.round((cProds.length / weeks) * 10) / 10;
-          const userLogins = allLogins.filter(l => l.user_id === c.id && isAfter(new Date(l.login_time), startOfInterval)).length;
+          const userLogins = allLogins.filter(l => l.user_id === c.id && isAfter(new Date(l.login_time), startOfInterval) && new Date(l.login_time) <= endOfInterval).length;
 
           return {
             id: c.id,
@@ -214,7 +221,7 @@ export const StaffPerformance = () => {
     };
 
     fetchData();
-  }, [timeFilter]);
+  }, [timeFilter, customDateRange]);
 
   if (loading) {
     return (
@@ -400,27 +407,75 @@ export const StaffPerformance = () => {
           </p>
         </div>
         
-        <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.5)', padding: '0.4rem', borderRadius: '14px', border: '1px solid #e2e8f0', backdropFilter: 'blur(10px)' }}>
-          {(['month', 'week', 'today', 'all'] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setTimeFilter(f)}
-              style={{
-                padding: '0.6rem 1.2rem',
-                borderRadius: '10px',
-                border: 'none',
-                background: timeFilter === f ? 'var(--primary)' : 'transparent',
-                color: timeFilter === f ? 'white' : 'var(--text-muted)',
-                fontWeight: 700,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                textTransform: 'capitalize'
-              }}
-            >
-              {f === 'month' ? 'Ce mois' : f === 'week' ? '7 jours' : f === 'today' ? 'Aujourd\'hui' : 'Toujours'}
-            </button>
-          ))}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.5)', padding: '0.4rem', borderRadius: '14px', border: '1px solid #e2e8f0', backdropFilter: 'blur(10px)', flexWrap: 'wrap', gap: '0.2rem' }}>
+            {(['month', 'week', 'today', 'all', 'custom'] as const).map(f => (
+              <button
+                key={f}
+                onClick={() => setTimeFilter(f)}
+                style={{
+                  padding: '0.6rem 1.2rem',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: timeFilter === f ? 'var(--primary)' : 'transparent',
+                  color: timeFilter === f ? 'white' : 'var(--text-muted)',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                {f === 'month' ? 'Ce mois' : f === 'week' ? '7 jours' : f === 'today' ? "Aujourd'hui" : f === 'all' ? 'Toujours' : '📅 Personnalisé'}
+              </button>
+            ))}
+          </div>
+
+          {timeFilter === 'custom' && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '0.75rem',
+              background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)',
+              border: '1px solid #e2e8f0', borderRadius: '12px',
+              padding: '0.6rem 1rem', boxShadow: '0 4px 16px rgba(99,102,255,0.08)',
+              animation: 'pageEnter 0.3s ease'
+            }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>Du</span>
+              <input
+                type="date"
+                value={customDateRange.startDate}
+                max={customDateRange.endDate}
+                onChange={e => setCustomDateRange(prev => ({ ...prev, startDate: e.target.value }))}
+                style={{
+                  border: '1px solid #e2e8f0', borderRadius: '8px',
+                  padding: '0.35rem 0.6rem', fontSize: '0.85rem',
+                  fontWeight: 600, color: 'var(--text-main)',
+                  background: 'white', cursor: 'pointer', outline: 'none'
+                }}
+              />
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-muted)' }}>au</span>
+              <input
+                type="date"
+                value={customDateRange.endDate}
+                min={customDateRange.startDate}
+                max={today}
+                onChange={e => setCustomDateRange(prev => ({ ...prev, endDate: e.target.value }))}
+                style={{
+                  border: '1px solid #e2e8f0', borderRadius: '8px',
+                  padding: '0.35rem 0.6rem', fontSize: '0.85rem',
+                  fontWeight: 600, color: 'var(--text-main)',
+                  background: 'white', cursor: 'pointer', outline: 'none'
+                }}
+              />
+              <span style={{
+                fontSize: '0.78rem', fontWeight: 700,
+                color: 'var(--primary)',
+                background: 'rgba(99,102,255,0.08)',
+                padding: '0.25rem 0.6rem', borderRadius: '6px',
+                whiteSpace: 'nowrap'
+              }}>
+                {Math.round((new Date(customDateRange.endDate).getTime() - new Date(customDateRange.startDate).getTime()) / (1000 * 60 * 60 * 24) + 1)} jour(s)
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
