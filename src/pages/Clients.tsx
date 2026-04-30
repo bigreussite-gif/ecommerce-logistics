@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, Search, 
   X, TrendingUp, Eye, Download, MessageCircle, MapPin, 
@@ -13,6 +14,7 @@ import { useToast } from '../contexts/ToastContext';
 
 export const Clients = () => {
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const [clients, setClients] = useState<(Client & ClientFidelityStats & { identities: string[], locations: string[] })[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -388,7 +390,12 @@ export const Clients = () => {
 
               {/* Historical Timeline */}
               <div>
-                <h3 style={{ fontSize: '1.25rem', fontWeight: 900, marginBottom: '1.5rem', color: '#0f172a' }}>Parcours Client</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0, color: '#0f172a' }}>Parcours Client</h3>
+                  <button onClick={() => navigate(`/clients/${encodeURIComponent(selectedClient.client.nom_complet)}/historique`)} className="btn btn-outline btn-sm" style={{ borderRadius: '10px', fontWeight: 700, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <Eye size={16} /> Voir Historique Complet
+                  </button>
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {selectedClient.commandes.map((cmd) => (
                     <div key={cmd.id} onClick={() => setSelectedOrderId(cmd.id)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', background: '#ffffff', borderRadius: '20px', border: '1px solid #e2e8f0', cursor: 'pointer', transition: 'all 0.2s ease' }} className="hover-card">

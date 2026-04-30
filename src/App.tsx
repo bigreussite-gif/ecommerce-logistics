@@ -27,6 +27,7 @@ const lazyWithRetry = (componentImport: () => Promise<any>) =>
 
 const Dashboard = lazyWithRetry(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const Produits = lazyWithRetry(() => import('./pages/Produits').then(m => ({ default: m.Produits })));
+const ProduitHistorique = lazyWithRetry(() => import('./pages/ProduitHistorique').then(m => ({ default: m.ProduitHistorique })));
 const Commandes = lazyWithRetry(() => import('./pages/Commandes').then(m => ({ default: m.Commandes })));
 const CentreAppel = lazyWithRetry(() => import('./pages/CentreAppel').then(m => ({ default: m.CentreAppel })));
 const Logistique = lazyWithRetry(() => import('./pages/Logistique').then(m => ({ default: m.Logistique })));
@@ -34,6 +35,7 @@ const Livraison = lazyWithRetry(() => import('./pages/Livraison').then(m => ({ d
 const Historique = lazyWithRetry(() => import('./pages/Historique').then(m => ({ default: m.Historique })));
 const Caisse = lazyWithRetry(() => import('./pages/Caisse').then(m => ({ default: m.Caisse })));
 const Clients = lazyWithRetry(() => import('./pages/Clients').then(m => ({ default: m.Clients })));
+const ClientHistorique = lazyWithRetry(() => import('./pages/ClientHistorique').then(m => ({ default: m.ClientHistorique })));
 const Admin = lazyWithRetry(() => import('./pages/Admin').then(m => ({ default: m.Admin })));
 const Profil = lazyWithRetry(() => import('./pages/Profil').then(m => ({ default: m.Profil })));
 const Login = lazyWithRetry(() => import('./pages/Login').then(m => ({ default: m.Login })));
@@ -113,6 +115,10 @@ const AppRoutes = () => {
         <Route path="produits" element={
           <ProtectedRoute requiredPermission="PRODUITS"><Produits /></ProtectedRoute>
         } />
+        
+        <Route path="produits/:id/historique" element={
+          <ProtectedRoute requiredPermission="PRODUITS"><ProduitHistorique /></ProtectedRoute>
+        } />
 
         <Route path="achats" element={
           <ProtectedRoute requiredPermission="PRODUITS"><Approvisionnement /></ProtectedRoute>
@@ -172,6 +178,9 @@ const AppRoutes = () => {
         {/* CRM Web - Clients */}
         <Route path="clients" element={
           <ProtectedRoute requiredPermission="CLIENTS"><Clients /></ProtectedRoute>
+        } />
+        <Route path="clients/:id/historique" element={
+          <ProtectedRoute requiredPermission="CLIENTS"><ClientHistorique /></ProtectedRoute>
         } />
 
         {/* Staff Performance */}
