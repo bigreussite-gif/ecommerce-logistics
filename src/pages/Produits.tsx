@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Package, AlertTriangle, TrendingUp, Tag, Download } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, TrendingUp, Tag, Download, Activity, X, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { ProduitList } from '../components/produits/ProduitList';
 import { ProduitForm } from '../components/produits/ProduitForm';
 import { StockForm } from '../components/produits/StockForm';
@@ -9,6 +10,7 @@ import { getCategories } from '../services/adminService';
 import { Produit, Categorie } from '../types';
 
 export const Produits = () => {
+  const navigate = useNavigate();
   const [produits, setProduits] = useState<Produit[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +23,8 @@ export const Produits = () => {
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [stockProduit, setStockProduit] = useState<Produit | null>(null);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
+  
+  const [statsModalProduit, setStatsModalProduit] = useState<Produit | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -197,12 +201,70 @@ export const Produits = () => {
                 produits={filteredProduits}
                 onEdit={handleEdit}
                 onStock={handleStock}
+                onView={(p) => setStatsModalProduit(p)}
               />
             )}
           </div>
         </section>
 
       </div>
+
+      {/* POPUP RÉSUMÉ ACTIVITÉ PRODUIT */}
+      {statsModalProduit && (
+        <div className="modal-backdrop" onClick={() => setStatsModalProduit(null)}>
+          <div
+            className="modal-content card"
+            style={{ padding: 0, overflow: 'hidden', maxWidth: '500px', width: '96%' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header Popup */}
+            <div style={{ padding: '2rem', background: 'linear-gradient(135deg, var(--primary), #4f46e5)', color: 'white', position: 'relative' }}>
+              <button
+                onClick={() => setStatsModalProduit(null)}
+                style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer', transition: 'background 0.2s' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.3)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+              >
+                <X size={18} />
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                <div style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.2)', borderRadius: '14px' }}>
+                  <Activity size={24} />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 900 }}>Activité Produit</h2>
+                  <p style={{ margin: 0, opacity: 0.9, fontSize: '0.9rem', fontWeight: 600 }}>{statsModalProduit.nom}</p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '2rem', marginTop: '1.5rem' }}>
+                <div>
+                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8, fontWeight: 700 }}>Stock Actuel</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{statsModalProduit.stock_actuel}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8, fontWeight: 700 }}>Prix Unitaire</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{statsModalProduit.prix_vente?.toLocaleString()} F</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Contenu Popup */}
+            <div style={{ padding: '2rem', textAlign: 'center' }}>
+               <p style={{ color: 'var(--text-muted)', fontWeight: 600, marginBottom: '1.5rem', fontSize: '1.05rem' }}>
+                 Accédez à l'historique complet des mouvements de stock (entrées fournisseurs et sorties ventes) pour cet article.
+               </p>
+               <button
+                  className="btn btn-primary"
+                  onClick={() => navigate(`/produits/${statsModalProduit.id}/historique`)}
+                  style={{ width: '100%', height: '54px', borderRadius: '16px', fontSize: '1rem', fontWeight: 800, display: 'flex', justifyContent: 'space-between', padding: '0 1.5rem' }}
+                >
+                  <span>Voir Détail Complet</span>
+                  <ArrowRight size={20} />
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isProduitFormOpen && (
         <ProduitForm

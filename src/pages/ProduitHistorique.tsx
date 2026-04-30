@@ -25,7 +25,7 @@ export const ProduitHistorique = () => {
       const prod = allProds.find(p => p.id === id);
       if (prod) {
         setProduit(prod);
-        const movs = await getHistoriqueStock(id);
+        const movs = await getHistoriqueStock(id as string);
         setMouvements(movs);
       }
     } catch (e) {

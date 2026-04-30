@@ -1,14 +1,15 @@
 import { Produit } from '../../types';
-import { Edit, PackagePlus, Image as ImageIcon } from 'lucide-react';
+import { Edit, PackagePlus, Image as ImageIcon, Eye } from 'lucide-react';
 import { updateProduit } from '../../services/produitService';
 
 interface ProduitListProps {
   produits: Produit[];
   onEdit: (produit: Produit) => void;
   onStock: (produit: Produit) => void;
+  onView: (produit: Produit) => void;
 }
 
-export const ProduitList = ({ produits, onEdit, onStock }: ProduitListProps) => {
+export const ProduitList = ({ produits, onEdit, onStock, onView }: ProduitListProps) => {
   const toggleActive = async (produit: Produit) => {
     try {
       await updateProduit(produit.id, { actif: !produit.actif });
@@ -52,7 +53,7 @@ export const ProduitList = ({ produits, onEdit, onStock }: ProduitListProps) => 
           <col style={{ width: '20%' }} />
           <col style={{ width: '15%' }} />
           <col style={{ width: '12%' }} />
-          <col style={{ width: '100px' }} />
+          <col style={{ width: '150px' }} />
         </colgroup>
         <thead className="mobile-hide" style={{ position: 'sticky', top: 0, zIndex: 2 }}>
           <tr style={{ background: '#f8fafc' }}>
@@ -160,6 +161,14 @@ export const ProduitList = ({ produits, onEdit, onStock }: ProduitListProps) => 
               </td>
               <td style={{ textAlign: 'right' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                  <button 
+                    className="btn btn-outline" 
+                    style={{ padding: '0.5rem', borderRadius: '12px', height: '42px', width: '42px', borderColor: '#e2e8f0' }}
+                    onClick={() => onView(produit)}
+                    title="Voir l'activité"
+                  >
+                    <Eye size={18} strokeWidth={2.5} color="#3b82f6" />
+                  </button>
                   <button 
                     className="btn btn-outline" 
                     style={{ padding: '0.5rem', borderRadius: '12px', height: '42px', width: '42px', borderColor: '#e2e8f0' }}

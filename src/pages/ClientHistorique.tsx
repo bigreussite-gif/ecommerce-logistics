@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Calendar, TrendingUp, Download, AlertCircle, ShoppingBag } from 'lucide-react';
+import { ArrowLeft, User, Calendar, TrendingUp, Download, ShoppingBag } from 'lucide-react';
 import { getCommandes } from '../services/commandeService';
 import { Commande } from '../types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { insforge } from '../lib/insforge';
+
 
 export const ClientHistorique = () => {
   const { id } = useParams<{ id: string }>();
