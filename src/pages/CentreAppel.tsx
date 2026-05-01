@@ -54,8 +54,13 @@ export const CentreAppel = () => {
   const scriptsTemplates = [
     { 
       id: 'standard', 
-      title: "🚀 Confirmation Directe (CI)", 
-      text: "Bonjour [NOM_CLIENT], c'est [OPERATEUR] de Jachete Côte d'Ivoire. Je vous appelle pour caler votre livraison à [LOCALISATION]. Le livreur est déjà en train de charger pour votre zone là-bas. Je confirme que vous serez bien présent pour réceptionner votre colis tout à l'heure ? D'accord, on fait comme ça, restez à l'écoute." 
+      title: "🚀 Confirmation Directe (Abidjan)", 
+      text: "Bonjour [NOM_CLIENT] ! 🙌 C'est [OPERATEUR] de Jachete Côte d'Ivoire. Excellente nouvelle : votre commande est prête et notre livreur se déplace à [LOCALISATION] pour vous la remettre ! Vous payez à la livraison, aucune avance requise. Êtes-vous disponible pour réceptionner votre colis aujourd'hui ?" 
+    },
+    {
+      id: 'interieur',
+      title: "🚌 Commune Intérieure (Hors Abidjan)",
+      text: "Bonjour [NOM_CLIENT] ! 🙌 C'est [OPERATEUR] de Jachete CI. Super nouvelle : votre commande est prête à être expédiée vers [LOCALISATION] ! ✅ Voici comment ça marche : 1️⃣ Payez via Wave ou Orange Money au 📱 +225 07 57 22 87 31 2️⃣ Envoyez la capture de votre reçu par WhatsApp sur ce même numéro 3️⃣ Votre colis est expédié immédiatement à la gare routière de votre ville 4️⃣ Vous récupérez sur place — rapide et sécurisé ! 💡 Astuce : si vous avez un frère ou proche à Abidjan en ce moment, donnez-nous son contact — on livre directement ici, sans frais supplémentaires ! Après paiement, envoyez la capture ou appelez le +225 07 57 22 87 31."
     },
     { 
       id: 'recall', 
@@ -100,6 +105,8 @@ export const CentreAppel = () => {
 
   const getSuggestedScriptId = (commande: Commande) => {
     if (commande.statut_commande === 'a_rappeler') return 'recall';
+    const commune = (commande.commune_livraison || '').toLowerCase().trim();
+    if (commune && (commune.includes('intérieur') || commune.includes('interieur') || commune.includes('hors') || commune === 'autre')) return 'interieur';
     return 'standard';
   };
 

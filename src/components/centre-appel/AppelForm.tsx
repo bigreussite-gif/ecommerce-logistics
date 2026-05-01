@@ -188,6 +188,14 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
     }
   };
 
+  // Détection commune intérieure (hors Abidjan)
+  // Une commune est "intérieure" si son nom contient "intérieur", "interieur", "hors", ou "autre"
+  const isInteriorCommune = (commune: string): boolean => {
+    if (!commune) return false;
+    const n = commune.toLowerCase().trim();
+    return n.includes('intérieur') || n.includes('interieur') || n.includes('hors') || n === 'autre';
+  };
+
   const generateWhatsAppLink = () => {
     const nom = `*${commande.nom_client || 'Client'}*`;
     const ref = `*#${commande.id.slice(0, 8).toUpperCase()}*`;
@@ -200,37 +208,58 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
       : Math.round(subtotal * (Number(remiseValue) || 0) / 100);
 
     const total = Math.max(0, subtotal + delivery - discountAmount);
+    const communeEffective = communeLocal || commande.commune_livraison || '';
+    const isInterior = isInteriorCommune(communeEffective);
 
     const bSubtotal = `*${subtotal.toLocaleString()} CFA*`;
     const bDelivery = `*${delivery > 0 ? delivery.toLocaleString() + " CFA" : "À définir"}*`;
     const bDiscount = discountAmount > 0 ? `\n- Remise : *-${discountAmount.toLocaleString()} CFA*` : "";
     const bTotal = `*${total.toLocaleString()} CFA*`;
 
-    const summary = `\n\n*Résumé de votre commande :*\n${articlesList}\n\n- Articles : ${bSubtotal}\n- Livraison : ${bDelivery}${bDiscount}\n*Total à payer : ${bTotal}*`;
+    const summary = `\n\n📦 *Détails de votre commande ${ref} :*\n${articlesList}\n\n- Sous-total articles : ${bSubtotal}\n- Frais d'envoi : ${bDelivery}${bDiscount}\n💰 *Total à régler : ${bTotal}*`;
 
     let text = "";
 
     if (resultat === 'a_rappeler' || resultat === 'injoignable') {
-      text = `Bonjour ${nom},\n\nNous n'avons pas pu effectuer votre livraison car nous n'avons pas pu vous joindre (soit par défaut du livreur ou votre contretemps).\n\nPouvons-nous s'il vous plaît relancer votre commande ${ref} pour le jour suivant ?${summary}`;
-    } else if (resultat === 'annulee') {
-      text = `Bonjour ${nom},\n\nNous avons pris note de l'annulation de votre commande ${ref}.\n\nPourriez-vous nous indiquer les motifs de cette annulation s'il vous plaît ? Souhaitez-vous vraiment maintenir l'annulation ?${summary}`;
-    } else if (resultat === 'echouee') {
-      text = `Bonjour ${nom},\n\nNous avons constaté un souci lors de la livraison de votre commande ${ref}.\n\nSouhaitez-vous que nous la reprogrammions pour demain ? Nous aimerions savoir si vous êtes toujours intéressé par vos articles :${summary}`;
-    } else {
-      // Default: Validation template
-      let missingInfo = "";
-      if (!commande.commune_livraison && !communeLocal) missingInfo += "- *Votre commune de livraison*\n";
-      if (!commande.adresse_livraison && !adresseLocal) missingInfo += "- *Votre adresse exacte (lieu de livraison)*\n";
-
-      text = `Bonjour ${nom},\n\nVotre commande ${ref} est bien enregistrée chez nous.\nSouhaitez-vous confirmer la livraison ?${summary}\n\n`;
-
-      if (missingInfo) {
-        text += `Pour finaliser l'expédition, merci de nous confirmer :\n${missingInfo}\n`;
+      if (isInterior && communeEffective) {
+        text = `Bonjour ${nom} 👋\n\nC'est votre conseiller chez *Jachete Côte d'Ivoire*.\n\nNous avons essayé de vous joindre plusieurs fois pour votre commande mais sans succès.\n\nVotre colis est prêt et attend d'être expédié vers *${communeEffective}* ! 🚀\n\nPour ne pas perdre votre commande, pouvez-vous nous confirmer si vous êtes toujours disponible ? Répondez simplement *OUI* et on relance tout de suite.${summary}`;
+      } else {
+        text = `Bonjour ${nom} 👋\n\nC'est votre conseiller de *Jachete Côte d'Ivoire*.\n\nNous avons tenté de vous joindre pour votre livraison mais sans succès. Votre colis est prêt ! 📦\n\nPouvons-nous reprogrammer votre livraison pour demain ? Répondez *OUI* et le livreur sera chez vous dans les plus brefs délais.${summary}`;
       }
-      text += "Merci de nous répondre pour confirmer la livraison.";
+    } else if (resultat === 'annulee') {
+      text = `Bonjour ${nom},\n\nNous avons bien pris note de l'annulation de votre commande ${ref}.\n\nNous sommes vraiment désolés de vous voir partir... 😔 Pourriez-vous nous dire ce qui ne vous a pas convenu ? Votre avis compte énormément pour nous améliorer.\n\nSi c'est une question de délai ou de prix, dites-le nous, on peut trouver une solution ensemble. 🤝${summary}`;
+    } else if (resultat === 'echouee') {
+      if (isInterior && communeEffective) {
+        text = `Bonjour ${nom} 👋\n\nVotre conseiller chez *Jachete Côte d'Ivoire* à l'appareil.\n\nNous avons eu un empêchement lors de l'expédition de votre commande vers *${communeEffective}*. Nous nous en excusons sincèrement. 🙏\n\nBonne nouvelle : votre colis est toujours disponible et prêt à partir ! Confirmez-nous et on expédie dès demain.${summary}`;
+      } else {
+        text = `Bonjour ${nom} 👋\n\nVotre conseiller de *Jachete Côte d'Ivoire* ici.\n\nNous avons eu un souci lors de votre livraison et nous en sommes vraiment désolés. 🙏\n\nVotre livreur sera chez vous demain à la première heure en *priorité absolue*. Êtes-vous toujours disponible ?${summary}`;
+      }
+    } else {
+      // Validation / Confirmation
+      if (isInterior && communeEffective) {
+        // Lieu exact de livraison
+        const lieuExact = [
+          communeEffective,
+          (commande.quartier_livraison || ''),
+          (adresseLocal || commande.adresse_livraison || '')
+        ].filter(Boolean).join(', ');
+
+        text = `Bonjour ${nom} ! 🙌\n\nC'est votre conseiller de *Jachete Côte d'Ivoire*. Excellente nouvelle, votre commande est *confirmée* ! 🚀\n${summary}\n\n📍 *Lieu de livraison prévu :* ${lieuExact}\n⚠️ Comme vous êtes en *zone intérieure (hors Abidjan)*, votre colis sera expédié à la *gare routière de ${communeEffective}* pour que vous le récupériez sur place.\n\n✅ *Comment procéder :*\n1️⃣ Payez via *Wave* ou *Orange Money* au numéro :\n📱 *+225 07 57 22 87 31*\n2️⃣ Envoyez-nous la *capture de votre reçu* par WhatsApp sur ce même numéro\n3️⃣ On expédie immédiatement — vous récupérez à la gare !\n\n💡 *Alternative :* Vous avez un frère ou un proche actuellement à Abidjan ? Donnez-nous son contact — notre livreur lui remet le colis directement ici, sans frais supplémentaires !\n\n📲 Après paiement, envoyez la capture ou appelez-nous au *+225 07 57 22 87 31*. On s'occupe du reste ! 💪`;
+      } else {
+        let missingInfo = "";
+        if (!commande.commune_livraison && !communeLocal) missingInfo += "- *Votre commune de livraison*\n";
+        if (!commande.adresse_livraison && !adresseLocal) missingInfo += "- *Votre adresse exacte*\n";
+
+        text = `Bonjour ${nom} ! 🙌\n\nC'est votre conseiller de *Jachete Côte d'Ivoire*. Votre commande est *confirmée et en cours de préparation* ! 🎉\n\nUn livreur se déplacera chez vous à *${communeEffective || 'votre adresse'}* pour vous remettre votre colis. Vous payez à la livraison, *aucune avance requise*.${summary}\n\n`;
+
+        if (missingInfo) {
+          text += `📝 Pour finaliser, merci de nous confirmer :\n${missingInfo}\n`;
+        }
+        text += "Répondez *OUI* pour confirmer et notre équipe prendra en charge votre livraison ! 🚚";
+      }
     }
     
-    const signature = "\n\n*L'équipe Jachete Côte d'Ivoire*\nwww.jachete.ci\n+225 01 72 57 13 52 ,";
+    const signature = "\n\n*Jachete Côte d'Ivoire* 🛍️\nwww.jachete.ci | +225 01 72 57 13 52";
     text += signature;
     
     let phone = (commande.telephone_client || '').replace(/\D/g, '');
@@ -594,6 +623,9 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
                 <select className="form-select" required value={communeLocal} onChange={e => handleCommuneChange(e.target.value)} style={{ background: 'white', height: '40px' }}>
                   <option value="">Sélectionner une commune...</option>
                   {communesDb.map(c => <option key={c.id} value={c.nom}>{c.nom} ({c.tarif_livraison} CFA)</option>)}
+                  <option disabled style={{ color: '#94a3b8' }}>── Hors Abidjan ──</option>
+                  <option value="Intérieur">🚌 Intérieur (Hors Abidjan) — Envoi Gare</option>
+                  <option value="Autre">Autre (Zone non définie)</option>
                 </select>
               </div>
               <div className="form-group" style={{ marginBottom: 0 }}>

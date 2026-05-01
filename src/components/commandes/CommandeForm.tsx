@@ -331,7 +331,9 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
                  <select className="form-select" style={{ background: 'white', height: '48px' }} required value={clientRecherche.commune || ''} onChange={e => setClientRecherche({...clientRecherche, commune: e.target.value})}>
                   <option value="">Sélectionner une zone...</option>
                   {communesDb.map(c => <option key={c.id} value={c.nom}>{c.nom} ({c.tarif_livraison.toLocaleString()} CFA)</option>)}
-                  <option value="Autre">Autre (Hors zone)</option>
+                  <option disabled style={{ fontWeight: 800, color: '#94a3b8' }}>── Hors Abidjan ──</option>
+                  <option value="Intérieur">🚌 Intérieur (Hors Abidjan) — Envoi Gare</option>
+                  <option value="Autre">Autre (Zone non définie)</option>
                 </select>
               </div>
 
