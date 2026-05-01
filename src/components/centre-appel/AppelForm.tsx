@@ -222,17 +222,17 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
 
     if (resultat === 'a_rappeler' || resultat === 'injoignable') {
       if (isInterior && communeEffective) {
-        text = `Bonjour ${nom} 👋\n\nC'est votre conseiller chez *Jachete Côte d'Ivoire*.\n\nNous avons essayé de vous joindre plusieurs fois pour votre commande mais sans succès.\n\nVotre colis est prêt et attend d'être expédié vers *${communeEffective}* ! 🚀\n\nPour ne pas perdre votre commande, pouvez-vous nous confirmer si vous êtes toujours disponible ? Répondez simplement *OUI* et on relance tout de suite.${summary}`;
+        text = `Bonjour ${nom} 👋\n\nC'est votre conseiller chez *Jachete Côte d'Ivoire*.\n\nNous avons essayé de vous joindre plusieurs fois pour votre commande mais sans succès.\n\nVotre colis est prêt et attend d'être expédié vers *${communeEffective}* ! 🚀\n\nPour ne pas perdre votre commande, pouvez-vous nous confirmer si vous êtes toujours disponible ? Répondez simplement *OUI* et on relance tout de suite.${summary}\n\n📞 Pour toute question, appelez-nous au *+225 01 72 57 13 52*.`;
       } else {
-        text = `Bonjour ${nom} 👋\n\nC'est votre conseiller de *Jachete Côte d'Ivoire*.\n\nNous avons tenté de vous joindre pour votre livraison mais sans succès. Votre colis est prêt ! 📦\n\nPouvons-nous reprogrammer votre livraison pour demain ? Répondez *OUI* et le livreur sera chez vous dans les plus brefs délais.${summary}`;
+        text = `Bonjour ${nom} 👋\n\nC'est votre conseiller de *Jachete Côte d'Ivoire*.\n\nNous avons tenté de vous joindre pour votre livraison mais sans succès. Votre colis est prêt ! 📦\n\nPouvons-nous reprogrammer votre livraison pour demain ? Répondez *OUI* et le livreur sera chez vous dans les plus brefs délais.${summary}\n\n📞 Besoin d'aide ? Appelez-nous au *+225 01 72 57 13 52*.`;
       }
     } else if (resultat === 'annulee') {
       text = `Bonjour ${nom} 👋\n\nNous avons bien noté l'annulation de votre commande ${ref}. On ne va pas vous retenir si vous avez changé d'avis... *mais avant de partir*, on voulait juste vous dire quelque chose. 🙏\n\n🔥 *L'article que vous aviez choisi part très vite.* Les stocks sont limités et d'autres clients l'ont déjà commandé aujourd'hui. Si vous hésitez encore, il risque de ne plus être disponible dans quelques jours.\n\n💬 *Qu'est-ce qui vous a fait hésiter ?*\nSi c'est le prix, le délai ou une inquiétude sur la livraison — dites-le nous franchement. On trouvera une solution ensemble. Chez *Jachete Côte d'Ivoire*, chaque client compte et on est là pour vous.\n\n🎁 *Offre spéciale pour vous :* Si vous relancez votre commande maintenant, on vous réserve une *attention spéciale* en cadeau de notre part. Répondez juste *OUI* ici et on s'en occupe immédiatement !\n${summary}\n\n🛍️ *Et si vous cherchez autre chose ?*\nNotre boutique regorge d'articles de qualité livrés partout en Côte d'Ivoire :\n👉 *www.jachete.ci*\n\nParcourez nos nouveautés, nos promos du moment et commandez en quelques clics. La livraison est rapide et sécurisée — à Abidjan et dans tout le pays ! 🚀\n\n📞 Appelez notre service client au *+225 01 72 57 13 52* pour toute question. À très bientôt ! 🤝`;
     } else if (resultat === 'echouee') {
       if (isInterior && communeEffective) {
-        text = `Bonjour ${nom} 👋\n\nVotre conseiller chez *Jachete Côte d'Ivoire* à l'appareil.\n\nNous avons eu un empêchement lors de l'expédition de votre commande vers *${communeEffective}*. Nous nous en excusons sincèrement. 🙏\n\nBonne nouvelle : votre colis est toujours disponible et prêt à partir ! Confirmez-nous et on expédie dès demain.${summary}`;
+        text = `Bonjour ${nom} 👋\n\nVotre conseiller chez *Jachete Côte d'Ivoire* à l'appareil.\n\nNous avons eu un empêchement lors de l'expédition de votre commande vers *${communeEffective}*. Nous nous en excusons sincèrement. 🙏\n\nBonne nouvelle : votre colis est toujours disponible et prêt à partir ! Confirmez-nous et on expédie dès demain.${summary}\n\n📞 Appelez-nous au *+225 01 72 57 13 52* ou répondez *OUI* ici pour relancer.`;
       } else {
-        text = `Bonjour ${nom} 👋\n\nVotre conseiller de *Jachete Côte d'Ivoire* ici.\n\nNous avons eu un souci lors de votre livraison et nous en sommes vraiment désolés. 🙏\n\nVotre livreur sera chez vous demain à la première heure en *priorité absolue*. Êtes-vous toujours disponible ?${summary}`;
+        text = `Bonjour ${nom} 👋\n\nVotre conseiller de *Jachete Côte d'Ivoire* ici.\n\nNous avons eu un souci lors de votre livraison et nous en sommes vraiment désolés. 🙏\n\nVotre livreur sera chez vous demain à la première heure en *priorité absolue*. Êtes-vous toujours disponible ?${summary}\n\n📞 Appelez-nous au *+225 01 72 57 13 52* pour confirmer le creneau.`;
       }
     } else {
       // Validation / Confirmation
@@ -255,7 +255,7 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
         if (missingInfo) {
           text += `📝 Pour finaliser, merci de nous confirmer :\n${missingInfo}\n`;
         }
-        text += "Répondez *OUI* pour confirmer et notre équipe prendra en charge votre livraison ! 🚚";
+        text += `Répondez *OUI* pour confirmer et notre livreur sera chez vous rapidement ! 🚚\n\n📞 Questions ? Appelez-nous au *+225 01 72 57 13 52*.`;
       }
     }
     
