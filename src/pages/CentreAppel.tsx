@@ -60,7 +60,7 @@ export const CentreAppel = () => {
     {
       id: 'interieur',
       title: "🚌 Commune Intérieure (Hors Abidjan)",
-      text: "Bonjour [NOM_CLIENT] ! 🙌 C'est [OPERATEUR] de Jachete CI. Super nouvelle : votre commande est prête à être expédiée vers [LOCALISATION] ! ✅ Voici comment ça marche : 1️⃣ Payez via Wave ou Orange Money au 📱 +225 07 57 22 87 31 2️⃣ Envoyez la capture de votre reçu par WhatsApp sur ce même numéro 3️⃣ Votre colis est expédié immédiatement à la gare routière de votre ville 4️⃣ Vous récupérez sur place — rapide et sécurisé ! 💡 Astuce : si vous avez un frère ou proche à Abidjan en ce moment, donnez-nous son contact — on livre directement ici, sans frais supplémentaires ! Après paiement, envoyez la capture ou appelez le +225 07 57 22 87 31."
+      text: "Bonjour [NOM_CLIENT] ! 🙌 C'est [OPERATEUR] de Jachete CI. Super nouvelle : votre commande est prête à être expédiée vers [LOCALISATION] ! ✅ Voici comment ça marche : 1️⃣ Payez via Wave ou Orange Money au numéro de dépôt 💸 +225 07 57 22 87 31 2️⃣ Envoyez la capture de votre reçu par WhatsApp sur ce même numéro 3️⃣ Votre colis est expédié immédiatement à la gare routière de votre ville 4️⃣ Vous récupérez sur place — rapide et sécurisé ! 💡 Astuce : si vous avez un frère ou proche à Abidjan en ce moment, donnez-nous son contact — on livre directement ici ! Après paiement, envoyez la capture au +225 07 57 22 87 31 ou appelez notre service au +225 01 72 57 13 52."
     },
     { 
       id: 'recall', 
