@@ -78,10 +78,12 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
 
   const handleSearchClient = async () => {
     if (!clientRecherche.telephone) return;
-    const found = await searchClientByPhone(clientRecherche.telephone);
+    // Normalize: keep only digits, take last 10
+    const phoneNorm = clientRecherche.telephone.replace(/\D/g, '').slice(-10);
+    const found = await searchClientByPhone(phoneNorm || clientRecherche.telephone);
     if (found) {
       setClientId(found.id);
-      setClientRecherche(found);
+      setClientRecherche(prev => ({ ...prev, ...found }));
     } else {
       setClientId(null);
       showToast("Aucun client trouvé avec ce numéro. Vous pouvez saisir les informations du nouveau client.", "info");
@@ -175,12 +177,14 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
     try {
       let finalClientId = clientId;
       if (!finalClientId && clientRecherche.telephone) {
-        const existing = await searchClientByPhone(clientRecherche.telephone);
+        // Normalize phone to avoid duplicate key violations (UNIQUE constraint)
+        const phoneNorm = clientRecherche.telephone.replace(/\D/g, '').slice(-10) || clientRecherche.telephone;
+        const existing = await searchClientByPhone(phoneNorm);
         if (existing) {
           finalClientId = existing.id;
         } else {
           finalClientId = await createClient({
-            telephone: clientRecherche.telephone,
+            telephone: phoneNorm,
             telephone_secondaire: clientRecherche.telephone_secondaire || '',
             nom_complet: clientRecherche.nom_complet!,
             email: clientRecherche.email || '',
@@ -245,9 +249,14 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
         showToast("Commande créée avec succès !", "success");
       }
       onSave();
-    } catch (error) {
-      console.error(error);
-      showToast(editingCommande ? "Erreur lors de la mise à jour." : "Erreur lors de la création.", "error");
+    } catch (error: any) {
+      console.error('Erreur création/modification commande:', error);
+      const msg = error?.message || '';
+      if (msg.includes('duplicate') || msg.includes('unique') || error?.code === '23505') {
+        showToast("Ce numéro de téléphone est déjà utilisé par un autre client. Veuillez vérifier.", "error");
+      } else {
+        showToast(editingCommande ? `Erreur lors de la mise à jour: ${msg || 'inconnu'}` : `Erreur lors de la création: ${msg || 'inconnu'}`, "error");
+      }
     } finally {
       setLoading(false);
     }

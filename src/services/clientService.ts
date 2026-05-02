@@ -31,14 +31,38 @@ export const getClientCommandes = async (clientId: string): Promise<Commande[]> 
 };
 
 export const searchClientByPhone = async (phone: string): Promise<Client | null> => {
-  const { data, error } = await insforge.database
-    .from('clients')
-    .select('*')
-    .or(`telephone.eq.${phone},telephone_secondaire.eq.${phone}`)
-    .single();
+  if (!phone) return null;
+  
+  // Build a set of phone variants to search (raw, normalized, with/without country code)
+  const clean = phone.replace(/\D/g, '');
+  const variants = new Set<string>();
+  variants.add(phone);           // raw input
+  variants.add(clean);           // digits only
+  variants.add(clean.slice(-10)); // last 10 digits
+  if (clean.length === 10) {
+    variants.add(`225${clean}`);     // add CI prefix
+    variants.add(`00225${clean}`);
+    variants.add(`+225${clean}`);
+  } else if (clean.startsWith('225') && clean.length === 13) {
+    variants.add(clean.slice(3));  // strip 225 prefix
+  } else if (clean.startsWith('00225') && clean.length === 15) {
+    variants.add(clean.slice(5));  // strip 00225 prefix
+  }
 
-  if (error && error.code !== 'PGRST116') throw error; // PGRST116 is "no rows returned"
-  return data || null;
+  const variantList = Array.from(variants).filter(v => v.length >= 8);
+  
+  for (const variant of variantList) {
+    const { data, error } = await insforge.database
+      .from('clients')
+      .select('*')
+      .or(`telephone.eq.${variant},telephone_secondaire.eq.${variant}`)
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') continue; // skip on error, try next variant
+    if (data) return data as Client;
+  }
+
+  return null;
 };
 
 export const createClient = async (client: Omit<Client, 'id'>): Promise<string> => {
@@ -47,7 +71,15 @@ export const createClient = async (client: Omit<Client, 'id'>): Promise<string> 
     .insert([client])
     .select();
 
-  if (error) throw error;
+  if (error) {
+    // Handle unique constraint violation on telephone (code 23505)
+    if (error.code === '23505' && client.telephone) {
+      // Client already exists with this phone — fetch and return the existing one
+      const existing = await searchClientByPhone(client.telephone);
+      if (existing?.id) return existing.id;
+    }
+    throw error;
+  }
   return data?.[0]?.id;
 };
 
