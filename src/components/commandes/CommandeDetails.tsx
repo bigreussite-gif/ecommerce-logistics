@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, ShoppingBag, User, MapPin, Receipt, Phone, RefreshCw, RotateCcw, PackageX, MessageCircle, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { X, ShoppingBag, User, MapPin, Receipt, Phone, RefreshCw, RotateCcw, PackageX, MessageCircle, AlertCircle, CheckCircle, Clock, Edit3 } from 'lucide-react';
 import { getCommandeWithLines, updateCommandeStatus, reactivateFailedCommande, registerReturn, logWhatsAppMessage } from '../../services/commandeService';
+import { getCommunes } from '../../services/adminService';
 import { useToast } from '../../contexts/ToastContext';
-import type { Commande, LigneCommande } from '../../types';
+import type { Commande, LigneCommande, Commune } from '../../types';
 
 interface CommandeDetailsProps {
   commandeId: string;
@@ -101,6 +102,50 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
   const [returnSolution, setReturnSolution] = useState('RETOUR DIRECT STOCK');
   const [returnNotes, setReturnNotes] = useState('');
   const [isDefective, setIsDefective] = useState(false);
+
+  // Zone assignment states
+  const [showZoneForm, setShowZoneForm] = useState(false);
+  const [communes, setCommunes] = useState<Commune[]>([]);
+  const [zoneCommune, setZoneCommune] = useState('');
+  const [zoneAdresse, setZoneAdresse] = useState('');
+  const [zoneQuartier, setZoneQuartier] = useState('');
+
+  const handleOpenZoneForm = async () => {
+    if (communes.length === 0) {
+      try {
+        const list = await getCommunes();
+        setCommunes(list);
+      } catch (e) {
+        console.error('Erreur chargement communes:', e);
+      }
+    }
+    setZoneCommune(commande?.commune_livraison || '');
+    setZoneAdresse(commande?.adresse_livraison || '');
+    setZoneQuartier(commande?.quartier_livraison || '');
+    setShowZoneForm(true);
+  };
+
+  const handleSaveZone = async () => {
+    if (!commande || !zoneCommune.trim()) return;
+    setIsUpdating(true);
+    try {
+      await updateCommandeStatus(commande.id, commande.statut_commande, {
+        commune_livraison: zoneCommune.trim(),
+        adresse_livraison: zoneAdresse.trim(),
+        quartier_livraison: zoneQuartier.trim(),
+      });
+      showToast('Zone de livraison enregistrée avec succès !', 'success');
+      // Refresh commande data
+      const updated = await getCommandeWithLines(commande.id);
+      setCommande(updated);
+      setShowZoneForm(false);
+    } catch (error) {
+      console.error(error);
+      showToast('Erreur lors de la mise à jour de la zone.', 'error');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const handleReturnOrder = async () => {
     if (!commande || !returnMotif) return;
@@ -324,6 +369,32 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
                    <div style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 800, marginTop: '0.25rem' }}>
                      📍 {commande.commune_livraison || <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>Commune non précisée</span>}
                    </div>
+                   
+                   {/* ⚠️ ALERTE ZONE MANQUANTE */}
+                   {!commande.commune_livraison && (
+                     <div style={{ marginTop: '0.75rem', padding: '0.85rem 1rem', background: 'rgba(245, 158, 11, 0.08)', border: '1px dashed #f59e0b', borderRadius: '14px', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                       <AlertCircle size={18} color="#d97706" style={{ flexShrink: 0 }} />
+                       <div style={{ flex: 1 }}>
+                         <div style={{ fontSize: '0.75rem', fontWeight: 900, color: '#92400e', textTransform: 'uppercase', marginBottom: '2px' }}>Zone de livraison manquante</div>
+                         <div style={{ fontSize: '0.75rem', color: '#b45309', fontWeight: 600 }}>Cette commande ne peut pas être affectée sans zone.</div>
+                       </div>
+                       <button
+                         onClick={handleOpenZoneForm}
+                         style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.75rem', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}
+                       >
+                         <Edit3 size={13} /> Ajouter
+                       </button>
+                     </div>
+                   )}
+                   {/* ✏️ BOUTON MODIFIER ZONE (quand elle existe déjà) */}
+                   {commande.commune_livraison && (
+                     <button
+                       onClick={handleOpenZoneForm}
+                       style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.3rem 0.6rem', background: 'transparent', color: 'var(--primary)', border: '1px solid rgba(99,102,255,0.25)', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer' }}
+                     >
+                       <Edit3 size={12} /> Modifier la zone
+                     </button>
+                   )}
                 </div>
              </div>
 
@@ -506,6 +577,100 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
           <button className="btn btn-outline" onClick={onClose} style={{ borderRadius: '12px', fontWeight: 700 }}>Fermer</button>
         </div>
       </div>
+
+      {/* MODAL ZONE DE LIVRAISON */}
+      {showZoneForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(6px)' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '440px', padding: '2.5rem', borderRadius: '32px', boxShadow: '0 30px 60px -10px rgba(0,0,0,0.4)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '14px', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 6px 12px rgba(245,158,11,0.3)' }}>
+                <MapPin size={20} color="white" />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.2rem', color: '#1e293b' }}>Zone de livraison</h3>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>Définir ou modifier la destination</p>
+              </div>
+              <button onClick={() => setShowZoneForm(false)} style={{ marginLeft: 'auto', background: '#f1f5f9', border: 'none', borderRadius: '10px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b', flexShrink: 0 }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label" style={{ fontWeight: 800, fontSize: '0.85rem' }}>Commune / Zone de livraison <span style={{ color: '#ef4444' }}>*</span></label>
+              {communes.length > 0 ? (
+                <select
+                  className="form-select"
+                  value={zoneCommune}
+                  onChange={e => setZoneCommune(e.target.value)}
+                  style={{ borderRadius: '14px', background: '#f8fafc', height: '48px', fontWeight: 700, borderColor: !zoneCommune ? '#f59e0b' : undefined }}
+                >
+                  <option value="">-- Sélectionner une commune --</option>
+                  {communes.map(c => (
+                    <option key={c.id} value={c.nom}>{c.nom} — {c.tarif_livraison.toLocaleString()} CFA</option>
+                  ))}
+                  <option value="Intérieur / Hors Abidjan">Intérieur / Hors Abidjan</option>
+                </select>
+              ) : (
+                <input
+                  className="form-input"
+                  value={zoneCommune}
+                  onChange={e => setZoneCommune(e.target.value)}
+                  placeholder="Ex: Cocody, Yopougon, San-Pédro..."
+                  style={{ borderRadius: '14px', background: '#f8fafc', padding: '0.85rem 1rem', fontWeight: 600, borderColor: !zoneCommune ? '#f59e0b' : undefined }}
+                />
+              )}
+            </div>
+
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label className="form-label" style={{ fontWeight: 800, fontSize: '0.85rem' }}>Quartier</label>
+              <input
+                className="form-input"
+                value={zoneQuartier}
+                onChange={e => setZoneQuartier(e.target.value)}
+                placeholder="Ex: Riviera 3, Deux Plateaux..."
+                style={{ borderRadius: '14px', background: '#f8fafc', padding: '0.85rem 1rem', fontWeight: 600 }}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label className="form-label" style={{ fontWeight: 800, fontSize: '0.85rem' }}>Adresse précise</label>
+              <textarea
+                className="form-input"
+                rows={2}
+                value={zoneAdresse}
+                onChange={e => setZoneAdresse(e.target.value)}
+                placeholder="Ex: En face du carrefour Shell, près du marché..."
+                style={{ borderRadius: '14px', background: '#f8fafc', padding: '0.85rem 1rem', fontWeight: 600, resize: 'none' }}
+              />
+            </div>
+
+            {!zoneCommune && (
+              <div style={{ marginTop: '0.75rem', padding: '0.75rem 1rem', background: 'rgba(245,158,11,0.07)', borderRadius: '12px', border: '1px solid #fde68a', fontSize: '0.78rem', color: '#92400e', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <AlertCircle size={14} /> La commune est obligatoire pour affecter cette commande.
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '2rem' }}>
+              <button
+                className="btn btn-outline"
+                style={{ flex: 1, height: '50px', borderRadius: '14px', fontWeight: 700 }}
+                onClick={() => setShowZoneForm(false)}
+              >
+                Annuler
+              </button>
+              <button
+                className="btn btn-primary"
+                style={{ flex: 2, background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', height: '50px', borderRadius: '14px', fontWeight: 800, border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', boxShadow: '0 8px 16px rgba(245,158,11,0.3)' }}
+                onClick={handleSaveZone}
+                disabled={!zoneCommune.trim() || isUpdating}
+              >
+                <CheckCircle size={18} />
+                {isUpdating ? 'Enregistrement...' : 'Enregistrer la zone'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showReturnForm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.8)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(5px)' }}>

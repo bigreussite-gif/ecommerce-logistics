@@ -226,6 +226,7 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   if (additionalData.montant_total !== undefined) updatePayload.montant_total = additionalData.montant_total;
   if (additionalData.commune_livraison !== undefined) updatePayload.commune_livraison = additionalData.commune_livraison;
   if (additionalData.adresse_livraison !== undefined) updatePayload.adresse_livraison = additionalData.adresse_livraison;
+  if (additionalData.quartier_livraison !== undefined) updatePayload.quartier_livraison = additionalData.quartier_livraison;
   if (additionalData.date_livraison_effective !== undefined) updatePayload.date_livraison_effective = additionalData.date_livraison_effective;
   if (additionalData.date_livraison_prevue !== undefined) updatePayload.date_livraison_prevue = additionalData.date_livraison_prevue;
   if (additionalData.date_validation_appel !== undefined) updatePayload.date_validation_appel = additionalData.date_validation_appel;
