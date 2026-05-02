@@ -580,8 +580,8 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
 
       {/* MODAL ZONE DE LIVRAISON */}
       {showZoneForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(6px)' }}>
-          <div className="card" style={{ width: '100%', maxWidth: '440px', padding: '2.5rem', borderRadius: '32px', boxShadow: '0 30px 60px -10px rgba(0,0,0,0.4)' }}>
+        <div onClick={e => e.stopPropagation()} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(6px)' }}>
+          <div className="card" onClick={e => e.stopPropagation()} style={{ width: '100%', maxWidth: '440px', padding: '2.5rem', borderRadius: '32px', boxShadow: '0 30px 60px -10px rgba(0,0,0,0.4)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.75rem' }}>
               <div style={{ width: '40px', height: '40px', borderRadius: '14px', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 6px 12px rgba(245,158,11,0.3)' }}>
                 <MapPin size={20} color="white" />
