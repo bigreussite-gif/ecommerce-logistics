@@ -749,12 +749,19 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
     });
 
     const cleanPhone = (p: any): string => String(p || '').replace(/\D/g, '').slice(-10);
-    const phonesInFile = Array.from(new Set(data.map(item => cleanPhone(item.client.telephone)).filter(p => p.length >= 8)));
+    const rawPhones = data.map(item => String(item.client?.telephone || '').trim()).filter(p => p.length >= 8);
+    const cleanPhones = data.map(item => cleanPhone(item.client?.telephone)).filter(p => p.length >= 8);
+    
+    // We must search both the cleaned version and the exact raw version to avoid missing existing exact matches
+    const phonesInFile = Array.from(new Set([...rawPhones, ...cleanPhones]));
+    
+    // Format the array for Supabase .in() filter (wrap in double quotes to handle spaces/plus signs)
+    const formattedPhones = phonesInFile.map(p => `"${p}"`).join(',');
     
     const { data: existingClients } = await insforge.database
       .from('clients')
       .select('id, telephone, telephone_secondaire')
-      .or(`telephone.in.(${phonesInFile.join(',')}),telephone_secondaire.in.(${phonesInFile.join(',')})`);
+      .or(`telephone.in.(${formattedPhones}),telephone_secondaire.in.(${formattedPhones})`);
     
     const clientMapByPhone = new Map<string, string>();
     (existingClients || []).forEach(c => {
