@@ -283,6 +283,12 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
 export const bulkUpdateCommandeStatus = async (ids: string[], status: string, additionalData: any = {}): Promise<void> => {
   if (ids.length === 0) return;
 
+  // Vérification et rafraîchissement de la session pour éviter l'erreur "JWT expired"
+  const { data: authData, error: authError } = await insforge.auth.getCurrentUser();
+  if (authError || !authData?.user) {
+    throw new Error("Votre session a expiré. Veuillez recharger la page pour vous reconnecter.");
+  }
+
   // 1. Get current statuses to determine stock movements
   const { data: currentCmds } = await insforge.database
     .from('commandes')
@@ -725,6 +731,12 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
   if (!data || data.length === 0) return { count: 0 };
 
   try {
+    // Vérification et rafraîchissement de la session pour éviter l'erreur "JWT expired"
+    const { data: authData, error: authError } = await insforge.auth.getCurrentUser();
+    if (authError || !authData?.user) {
+      throw new Error("Votre session a expiré. Veuillez recharger la page pour vous reconnecter.");
+    }
+
     const { data: products } = await insforge.database
       .from('produits')
       .select('id, nom, sku, prix_vente, stock_actuel');
