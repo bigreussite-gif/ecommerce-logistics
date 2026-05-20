@@ -18,6 +18,12 @@ export const Logistique = () => {
   const [selectedCommands, setSelectedCommands] = useState<Set<string>>(new Set());
   const [selectedLivreur, setSelectedLivreur] = useState<string>('');
   const [selectedCommandeId, setSelectedCommandeId] = useState<string | null>(null);
+  const [selectedZone, setSelectedZone] = useState<string>('');
+
+  const availableZones = Array.from(new Set(commandes.map(c => c.commune_livraison).filter(Boolean))).sort();
+  const filteredCommandes = selectedZone 
+    ? commandes.filter(c => c.commune_livraison === selectedZone)
+    : commandes;
 
   const fetchData = async () => {
     setLoading(true);
@@ -146,15 +152,30 @@ export const Logistique = () => {
         
         {/* LISTE DES COMMANDES */}
         <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
-          <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
+          <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', flexWrap: 'wrap', gap: '1rem' }}>
             <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>
               Commandes Disponibles
               <span style={{ marginLeft: '1rem', padding: '0.2rem 0.6rem', background: 'rgba(99, 102, 255, 0.1)', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--primary)' }}>
-                {commandes.length} flux
+                {filteredCommandes.length} flux
               </span>
             </h3>
-            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)' }}>
-              {selectedCommands.size} sélectionnée(s)
+            
+            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+              <select 
+                className="form-select" 
+                style={{ width: 'auto', minWidth: '180px', height: '36px', padding: '0 1rem', fontSize: '0.85rem', borderRadius: '10px' }}
+                value={selectedZone}
+                onChange={e => setSelectedZone(e.target.value)}
+              >
+                <option value="">Toutes les zones</option>
+                {availableZones.map(zone => (
+                  <option key={zone as string} value={zone as string}>{zone as string}</option>
+                ))}
+              </select>
+
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)' }}>
+                {selectedCommands.size} sélectionnée(s)
+              </div>
             </div>
           </div>
 
@@ -168,10 +189,15 @@ export const Logistique = () => {
                         type="checkbox" 
                         style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                         onChange={(e) => {
-                          if (e.target.checked) setSelectedCommands(new Set(commandes.map(c => c.id)));
-                          else setSelectedCommands(new Set());
+                          if (e.target.checked) {
+                            setSelectedCommands(new Set([...selectedCommands, ...filteredCommandes.map(c => c.id)]));
+                          } else {
+                            const newSet = new Set(selectedCommands);
+                            filteredCommandes.forEach(c => newSet.delete(c.id));
+                            setSelectedCommands(newSet);
+                          }
                         }}
-                        checked={selectedCommands.size === commandes.length && commandes.length > 0}
+                        checked={filteredCommandes.length > 0 && filteredCommandes.every(c => selectedCommands.has(c.id))}
                       />
                     </div>
                   </th>
@@ -181,7 +207,7 @@ export const Logistique = () => {
                 </tr>
               </thead>
               <tbody>
-                {commandes.map(c => (
+                {filteredCommandes.map(c => (
                   <tr 
                     key={c.id} 
                     onClick={() => toggleCommand(c.id)} 
@@ -227,11 +253,11 @@ export const Logistique = () => {
                     </td>
                   </tr>
                 ))}
-                {commandes.length === 0 && (
+                {filteredCommandes.length === 0 && (
                   <tr>
                     <td colSpan={4} style={{ textAlign: 'center', padding: '5rem', color: 'var(--text-muted)' }}>
                       <p style={{ fontWeight: 600, fontSize: '1.1rem' }}>Tout est à jour !</p>
-                      <p style={{ fontSize: '0.9rem' }}>Aucune commande en attente d'affectation.</p>
+                      <p style={{ fontSize: '0.9rem' }}>Aucune commande en attente pour cette sélection.</p>
                     </td>
                   </tr>
                 )}
