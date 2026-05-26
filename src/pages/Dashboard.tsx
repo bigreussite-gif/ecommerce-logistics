@@ -346,8 +346,47 @@ export const Dashboard = () => {
              <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Action requise</span>
           </div>
         </div>
-      <div className="res-grid-2col" style={{ marginBottom: '2.5rem' }}>
-        {/* Status Distribution (Pie Chart) */}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', marginBottom: '2.5rem' }}>
+        {/* Revenue Trend */}
+        <div className="card glass-effect" style={{ padding: '2.5rem', gridColumn: '1 / -1', border: '1px solid rgba(255,255,255,0.6)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ padding: '0.6rem', background: 'var(--primary-glow)', borderRadius: '12px', display: 'flex' }}>
+                <Calendar size={22} color="var(--primary)" />
+              </div>
+              <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.25rem' }}>Tendance des Revenus <span style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '1rem' }}>({period === 'all' ? '15j' : period === 'today' ? '24h' : period})</span></h3>
+            </div>
+          </div>
+          <div style={{ height: '380px' }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={historyData}>
+                <defs>
+                  <linearGradient id="colorCA" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.5}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorCABrut" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="jour" axisLine={false} tickLine={false} tick={{fontSize: 11, fontWeight: 700, fill: '#64748b'}} dy={15} />
+                <YAxis hide />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', fontWeight: 800, padding: '1rem' }}
+                  formatter={(v, name) => [`${Number(v).toLocaleString()} CFA`, name === 'CA' ? 'Revenu Net' : 'Revenu Brut']}
+                />
+                <Area type="monotone" dataKey="CABrut" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorCABrut)" activeDot={{ r: 6, fill: '#3b82f6', stroke: 'white', strokeWidth: 2 }} />
+                <Area type="monotone" dataKey="CA" stroke="#10b981" strokeWidth={5} fillOpacity={1} fill="url(#colorCA)" activeDot={{ r: 8, fill: '#10b981', stroke: 'white', strokeWidth: 3 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="res-grid-2col" style={{ alignItems: 'start', gap: '2.5rem' }}>
+          {/* Status Distribution (Pie Chart) */}
         <div className="card glass-effect" style={{ padding: '2.5rem', border: '1px solid rgba(255,255,255,0.6)' }}>
           <h3 style={{ marginBottom: '2rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1.25rem' }}>
             <div style={{ padding: '0.6rem', background: 'var(--primary-glow)', borderRadius: '12px', display: 'flex' }}>
@@ -395,8 +434,7 @@ export const Dashboard = () => {
             ))}
           </div>
         </div>
-
-        {/* Zone Risk Heatmap */}
+          {/* Zone Risk Heatmap */}
         <div className="card glass-effect" style={{ padding: '2.5rem', border: '1px solid rgba(255,255,255,0.6)' }}>
           <h3 style={{ marginBottom: '2rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1.25rem' }}>
             <div style={{ padding: '0.6rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px', display: 'flex' }}>
@@ -438,47 +476,11 @@ export const Dashboard = () => {
             Analyse IA des zones à taux d'échec élevé nécessitant une attention logistique.
           </p>
         </div>
-      </div>
-
-      <div className="res-grid-2col" style={{ gap: '2rem', marginBottom: '2.5rem' }}>
-        {/* Revenue Trend */}
-        <div className="card glass-effect" style={{ padding: '2.5rem', gridColumn: '1 / -1', border: '1px solid rgba(255,255,255,0.6)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{ padding: '0.6rem', background: 'var(--primary-glow)', borderRadius: '12px', display: 'flex' }}>
-                <Calendar size={22} color="var(--primary)" />
-              </div>
-              <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.25rem' }}>Tendance des Revenus <span style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '1rem' }}>({period === 'all' ? '15j' : period === 'today' ? '24h' : period})</span></h3>
-            </div>
-          </div>
-          <div style={{ height: '380px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={historyData}>
-                <defs>
-                  <linearGradient id="colorCA" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.5}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorCABrut" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="jour" axisLine={false} tickLine={false} tick={{fontSize: 11, fontWeight: 700, fill: '#64748b'}} dy={15} />
-                <YAxis hide />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', fontWeight: 800, padding: '1rem' }}
-                  formatter={(v, name) => [`${Number(v).toLocaleString()} CFA`, name === 'CA' ? 'Revenu Net' : 'Revenu Brut']}
-                />
-                <Area type="monotone" dataKey="CABrut" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorCABrut)" activeDot={{ r: 6, fill: '#3b82f6', stroke: 'white', strokeWidth: 2 }} />
-                <Area type="monotone" dataKey="CA" stroke="#10b981" strokeWidth={5} fillOpacity={1} fill="url(#colorCA)" activeDot={{ r: 8, fill: '#10b981', stroke: 'white', strokeWidth: 3 }} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+      
         </div>
 
-        {/* Best Sellers Section */}
+        <div className="res-grid-2col" style={{ alignItems: 'start', gap: '2.5rem' }}>
+          {/* Best Sellers Section */}
         <div className="card glass-effect" style={{ padding: '2.5rem', border: '1px solid rgba(255,255,255,0.6)' }}>
            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
              <div style={{ padding: '0.6rem', background: 'rgba(99, 102, 255, 0.1)', borderRadius: '12px', display: 'flex' }}>
@@ -523,8 +525,7 @@ export const Dashboard = () => {
               ))}
            </div>
         </div>
-
-        {/* Category Performance Section */}
+          {/* Category Performance Section */}
         <div className="card glass-effect" style={{ padding: '2.5rem', border: '1px solid rgba(255,255,255,0.6)' }}>
            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
              <div style={{ padding: '0.6rem', background: 'rgba(139, 92, 246, 0.1)', borderRadius: '12px', display: 'flex' }}>
@@ -565,6 +566,7 @@ export const Dashboard = () => {
                 </ResponsiveContainer>
               )}
            </div>
+        </div>
         </div>
 
         {/* Meilleures Zones Section */}
@@ -649,7 +651,6 @@ export const Dashboard = () => {
         </div>
       </div>
     </div>
-    </div>
-    </div>
+  </div>
   );
 };
