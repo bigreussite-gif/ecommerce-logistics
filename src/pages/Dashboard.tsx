@@ -647,9 +647,8 @@ export const Dashboard = () => {
             </div>
           )}
         </div>
-      </div>.</p>}
-        </div>
       </div>
+    </div>
     </div>
   );
 };
