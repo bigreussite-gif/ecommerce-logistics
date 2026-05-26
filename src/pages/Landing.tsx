@@ -50,7 +50,7 @@ export const Landing = () => {
           <div style={{ position: 'relative' }}>
              <div style={{ background: 'linear-gradient(145deg, rgba(30,41,59,0.7) 0%, rgba(15,23,42,0.8) 100%)', border: '1px solid rgba(255,255,255,0.1)', padding: '2rem', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', position: 'relative', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(90deg, #6366f1, #a855f7)' }}></div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                    <div>
                       <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Profit Réel Net</h4>
                       <h2 style={{ margin: '0.5rem 0 0', fontSize: '2.5rem', fontWeight: 900, color: 'white' }}>1,240,500 <span style={{ fontSize: '1.2rem', color: '#64748b' }}>CFA</span></h2>

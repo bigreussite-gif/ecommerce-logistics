@@ -218,7 +218,8 @@ export const Clients = () => {
         {/* ZONE D: LISTE */}
         <div className="card" style={{ padding: 0, overflow: 'hidden', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 10px 30px rgba(0,0,0,0.02)' }}>
           <div className="table-container table-to-cards">
-            <table style={{ tableLayout: 'fixed', width: '100%', borderCollapse: 'separate', borderSpacing: '0' }}>
+            <div className="table-container">
+<table style={{ tableLayout: 'fixed', width: '100%', borderCollapse: 'separate', borderSpacing: '0' }}>
               <colgroup>
                 <col style={{ width: '30%' }} />
                 <col style={{ width: '15%' }} />
@@ -299,6 +300,7 @@ export const Clients = () => {
                 ))}
               </tbody>
             </table>
+</div>
           </div>
         </div>
         </div>{/* end maxWidth wrapper */}

@@ -180,7 +180,8 @@ export const Logistique = () => {
           </div>
 
           <div className="table-container table-to-cards">
-            <table style={{ tableLayout: 'fixed', width: '100%' }}>
+            <div className="table-container">
+<table style={{ tableLayout: 'fixed', width: '100%' }}>
               <thead className="mobile-hide">
                 <tr>
                   <th style={{ width: '60px', minWidth: '60px' }}>
@@ -263,6 +264,7 @@ export const Logistique = () => {
                 )}
               </tbody>
             </table>
+</div>
           </div>
         </div>
 

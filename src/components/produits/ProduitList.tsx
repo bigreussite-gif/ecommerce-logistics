@@ -45,7 +45,8 @@ export const ProduitList = ({ produits, onEdit, onStock, onView }: ProduitListPr
 
   return (
     <div className="table-container table-to-cards">
-      <table style={{ tableLayout: 'fixed', width: '100%', borderCollapse: 'separate', borderSpacing: '0' }}>
+      <div className="table-container">
+<table style={{ tableLayout: 'fixed', width: '100%', borderCollapse: 'separate', borderSpacing: '0' }}>
         <colgroup>
           <col style={{ width: '80px' }} />
           <col style={{ width: '140px' }} />
@@ -191,6 +192,7 @@ export const ProduitList = ({ produits, onEdit, onStock, onView }: ProduitListPr
           )})}
         </tbody>
       </table>
+</div>
     </div>
   );
 };

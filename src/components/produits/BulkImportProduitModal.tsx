@@ -156,7 +156,8 @@ export const BulkImportProduitModal = ({ onClose, onSave }: { onClose: () => voi
             </div>
 
             <div style={{ maxHeight: '300px', overflowY: 'auto', borderRadius: '14px', border: '1px solid #e2e8f0', marginBottom: '2rem' }}>
-              <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+              <div className="table-container">
+<table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
                 <thead style={{ background: '#f8fafc', position: 'sticky', top: 0 }}>
                   <tr>
                     <th style={{ padding: '0.75rem', textAlign: 'left' }}>SKU</th>
@@ -176,6 +177,7 @@ export const BulkImportProduitModal = ({ onClose, onSave }: { onClose: () => voi
                   ))}
                 </tbody>
               </table>
+</div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>

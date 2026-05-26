@@ -203,7 +203,7 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
 
   return (
     <div className="card table-responsive-cards" style={{ padding: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'center' }}>
         <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Liste des Utilisateurs</h3>
         <button 
           className="btn btn-primary" 
@@ -396,7 +396,7 @@ const CommunesManager = ({ showToast }: { showToast: any }) => {
 
   return (
     <div className="card table-responsive-cards" style={{ padding: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'center' }}>
         <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Zones & Tarifs</h3>
         <button 
           className="btn btn-primary" 
@@ -515,7 +515,7 @@ const CategoriesManager = ({ showToast }: { showToast: any }) => {
 
   return (
     <div className="card table-responsive-cards" style={{ padding: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'center' }}>
         <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Catégories de Produits</h3>
         <button 
           className="btn btn-primary" 
@@ -642,7 +642,7 @@ const FournisseursManager = ({ showToast }: { showToast: any }) => {
 
   return (
     <div className="card table-responsive-cards" style={{ padding: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'center' }}>
         <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>Gestion des Fournisseurs</h3>
         <button className="btn btn-primary" onClick={() => { setEditingId('new'); setForm({}); }} disabled={loading}>
           <Plus size={18} /> Ajouter un fournisseur

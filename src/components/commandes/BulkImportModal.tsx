@@ -220,7 +220,8 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
             )}
 
             <div style={{ maxHeight: '300px', overflowY: 'auto', borderRadius: '18px', border: '1px solid #e2e8f0', marginBottom: '2rem', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <div className="table-container">
+<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                 <thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr>
                     <th style={{ padding: '1rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>Client</th>
@@ -249,6 +250,7 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
                   ))}
                 </tbody>
               </table>
+</div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>

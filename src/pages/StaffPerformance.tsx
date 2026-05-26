@@ -489,7 +489,7 @@ export const StaffPerformance = () => {
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', overflowX: 'auto', paddingBottom: '1rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '2rem', overflowX: 'auto', paddingBottom: '1rem' }}>
         <button 
           onClick={() => setActiveTab('livreurs')}
           className={`card ${activeTab === 'livreurs' ? 'glass-effect active-tab' : ''}`}

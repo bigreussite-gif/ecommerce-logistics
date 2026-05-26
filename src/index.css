@@ -365,7 +365,7 @@ tr:hover td {
 
 /* --- MOBILE (≤640px) --- */
 @media (max-width: 640px) {
-  .page-content { padding: 1rem; }
+  .page-content { padding: 0.5rem; }
 
   .card {
     padding: 1rem;

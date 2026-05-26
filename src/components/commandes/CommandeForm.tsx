@@ -359,7 +359,7 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
           </div>
 
           <div style={{ padding: '2rem', border: '2px solid #f1f5f9', borderRadius: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.9rem' }}>2</div>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Panier Commande</h3>

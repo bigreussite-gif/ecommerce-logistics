@@ -436,7 +436,7 @@ export const FinancialReport = () => {
       <div className="res-grid" style={{ gap: '2.5rem' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           <div className="card" style={{ padding: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
               <h3 style={{ fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0 }}>
                 <BarChart2 size={20} style={{ color: 'var(--primary)' }} /> Tendances des Ventes
               </h3>
@@ -551,7 +551,8 @@ export const FinancialReport = () => {
             <Package size={20} style={{ color: 'var(--primary)' }} /> Bilan par Produit
           </h3>
           <div className="table-container table-to-cards">
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+            <div className="table-container">
+<table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead className="mobile-hide">
                 <tr style={{ borderBottom: '2px solid #f1f5f9' }}>
                   <th style={{ padding: '1rem', color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Produit</th>
@@ -577,6 +578,7 @@ export const FinancialReport = () => {
                 ))}
               </tbody>
             </table>
+</div>
           </div>
         </div>
       </div>

@@ -494,7 +494,8 @@ export const Caisse = () => {
               </div>
 
               <div className="table-container table-to-cards">
-                <table style={{ tableLayout: 'fixed', width: '100%' }}>
+                <div className="table-container">
+<table style={{ tableLayout: 'fixed', width: '100%' }}>
                   <colgroup>
                     <col style={{ width: '10%' }} />
                     <col style={{ width: '28%' }} />
@@ -592,6 +593,7 @@ export const Caisse = () => {
                     ))}
                   </tbody>
                 </table>
+</div>
               </div>
             </div>
 
