@@ -124,6 +124,15 @@ h1, h2, h3, .brand {
   box-shadow: 0 25px 30px -5px rgba(0, 0, 0, 0.08);
 }
 
+.hover-lift:hover {
+  transform: translateY(-2px);
+}
+
+.hover-lift-shadow:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.05);
+}
+
 .btn {
   padding: 0.75rem 1.5rem;
   border-radius: var(--radius-md);

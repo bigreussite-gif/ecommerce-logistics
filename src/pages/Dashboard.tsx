@@ -344,23 +344,24 @@ export const Dashboard = () => {
              <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Action requise</span>
           </div>
         </div>
-      </div>
-
       <div className="res-grid" style={{ marginBottom: '2.5rem' }}>
         {/* Status Distribution (Pie Chart) */}
-        <div className="card" style={{ padding: '2rem' }}>
-          <h3 style={{ marginBottom: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <Activity size={20} color="var(--primary)" /> Répartition des Flux
+        <div className="card glass-effect" style={{ padding: '2.5rem', border: '1px solid rgba(255,255,255,0.6)' }}>
+          <h3 style={{ marginBottom: '2rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1.25rem' }}>
+            <div style={{ padding: '0.6rem', background: 'var(--primary-glow)', borderRadius: '12px', display: 'flex' }}>
+              <Activity size={22} color="var(--primary)" />
+            </div>
+            Répartition des Flux
           </h3>
-          <div style={{ height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={statusData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={100}
+                  innerRadius={70}
+                  outerRadius={110}
                   paddingAngle={5}
                   dataKey="value"
                 >
@@ -375,49 +376,53 @@ export const Dashboard = () => {
                   ))}
                 </Pie>
                 <Tooltip 
-                   contentStyle={{ borderRadius: '14px', border: 'none', boxShadow: 'var(--shadow-premium)' }}
+                   contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', fontWeight: 700 }}
                 />
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center', marginTop: '1rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', justifyContent: 'center', marginTop: '1.5rem' }}>
             {(statusData || []).map((s, i) => (
-               <div key={s?.name || i} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', fontWeight: 700 }}>
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: [
+               <div key={s?.name || i} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700 }}>
+                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: [
                         '#10b981', '#6366f1', '#f59e0b', '#ef4444', 
                         '#8b5cf6', '#ec4899', '#06b6d4', '#475569'
-                      ][i % 8] }}></div>
-                  <span style={{ color: 'var(--text-muted)' }}>{s.name} ({s.value})</span>
+                      ][i % 8], boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}></div>
+                  <span style={{ color: 'var(--text-main)' }}>{s.name} <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>({s.value})</span></span>
                </div>
             ))}
           </div>
         </div>
 
         {/* Zone Risk Heatmap */}
-        <div className="card" style={{ padding: '2rem' }}>
-          <h3 style={{ marginBottom: '1.5rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <AlertCircle size={20} color="#ef4444" /> Heatmap de Risque Logistique
+        <div className="card glass-effect" style={{ padding: '2.5rem', border: '1px solid rgba(255,255,255,0.6)' }}>
+          <h3 style={{ marginBottom: '2rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1.25rem' }}>
+            <div style={{ padding: '0.6rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px', display: 'flex' }}>
+              <AlertCircle size={22} color="#ef4444" />
+            </div>
+            Heatmap de Risque Logistique
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {heatmapData.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Aucune donnée</div>
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', background: '#f8fafc', borderRadius: '16px' }}>Aucune donnée d'échec disponible</div>
             ) : heatmapData.map((z) => (
-              <div key={z.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <div key={z.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 800, fontSize: '0.9rem' }}>{z.name}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Vol: {z.volume}</span>
-                    <span style={{ fontWeight: 900, color: z.color, fontSize: '0.9rem' }}>{z.risk}% Risque</span>
+                  <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>{z.name}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, background: '#f1f5f9', padding: '0.2rem 0.6rem', borderRadius: '12px' }}>Vol: {z.volume}</span>
+                    <span style={{ fontWeight: 900, color: z.color, fontSize: '0.95rem' }}>{z.risk}%</span>
                   </div>
                 </div>
-                <div style={{ height: '10px', background: '#f1f5f9', borderRadius: '5px', overflow: 'hidden', position: 'relative' }}>
+                <div style={{ height: '12px', background: '#f1f5f9', borderRadius: '6px', overflow: 'hidden', position: 'relative', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)' }}>
                   <div 
                     style={{ 
                       width: `${z.risk}%`, 
                       height: '100%', 
                       background: z.color, 
-                      borderRadius: '5px',
-                      transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)'
+                      borderRadius: '6px',
+                      transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
                     }}
                   />
                   {z.risk > 15 && (
@@ -433,73 +438,77 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <div className="res-grid" style={{ gap: '2rem' }}>
+      <div className="res-grid" style={{ gap: '2rem', marginBottom: '2.5rem' }}>
         {/* Revenue Trend */}
-        <div className="card" style={{ padding: '2rem' }}>
+        <div className="card glass-effect" style={{ padding: '2.5rem', gridColumn: '1 / -1', border: '1px solid rgba(255,255,255,0.6)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <Calendar size={20} color="var(--primary)" />
-              <h3 style={{ margin: 0, fontWeight: 800 }}>Tendance des Revenus ({period === 'all' ? '15j' : period === 'today' ? '24h' : period})</h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div style={{ padding: '0.6rem', background: 'var(--primary-glow)', borderRadius: '12px', display: 'flex' }}>
+                <Calendar size={22} color="var(--primary)" />
+              </div>
+              <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.25rem' }}>Tendance des Revenus <span style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '1rem' }}>({period === 'all' ? '15j' : period === 'today' ? '24h' : period})</span></h3>
             </div>
           </div>
-          <div style={{ height: '350px' }}>
+          <div style={{ height: '380px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={historyData}>
                 <defs>
                   <linearGradient id="colorCA" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
                     <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="jour" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#94a3b8'}} dy={10} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="jour" axisLine={false} tickLine={false} tick={{fontSize: 11, fontWeight: 700, fill: '#64748b'}} dy={15} />
                 <YAxis hide />
                 <Tooltip 
-                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', fontWeight: 800 }}
+                  contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)', fontWeight: 800, padding: '1rem' }}
                   formatter={(v) => [`${Number(v).toLocaleString()} CFA`, 'Revenu Net']}
                 />
-                <Area type="monotone" dataKey="CA" stroke="#10b981" strokeWidth={4} fillOpacity={1} fill="url(#colorCA)" />
+                <Area type="monotone" dataKey="CA" stroke="#10b981" strokeWidth={5} fillOpacity={1} fill="url(#colorCA)" activeDot={{ r: 8, fill: '#10b981', stroke: 'white', strokeWidth: 3 }} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
         {/* Best Sellers Section */}
-        <div className="card" style={{ padding: '2rem' }}>
-           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
-             <BarChart2 size={24} color="var(--primary)" />
-             <h3 style={{ margin: 0, fontWeight: 800 }}>Meilleurs Produits</h3>
+        <div className="card glass-effect" style={{ padding: '2.5rem', border: '1px solid rgba(255,255,255,0.6)' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
+             <div style={{ padding: '0.6rem', background: 'rgba(99, 102, 255, 0.1)', borderRadius: '12px', display: 'flex' }}>
+               <BarChart2 size={22} color="#6366f1" />
+             </div>
+             <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.25rem' }}>Meilleurs Produits</h3>
            </div>
            
-           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
               {topProducts.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', background: '#f8fafc', borderRadius: '16px' }}>
                   <ShoppingBag size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
                   <p>Aucune donnée sur cette période.</p>
                 </div>
               ) : (topProducts || []).map((p, i) => (
-                <div key={p?.nom || i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div key={p?.nom || i} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', transition: 'transform 0.2s ease', cursor: 'default' }} className="hover-lift">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-muted)', width: '20px' }}>{i+1}.</span>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nom}</span>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--text-muted)', width: '24px', background: '#f1f5f9', borderRadius: '8px', textAlign: 'center', padding: '0.2rem' }}>{i+1}</span>
+                      <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nom}</span>
                     </div>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 900, color: p.taux_succes >= 70 ? '#10b981' : p.taux_succes >= 40 ? '#f59e0b' : '#ef4444' }}>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 900, color: p.taux_succes >= 70 ? '#10b981' : p.taux_succes >= 40 ? '#f59e0b' : '#ef4444' }}>
                       {p.taux_succes}%
                     </span>
                   </div>
-                  <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ height: '10px', background: '#f1f5f9', borderRadius: '5px', overflow: 'hidden', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)' }}>
                     <div 
                       style={{ 
                         width: `${p.taux_succes}%`, 
                         height: '100%', 
                         background: p.taux_succes >= 70 ? '#10b981' : p.taux_succes >= 40 ? '#f59e0b' : '#ef4444', 
-                        borderRadius: '4px',
+                        borderRadius: '5px',
                         transition: 'width 1s ease-out'
                       }}
                     ></div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
                     <span>Sortis: {p.total_sorties}</span>
                     <span>Livrées: {p.nb_ventes}</span>
                   </div>
@@ -509,15 +518,17 @@ export const Dashboard = () => {
         </div>
 
         {/* Category Performance Section */}
-        <div className="card" style={{ padding: '2rem' }}>
-           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
-             <Tag size={24} color="var(--primary)" />
-             <h3 style={{ margin: 0, fontWeight: 800 }}>Performance par Catégorie</h3>
+        <div className="card glass-effect" style={{ padding: '2.5rem', border: '1px solid rgba(255,255,255,0.6)' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
+             <div style={{ padding: '0.6rem', background: 'rgba(139, 92, 246, 0.1)', borderRadius: '12px', display: 'flex' }}>
+               <Tag size={22} color="#8b5cf6" />
+             </div>
+             <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.25rem' }}>Performance Catégorie</h3>
            </div>
            
-           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
               {(!categoryStats || categoryStats.length === 0) ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', background: '#f8fafc', borderRadius: '16px' }}>
                   <Tag size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
                   <p>Aucune donnée sur cette période.</p>
                 </div>
@@ -525,28 +536,28 @@ export const Dashboard = () => {
                 const maxCA = Math.max(...categoryStats.map(cat => cat.ca));
                 const percent = maxCA > 0 ? (c.ca / maxCA) * 100 : 0;
                 return (
-                <div key={c.nom || i} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div key={c.nom || i} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', transition: 'transform 0.2s ease', cursor: 'default' }} className="hover-lift">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-muted)', width: '20px' }}>{i+1}.</span>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom}</span>
+                      <span style={{ fontSize: '0.9rem', fontWeight: 900, color: 'var(--text-muted)', width: '24px', background: '#f1f5f9', borderRadius: '8px', textAlign: 'center', padding: '0.2rem' }}>{i+1}</span>
+                      <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-main)', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nom}</span>
                     </div>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 900, color: 'var(--primary)' }}>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 900, color: '#8b5cf6' }}>
                       {c.ca.toLocaleString()} CFA
                     </span>
                   </div>
-                  <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ height: '10px', background: '#f1f5f9', borderRadius: '5px', overflow: 'hidden', boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.05)' }}>
                     <div 
                       style={{ 
                         width: `${percent}%`, 
                         height: '100%', 
                         background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', 
-                        borderRadius: '4px',
+                        borderRadius: '5px',
                         transition: 'width 1s ease-out'
                       }}
                     ></div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
                     <span>Articles Vendus:</span>
                     <span>{c.nb_articles} Unités</span>
                   </div>
@@ -555,44 +566,46 @@ export const Dashboard = () => {
            </div>
         </div>
 
-        {/* Meilleurs Zones Section */}
-        <div className="card" style={{ padding: '2rem' }}>
-           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
-             <MapPin size={24} color="var(--primary)" />
-             <h3 style={{ margin: 0, fontWeight: 800 }}>Meilleures Zones</h3>
+        {/* Meilleures Zones Section */}
+        <div className="card glass-effect" style={{ padding: '2.5rem', border: '1px solid rgba(255,255,255,0.6)', gridColumn: '1 / -1' }}>
+           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
+             <div style={{ padding: '0.6rem', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '12px', display: 'flex' }}>
+               <MapPin size={22} color="#f59e0b" />
+             </div>
+             <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.25rem' }}>Meilleures Zones de Livraison</h3>
            </div>
            
-           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+           <div className="res-grid-sm" style={{ gap: '1.5rem' }}>
               {(!bestZonesData || bestZonesData.length === 0) ? (
-                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', background: '#f8fafc', borderRadius: '16px', gridColumn: '1 / -1' }}>
                   <MapPin size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
                   <p>Aucune donnée sur cette période.</p>
                 </div>
               ) : bestZonesData.map((z, i) => (
-                <div key={z.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div key={z.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'white', padding: '1.5rem', borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }} className="hover-lift">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-muted)', width: '20px' }}>{i+1}.</span>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-main)', maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{z.name}</span>
+                      <span style={{ fontSize: '1rem', fontWeight: 900, color: '#f59e0b', width: '28px', background: 'rgba(245, 158, 11, 0.1)', borderRadius: '8px', textAlign: 'center', padding: '0.3rem' }}>{i+1}</span>
+                      <span style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)' }}>{z.name}</span>
                     </div>
-                    <span style={{ fontSize: '0.85rem', fontWeight: 900, color: z.taux_reussite >= 70 ? '#10b981' : z.taux_reussite >= 40 ? '#f59e0b' : '#ef4444' }}>
+                    <span style={{ fontSize: '1rem', fontWeight: 900, color: z.taux_reussite >= 70 ? '#10b981' : z.taux_reussite >= 40 ? '#f59e0b' : '#ef4444' }}>
                       {z.taux_reussite}%
                     </span>
                   </div>
-                  <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ height: '12px', background: '#f1f5f9', borderRadius: '6px', overflow: 'hidden' }}>
                     <div 
                       style={{ 
                         width: `${z.taux_reussite}%`, 
                         height: '100%', 
                         background: z.taux_reussite >= 70 ? '#10b981' : z.taux_reussite >= 40 ? '#f59e0b' : '#ef4444', 
-                        borderRadius: '4px',
+                        borderRadius: '6px',
                         transition: 'width 1s ease-out'
                       }}
                     ></div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                    <span>Colis: {z.colis}</span>
-                    <span>CA: {z.ca.toLocaleString()} CFA</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    <span>Colis: <strong style={{ color: 'var(--text-main)' }}>{z.colis}</strong></span>
+                    <span>CA: <strong style={{ color: 'var(--text-main)' }}>{z.ca.toLocaleString()} CFA</strong></span>
                   </div>
                 </div>
               ))}
@@ -601,32 +614,40 @@ export const Dashboard = () => {
       </div>
 
       {/* Recent Activity Feed */}
-      <div className="card" style={{ padding: '2rem', marginTop: '2.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
-          <Clock size={24} color="var(--primary)" />
-          <h3 style={{ margin: 0, fontWeight: 800 }}>Dernières Activités</h3>
+      <div className="card glass-effect" style={{ padding: '2.5rem', marginBottom: '2rem', border: '1px solid rgba(255,255,255,0.6)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
+          <div style={{ padding: '0.6rem', background: 'rgba(14, 165, 233, 0.1)', borderRadius: '12px', display: 'flex' }}>
+            <Clock size={22} color="#0ea5e9" />
+          </div>
+          <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.25rem' }}>Dernières Activités</h3>
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {commandes.slice(0, 10).map((c) => (
-            <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <ShoppingBag size={20} />
+            <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', background: 'white', borderRadius: '16px', border: '1px solid #f1f5f9', transition: 'transform 0.2s, box-shadow 0.2s' }} className="hover-lift-shadow">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'var(--primary-glow)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <ShoppingBag size={24} />
                 </div>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{c.nom_client} - #{c.id.slice(-6).toUpperCase()}</div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{new Date(c.date_creation).toLocaleString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</div>
+                  <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)' }}>{c.nom_client} <span style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.85rem', marginLeft: '0.5rem' }}>#{c.id.slice(-6).toUpperCase()}</span></div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: '0.2rem' }}>{new Date(c.date_creation).toLocaleString('fr-FR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                <div style={{ fontWeight: 900, fontSize: '1rem' }}>{Number(c.montant_total).toLocaleString()} CFA</div>
-                <span className={`badge badge-${c.statut_commande === 'livree' ? 'success' : c.statut_commande === 'en_cours_livraison' ? 'info' : c.statut_commande === 'echouee' ? 'danger' : 'warning'}`} style={{ borderRadius: '8px', minWidth: '100px', textAlign: 'center' }}>
-                  {c.statut_commande}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+                <div style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--text-main)' }}>{Number(c.montant_total).toLocaleString()} CFA</div>
+                <span className={`badge badge-${c.statut_commande === 'livree' ? 'success' : c.statut_commande === 'en_cours_livraison' ? 'info' : c.statut_commande === 'echouee' ? 'danger' : 'warning'}`} style={{ borderRadius: '10px', minWidth: '110px', textAlign: 'center', padding: '0.5rem 1rem' }}>
+                  {c.statut_commande.replace('_', ' ')}
                 </span>
               </div>
             </div>
           ))}
-          {commandes.length === 0 && <p style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Aucune activité récente.</p>}
+          {commandes.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', background: '#f8fafc', borderRadius: '16px' }}>
+              Aucune activité récente.
+            </div>
+          )}
+        </div>
+      </div>.</p>}
         </div>
       </div>
     </div>
