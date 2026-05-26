@@ -445,7 +445,7 @@ export const Dashboard = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {heatmapData.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', background: '#f8fafc', borderRadius: '16px' }}>Aucune donnée d'échec disponible</div>
-            ) : heatmapData.map((z) => (
+            ) : heatmapData.slice(0, 10).map((z) => (
               <div key={z.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-main)' }}>{z.name}</span>
@@ -495,7 +495,7 @@ export const Dashboard = () => {
                   <ShoppingBag size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
                   <p>Aucune donnée sur cette période.</p>
                 </div>
-              ) : (topProducts || []).map((p, i) => (
+              ) : (topProducts || []).slice(0, 10).map((p, i) => (
                 <div key={p?.nom || i} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', transition: 'transform 0.2s ease', cursor: 'default' }} className="hover-lift">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -584,7 +584,7 @@ export const Dashboard = () => {
                   <MapPin size={40} style={{ opacity: 0.2, marginBottom: '1rem' }} />
                   <p>Aucune donnée sur cette période.</p>
                 </div>
-              ) : bestZonesData.map((z, i) => (
+              ) : bestZonesData.slice(0, 10).map((z, i) => (
                 <div key={z.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'white', padding: '1.5rem', borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }} className="hover-lift">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
