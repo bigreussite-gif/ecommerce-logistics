@@ -273,6 +273,18 @@ tr:hover td {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
+.res-grid-2col {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 1024px) {
+  .res-grid-2col {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 640px) {
   .res-grid, .res-grid-sm {
     grid-template-columns: 1fr;

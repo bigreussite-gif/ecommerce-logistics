@@ -344,7 +344,7 @@ export const Dashboard = () => {
              <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Action requise</span>
           </div>
         </div>
-      <div className="res-grid" style={{ marginBottom: '2.5rem' }}>
+      <div className="res-grid-2col" style={{ marginBottom: '2.5rem' }}>
         {/* Status Distribution (Pie Chart) */}
         <div className="card glass-effect" style={{ padding: '2.5rem', border: '1px solid rgba(255,255,255,0.6)' }}>
           <h3 style={{ marginBottom: '2rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '1.25rem' }}>
@@ -438,7 +438,7 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      <div className="res-grid" style={{ gap: '2rem', marginBottom: '2.5rem' }}>
+      <div className="res-grid-2col" style={{ gap: '2rem', marginBottom: '2.5rem' }}>
         {/* Revenue Trend */}
         <div className="card glass-effect" style={{ padding: '2.5rem', gridColumn: '1 / -1', border: '1px solid rgba(255,255,255,0.6)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem' }}>
@@ -611,11 +611,10 @@ export const Dashboard = () => {
               ))}
            </div>
         </div>
-      </div>
 
-      {/* Recent Activity Feed */}
-      <div className="card glass-effect" style={{ padding: '2.5rem', marginBottom: '2rem', border: '1px solid rgba(255,255,255,0.6)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
+        {/* Recent Activity Feed */}
+        <div className="card glass-effect" style={{ padding: '2.5rem', border: '1px solid rgba(255,255,255,0.6)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
           <div style={{ padding: '0.6rem', background: 'rgba(14, 165, 233, 0.1)', borderRadius: '12px', display: 'flex' }}>
             <Clock size={22} color="#0ea5e9" />
           </div>
@@ -648,6 +647,7 @@ export const Dashboard = () => {
           )}
         </div>
       </div>
+    </div>
     </div>
     </div>
   );
