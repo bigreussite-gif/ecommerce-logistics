@@ -204,7 +204,12 @@ export const processCaisse = async (
 
         await insforge.database
           .from('lignes_commandes')
-          .update({ choix_installation: !!l.choix_installation, montant_ligne: lineTotal })
+          .update({ 
+            choix_installation: !!l.choix_installation, 
+            montant_ligne: lineTotal,
+            quantite: Number(l.quantite),
+            prix_unitaire: Number(l.prix_unitaire)
+          })
           .eq('id', l.id);
       }
 

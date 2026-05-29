@@ -26,6 +26,8 @@ export const Caisse = () => {
   const [commandes, setCommandes] = useState<(Commande & { lignes?: any[] })[]>([]);
   const [resolutions, setResolutions] = useState<Record<string, CaisseResolution>>({});
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [transferringCommande, setTransferringCommande] = useState<Commande | null>(null);
+  const [transferLivreurId, setTransferLivreurId] = useState<string>('');
 
   const [loading, setLoading] = useState(false);
   const [extraSearch, setExtraSearch] = useState('');
@@ -240,11 +242,25 @@ export const Caisse = () => {
     return linesSum + shipping - remise;
   }, [commandes, resolutions]);
 
+  const calculateCashAttenduLocalement = useCallback((orderId: string) => {
+    const totalClient = calculateOrderTotalLocally(orderId);
+    const res = resolutions[orderId];
+    if (!res || !res.updatedLines) return totalClient;
+    
+    let primesPayees = 0;
+    res.updatedLines.forEach((l: any) => {
+      if (l.choix_installation && l.prime_payee) {
+        primesPayees += Number(l.frais_installation) * Number(l.quantite);
+      }
+    });
+    return totalClient - primesPayees;
+  }, [calculateOrderTotalLocally, resolutions]);
+
   const montantAttendu = useMemo(() => {
     return commandes
       .filter(c => resolutions[c.id]?.statut === 'livree' && ['Cash à la livraison', 'Cash'].includes(resolutions[c.id]?.mode_paiement || ''))
-      .reduce((acc, c) => acc + calculateOrderTotalLocally(c.id), 0);
-  }, [commandes, resolutions, calculateOrderTotalLocally]);
+      .reduce((acc, c) => acc + calculateCashAttenduLocalement(c.id), 0);
+  }, [commandes, resolutions, calculateCashAttenduLocalement]);
   
   const montantMobileMoney = useMemo(() => {
     return commandes
@@ -258,7 +274,7 @@ export const Caisse = () => {
     
     const newLines = res.updatedLines.map(l => {
       if (l.id === lineId) {
-        return { ...l, choix_installation: !l.choix_installation };
+        return { ...l, choix_installation: !l.choix_installation, prime_payee: !l.choix_installation ? true : false };
       }
       return l;
     });
@@ -269,19 +285,79 @@ export const Caisse = () => {
     });
   };
 
+  const togglePrimePayee = (orderId: string, lineId: string) => {
+    const res = resolutions[orderId];
+    if (!res || !res.updatedLines) return;
+    const newLines = res.updatedLines.map(l => {
+      if (l.id === lineId) return { ...l, prime_payee: !l.prime_payee };
+      return l;
+    });
+    setResolutions({ ...resolutions, [orderId]: { ...res, updatedLines: newLines } });
+  };
+
+  const updateLine = (orderId: string, lineId: string, field: string, value: any) => {
+    const res = resolutions[orderId];
+    if (!res || !res.updatedLines) return;
+    const newLines = res.updatedLines.map(l => {
+      if (l.id === lineId) return { ...l, [field]: value };
+      return l;
+    });
+    setResolutions({ ...resolutions, [orderId]: { ...res, updatedLines: newLines } });
+  };
+
+  const executeTransfer = async () => {
+    if (!transferringCommande || !transferLivreurId || !feuille) return;
+    setLoading(true);
+    try {
+      await reassignCommandeToFeuille(transferringCommande.id, undefined, transferLivreurId);
+      setCommandes(prev => prev.filter(c => c.id !== transferringCommande.id));
+      const newRes = { ...resolutions };
+      delete newRes[transferringCommande.id];
+      setResolutions(newRes);
+      showToast(`Commande transférée avec succès.`, "success");
+      setTransferringCommande(null);
+      setTransferLivreurId('');
+    } catch (e) {
+      console.error(e);
+      showToast("Erreur lors du transfert.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const updateResolution = (id: string, key: string, value: string) => {
+    if (key === 'statut' && value === 'transfere') {
+      const cmd = commandes.find(c => c.id === id);
+      if (cmd) setTransferringCommande(cmd);
+      return;
+    }
     setResolutions(prev => ({ ...prev, [id]: { ...prev[id], [key]: value } }));
   };
 
+  const primesInstallationTotales = useMemo(() => {
+    let total = 0;
+    Object.values(resolutions).forEach(res => {
+      if (res.statut === 'livree' && res.updatedLines) {
+        res.updatedLines.forEach((l: any) => {
+          if (l.choix_installation && l.prime_payee) {
+            total += Number(l.frais_installation) * Number(l.quantite);
+          }
+        });
+      }
+    });
+    return total;
+  }, [resolutions]);
+
   const montantRemisParsed = parseFloat(montantRemisStr) || 0;
-  const primeLivreurParsed = parseFloat(primeLivreurStr) || 0;
+  const primeLivreurParsedForm = parseFloat(primeLivreurStr) || 0;
+  const primeLivreurParsedTotal = primeLivreurParsedForm + primesInstallationTotales;
   const isMontantSaisi = montantRemisStr.trim() !== '';
-  const ecart = isMontantSaisi ? montantRemisParsed - (montantAttendu - primeLivreurParsed) : 0;
+  const ecart = isMontantSaisi ? montantRemisParsed - (montantAttendu - primeLivreurParsedForm) : 0;
 
   const handleCloture = async () => {
     if (!feuille || !isMontantSaisi) return;
     
-    if (montantRemisParsed < 0 || primeLivreurParsed < 0) {
+    if (montantRemisParsed < 0 || primeLivreurParsedForm < 0) {
       showToast("Les montants ne peuvent pas être négatifs.", "error");
       return;
     }
@@ -301,7 +377,7 @@ export const Caisse = () => {
         commentaire,
         currentUser.id,
         selectedLivreur,
-        primeLivreurParsed
+        primeLivreurParsedTotal
       );
       
       showToast("Feuille de route clôturée avec succès.", "success");
@@ -526,6 +602,7 @@ export const Caisse = () => {
                           </td>
                           <td data-label="Client">
                             <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.95rem' }}>{c.nom_client || `Anonyme`}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 700 }}>{c.telephone_client}</div>
                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{c.commune_livraison}</div>
                           </td>
                           <td data-label="Montant" style={{ fontWeight: 900, textAlign: 'right', fontSize: '1rem' }}>
@@ -550,6 +627,7 @@ export const Caisse = () => {
                               <option value="echouee">Échec ❌</option>
                               <option value="a_rappeler">Reprog. 🔄</option>
                               <option value="annulee">Annulé 🚫</option>
+                              <option value="transfere">Transférer ➡️</option>
                             </select>
                           </td>
                           <td data-label="Paiement">
@@ -569,22 +647,72 @@ export const Caisse = () => {
                             )}
                           </td>
                         </tr>
-                        {resolutions[c.id]?.statut === 'livree' && resolutions[c.id]?.updatedLines?.some(l => Number(l.frais_installation) > 0) && (
+                        {resolutions[c.id]?.statut === 'livree' && resolutions[c.id]?.updatedLines?.length && (
                           <tr style={{ background: 'rgba(99, 102, 255, 0.02)' }}>
                             <td colSpan={5} style={{ padding: '0.5rem 1.5rem', borderTop: 'none' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>Installations :</span>
-                                {resolutions[c.id].updatedLines?.filter(l => Number(l.frais_installation) > 0).map(l => (
-                                  <label key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', background: 'white', padding: '0.25rem 0.6rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 700 }}>
-                                     <input 
-                                       type="checkbox" 
-                                       checked={l.choix_installation} 
-                                       onChange={() => toggleInstallation(c.id, l.id)}
-                                       style={{ width: '14px', height: '14px' }}
-                                     />
-                                     {l.nom_produit} (+{Number(l.frais_installation).toLocaleString()})
-                                  </label>
-                                ))}
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                {/* Installation Primes */}
+                                {resolutions[c.id].updatedLines!.some(l => Number(l.frais_installation) > 0) && (
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>Installations :</span>
+                                    {resolutions[c.id].updatedLines!.filter(l => Number(l.frais_installation) > 0).map(l => (
+                                      <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.25rem 0.6rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+                                          <input 
+                                            type="checkbox" 
+                                            checked={l.choix_installation} 
+                                            onChange={() => toggleInstallation(c.id, l.id)}
+                                            style={{ width: '14px', height: '14px' }}
+                                          />
+                                          {l.nom_produit} (+{Number(l.frais_installation).toLocaleString()})
+                                        </label>
+                                        {l.choix_installation && (
+                                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, marginLeft: '0.5rem', borderLeft: '1px solid #e2e8f0', paddingLeft: '0.5rem', color: '#10b981' }}>
+                                            <input 
+                                              type="checkbox" 
+                                              checked={l.prime_payee} 
+                                              onChange={() => togglePrimePayee(c.id, l.id)}
+                                              style={{ width: '14px', height: '14px' }}
+                                            />
+                                            Prime payée
+                                          </label>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                
+                                {/* Lignes Adjustment (Partial sales) */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                  <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Ajustement Lots / Quantités :</span>
+                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                                    {resolutions[c.id].updatedLines!.map(l => (
+                                      <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.35rem 0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                        <span style={{ fontSize: '0.75rem', fontWeight: 700, maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.nom_produit}>{l.nom_produit}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                          <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700 }}>Qté:</span>
+                                          <input 
+                                            type="number" 
+                                            min={0}
+                                            value={l.quantite} 
+                                            onChange={e => updateLine(c.id, l.id, 'quantite', Number(e.target.value))}
+                                            style={{ width: '50px', padding: '0.15rem 0.25rem', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                          />
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                          <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700 }}>Prix Unitaire:</span>
+                                          <input 
+                                            type="number" 
+                                            min={0}
+                                            value={l.prix_unitaire} 
+                                            onChange={e => updateLine(c.id, l.id, 'prix_unitaire', Number(e.target.value))}
+                                            style={{ width: '80px', padding: '0.15rem 0.25rem', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                          />
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               </div>
                             </td>
                           </tr>
@@ -687,6 +815,31 @@ export const Caisse = () => {
           commandeId={selectedOrderId} 
           onClose={() => setSelectedOrderId(null)} 
         />
+      )}
+
+      {/* Modal Transfert Livreur */}
+      {transferringCommande && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div className="card glass-effect" style={{ width: '100%', maxWidth: '400px', padding: '1.5rem', borderRadius: '20px' }}>
+            <h3 style={{ fontSize: '1.2rem', fontWeight: 900, marginBottom: '0.5rem' }}>Transférer à un autre livreur</h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Commande #{transferringCommande.id.slice(0,8)} - {transferringCommande.nom_client}</p>
+            
+            <div className="form-group">
+              <label className="form-label">Sélectionner le livreur</label>
+              <select className="form-select" value={transferLivreurId} onChange={e => setTransferLivreurId(e.target.value)}>
+                <option value="">Choisir...</option>
+                {livreurs.filter(l => l.id !== selectedLivreur).map(l => (
+                  <option key={l.id} value={l.id}>{l.nom_complet}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setTransferringCommande(null)}>Annuler</button>
+              <button className="btn btn-primary" style={{ flex: 1 }} disabled={!transferLivreurId || loading} onClick={executeTransfer}>Transférer</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
