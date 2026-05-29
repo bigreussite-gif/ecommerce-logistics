@@ -120,6 +120,7 @@ export interface LigneCommande {
   quantite: number;
   prix_unitaire: number;
   choix_installation?: boolean;
+  prime_payee?: boolean;
   frais_installation?: number;
   montant_ligne: number;
   // Joins / Snapshots

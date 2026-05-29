@@ -146,7 +146,7 @@ export const supprimerFeuilleRoute = async (feuilleId: string): Promise<void> =>
   if (error) throw error;
 };
 
-export const reassignCommandeToFeuille = async (commandeId: string, targetFeuilleId: string, targetLivreurId: string): Promise<void> => {
+export const reassignCommandeToFeuille = async (commandeId: string, targetFeuilleId: string | undefined, targetLivreurId: string): Promise<void> => {
   // 1. Get the command to check current state
   const { data: cmd, error: cmdError } = await insforge.database
     .from('commandes')
@@ -163,7 +163,7 @@ export const reassignCommandeToFeuille = async (commandeId: string, targetFeuill
   const { error: updateCmdError } = await insforge.database
     .from('commandes')
     .update({ 
-      feuille_route_id: targetFeuilleId, 
+      feuille_route_id: targetFeuilleId || null, 
       livreur_id: targetLivreurId,
       statut_commande: 'en_cours_livraison' 
     })
@@ -172,20 +172,22 @@ export const reassignCommandeToFeuille = async (commandeId: string, targetFeuill
   if (updateCmdError) throw updateCmdError;
 
   // 3. Update the NEW sheet stats
-  const { data: targetFeuille } = await insforge.database
-    .from('feuilles_route')
-    .select('total_commandes, total_montant_theorique')
-    .eq('id', targetFeuilleId)
-    .single();
-
-  if (targetFeuille) {
-    await insforge.database
+  if (targetFeuilleId) {
+    const { data: targetFeuille } = await insforge.database
       .from('feuilles_route')
-      .update({
-        total_commandes: (targetFeuille.total_commandes || 0) + 1,
-        total_montant_theorique: Number(targetFeuille.total_montant_theorique || 0) + montant
-      })
-      .eq('id', targetFeuilleId);
+      .select('total_commandes, total_montant_theorique')
+      .eq('id', targetFeuilleId)
+      .single();
+
+    if (targetFeuille) {
+      await insforge.database
+        .from('feuilles_route')
+        .update({
+          total_commandes: (targetFeuille.total_commandes || 0) + 1,
+          total_montant_theorique: Number(targetFeuille.total_montant_theorique || 0) + montant
+        })
+        .eq('id', targetFeuilleId);
+    }
   }
 
   // 4. Update the OLD sheet stats (if it existed)
