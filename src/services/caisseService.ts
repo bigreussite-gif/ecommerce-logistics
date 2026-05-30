@@ -105,6 +105,7 @@ export interface CaisseResolution {
   id: string;
   statut: string;
   mode_paiement: string;
+  date_report?: string;
   updatedLines?: LigneCommande[];
 }
 
@@ -173,6 +174,9 @@ export const processCaisse = async (
 
     if (!isDelivered) {
       updateData.feuille_route_id = null;
+      if (finalStatus === 'a_rappeler' && res.date_report) {
+        updateData.date_livraison_prevue = res.date_report;
+      }
     } else {
       updateData.date_livraison_effective = new Date().toISOString();
     }

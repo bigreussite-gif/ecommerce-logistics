@@ -31,13 +31,29 @@ export const CentreAppel = () => {
   }, []);
 
   const stats = useMemo(() => {
-    const urgent = commandes.filter(c => c.statut_commande === 'a_rappeler').length;
-    const newCalls = commandes.filter(c => c.statut_commande === 'en_attente_appel').length;
-    return { urgent, newCalls, total: commandes.length };
+    const todayStr = new Date().toISOString().split('T')[0];
+    const visibleCommandes = commandes.filter(c => {
+      if (c.statut_commande === 'a_rappeler' && c.date_livraison_prevue) {
+        const datePrevue = c.date_livraison_prevue.split('T')[0];
+        if (datePrevue > todayStr) return false;
+      }
+      return true;
+    });
+    
+    const urgent = visibleCommandes.filter(c => c.statut_commande === 'a_rappeler').length;
+    const newCalls = visibleCommandes.filter(c => c.statut_commande === 'en_attente_appel').length;
+    return { urgent, newCalls, total: visibleCommandes.length };
   }, [commandes]);
 
   const filteredCommandes = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    
     return commandes.filter(c => {
+      if (c.statut_commande === 'a_rappeler' && c.date_livraison_prevue) {
+        const datePrevue = c.date_livraison_prevue.split('T')[0];
+        if (datePrevue > todayStr) return false;
+      }
+      
       const matchesSearch = (c.nom_client || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                            (c.telephone_client || '').includes(searchTerm);
       const matchesStatus = statusFilter === 'All' || 

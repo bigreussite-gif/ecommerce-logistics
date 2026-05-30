@@ -83,6 +83,7 @@ CREATE TABLE commandes (
   livreur_id UUID REFERENCES users(id),
   feuille_route_id UUID,
   date_validation_appel TIMESTAMPTZ,
+  date_livraison_prevue TIMESTAMPTZ,
   date_livraison_effective TIMESTAMPTZ,
   montant_encaisse NUMERIC(15, 2),
   notes_livreur TEXT,

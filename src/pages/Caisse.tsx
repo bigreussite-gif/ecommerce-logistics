@@ -629,6 +629,15 @@ export const Caisse = () => {
                               <option value="annulee">Annulé 🚫</option>
                               <option value="transfere">Transférer ➡️</option>
                             </select>
+                            {resolutions[c.id]?.statut === 'a_rappeler' && (
+                              <input 
+                                type="date"
+                                className="form-input"
+                                style={{ marginTop: '0.5rem', padding: '0.2rem 0.5rem', fontSize: '0.75rem', borderRadius: '6px' }}
+                                value={resolutions[c.id]?.date_report || ''}
+                                onChange={(e) => updateResolution(c.id, 'date_report', e.target.value)}
+                              />
+                            )}
                           </td>
                           <td data-label="Paiement">
                             {resolutions[c.id]?.statut === 'livree' ? (
