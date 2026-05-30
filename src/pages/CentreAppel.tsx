@@ -34,7 +34,8 @@ export const CentreAppel = () => {
     const todayStr = new Date().toISOString().split('T')[0];
     const visibleCommandes = commandes.filter(c => {
       if (c.statut_commande === 'a_rappeler' && c.date_livraison_prevue) {
-        const datePrevue = c.date_livraison_prevue.split('T')[0];
+        const dateStr = c.date_livraison_prevue instanceof Date ? c.date_livraison_prevue.toISOString() : c.date_livraison_prevue;
+        const datePrevue = dateStr.split('T')[0];
         if (datePrevue > todayStr) return false;
       }
       return true;
@@ -50,7 +51,8 @@ export const CentreAppel = () => {
     
     return commandes.filter(c => {
       if (c.statut_commande === 'a_rappeler' && c.date_livraison_prevue) {
-        const datePrevue = c.date_livraison_prevue.split('T')[0];
+        const dateStr = c.date_livraison_prevue instanceof Date ? c.date_livraison_prevue.toISOString() : c.date_livraison_prevue;
+        const datePrevue = dateStr.split('T')[0];
         if (datePrevue > todayStr) return false;
       }
       
