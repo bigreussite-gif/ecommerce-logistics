@@ -3,7 +3,7 @@ import { getAvailableLivreurs, reassignCommandeToFeuille } from '../services/log
 import { getFeuillesEnCours, getFeuillesDuJour, getCommandesConcernees, processCaisse, CaisseResolution } from '../services/caisseService';
 import { insforge } from '../lib/insforge';
 import type { User, Commande, FeuilleRoute } from '../types';
-import { Calculator, CheckCircle2, ChevronRight, Plus, Search, Eye, AlertCircle, Calendar, RefreshCw, X, Check } from 'lucide-react';
+import { Calculator, CheckCircle2, ChevronRight, Plus, Search, Eye, AlertCircle, RefreshCw, X, Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
