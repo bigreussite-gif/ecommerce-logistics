@@ -227,7 +227,7 @@ export const processCaisse = async (
     }
 
     // Handle stock returns
-    if (finalStatus === 'retour_stock' || finalStatus === 'annulee') {
+    if (finalStatus === 'retour_stock' || finalStatus === 'annulee' || finalStatus === 'a_rappeler') {
       const linesToReturn = lignesCommandes.filter((l: any) => l.commande_id === res.id);
       for (const l of linesToReturn) {
         // By default, we put back in stock as "retour_livreur" reference
@@ -236,8 +236,8 @@ export const processCaisse = async (
           produit_id: l.produit_id,
           type_mouvement: 'entree',
           quantite: l.quantite,
-          reference: `Retour Echec cmd #${res.id.slice(0,5)}`,
-          commentaire: `Retour via Caisse - Feuille #${feuilleRouteId.slice(0,8)}`
+          reference: `Retour ${finalStatus === 'a_rappeler' ? 'Reporté' : 'Echec'} cmd #${res.id.slice(0,5)}`,
+          commentaire: `Retour via Caisse (${finalStatus === 'a_rappeler' ? 'Reporté' : 'Échoué/Annulé'}) - Feuille #${feuilleRouteId.slice(0,8)}`
         } as any);
       }
     }

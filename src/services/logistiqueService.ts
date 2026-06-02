@@ -1,5 +1,6 @@
 import { Commande, User } from '../types';
 import { insforge } from '../lib/insforge';
+import { addMouvementStock } from './produitService';
 
 export const getAvailableLivreurs = async (): Promise<User[]> => {
   const { data, error } = await insforge.database
@@ -60,6 +61,33 @@ export const creerFeuilleRoute = async (livreurId: string, commandeIds: string[]
     .in('id', commandeIds);
   
   if (batchUpdateError) throw new Error(`Erreur lors de l'affectation des commandes : ${batchUpdateError.message}`);
+
+  // 4. Handle stock movements for commands that were inactive (e.g., reportée/annulée) and are now active/out for delivery again
+  try {
+    const inactiveStates = ['a_rappeler', 'annulee', 'retour_client', 'retour_stock'];
+    for (const c of mappedCmds) {
+      if (inactiveStates.includes(c.statut_commande?.toLowerCase())) {
+        const { data: lines } = await insforge.database
+          .from('lignes_commandes')
+          .select('*')
+          .eq('commande_id', c.id);
+        
+        if (lines && lines.length > 0) {
+          for (const l of lines) {
+            await addMouvementStock({
+              produit_id: l.produit_id,
+              type_mouvement: 'sortie',
+              quantite: l.quantite,
+              reference: `Sortie Stock (Feuille Route) Cmd #${c.id.substring(0, 8)}`,
+              commentaire: `Sortie automatique pour réexpédition (précédemment reportée/annulée) sur la feuille #${feuilleId.slice(0, 8)}`
+            } as any);
+          }
+        }
+      }
+    }
+  } catch (stkErr) {
+    console.error("Erreur réajustement stock réaffectation feuille route:", stkErr);
+  }
 
   return feuilleId;
 };
@@ -150,13 +178,14 @@ export const reassignCommandeToFeuille = async (commandeId: string, targetFeuill
   // 1. Get the command to check current state
   const { data: cmd, error: cmdError } = await insforge.database
     .from('commandes')
-    .select('montant_total, feuille_route_id')
+    .select('montant_total, feuille_route_id, statut_commande')
     .eq('id', commandeId)
     .single();
     
   if (cmdError || !cmd) throw new Error("Commande introuvable");
   
   const oldFeuilleId = cmd.feuille_route_id;
+  const oldStatus = cmd.statut_commande;
   const montant = Number(cmd.montant_total) || 0;
 
   // 2. Update the command
@@ -170,6 +199,31 @@ export const reassignCommandeToFeuille = async (commandeId: string, targetFeuill
     .eq('id', commandeId);
 
   if (updateCmdError) throw updateCmdError;
+
+  // Handle stock movements if the command was previously in an inactive state where stock was returned
+  try {
+    const inactiveStates = ['a_rappeler', 'annulee', 'retour_client', 'retour_stock'];
+    if (inactiveStates.includes(oldStatus?.toLowerCase())) {
+      const { data: lines } = await insforge.database
+        .from('lignes_commandes')
+        .select('*')
+        .eq('commande_id', commandeId);
+      
+      if (lines && lines.length > 0) {
+        for (const l of lines) {
+          await addMouvementStock({
+            produit_id: l.produit_id,
+            type_mouvement: 'sortie',
+            quantite: l.quantite,
+            reference: `Sortie Stock (Transfert) Cmd #${commandeId.substring(0, 8)}`,
+            commentaire: `Sortie automatique pour réexpédition lors du transfert (précédemment reportée/annulée)`
+          } as any);
+        }
+      }
+    }
+  } catch (stkErr) {
+    console.error("Erreur réajustement stock transfert commande:", stkErr);
+  }
 
   // 3. Update the NEW sheet stats
   if (targetFeuilleId) {
