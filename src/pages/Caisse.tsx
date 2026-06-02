@@ -33,6 +33,7 @@ export const Caisse = () => {
   const [extraSearch, setExtraSearch] = useState('');
   const [selectedTab, setSelectedTab] = useState<'toutes' | 'livrees' | 'a_rappeler' | 'retours' | 'transferes'>('toutes');
   const [orderSearchTerm, setOrderSearchTerm] = useState('');
+  const [modeCalculEcart, setModeCalculEcart] = useState<'brut' | 'sans_livraison' | 'net'>('net');
 
   // Form State
   const [montantRemisStr, setMontantRemisStr] = useState<string>('');
@@ -244,31 +245,57 @@ export const Caisse = () => {
     return linesSum + shipping - remise;
   }, [commandes, resolutions]);
 
-  const calculateCashAttenduLocalement = useCallback((orderId: string) => {
-    const totalClient = calculateOrderTotalLocally(orderId);
-    const res = resolutions[orderId];
-    if (!res || !res.updatedLines) return totalClient;
-    
-    let primesPayees = 0;
-    res.updatedLines.forEach((l: any) => {
-      if (l.choix_installation && l.prime_payee) {
-        primesPayees += Number(l.frais_installation) * Number(l.quantite);
+  const financeDetails = useMemo(() => {
+    let cashAvecLivraison = 0;
+    let cashFraisLivraison = 0;
+    let cashPrimesInstallation = 0;
+    let mmTotal = 0;
+
+    commandes.forEach(c => {
+      const res = resolutions[c.id];
+      const orderTotal = calculateOrderTotalLocally(c.id);
+
+      if (res?.statut === 'livree') {
+        const isCash = ['Cash à la livraison', 'Cash'].includes(res?.mode_paiement || '');
+        if (isCash) {
+          cashAvecLivraison += orderTotal;
+          cashFraisLivraison += Number(c.frais_livraison) || 0;
+          if (res.updatedLines) {
+            res.updatedLines.forEach((l: any) => {
+              if (l.choix_installation && l.prime_payee) {
+                cashPrimesInstallation += Number(l.frais_installation) * Number(l.quantite);
+              }
+            });
+          }
+        } else {
+          mmTotal += orderTotal;
+        }
       }
     });
-    return totalClient - primesPayees;
-  }, [calculateOrderTotalLocally, resolutions]);
+
+    const primeLivreurParsed = parseFloat(primeLivreurStr) || 0;
+    const cashSansLivraison = cashAvecLivraison - cashFraisLivraison;
+    const cashNet = cashSansLivraison - cashPrimesInstallation - primeLivreurParsed;
+
+    return {
+      cashAvecLivraison,
+      cashFraisLivraison,
+      cashPrimesInstallation,
+      cashSansLivraison,
+      cashNet,
+      mmTotal
+    };
+  }, [commandes, resolutions, calculateOrderTotalLocally, primeLivreurStr]);
 
   const montantAttendu = useMemo(() => {
-    return commandes
-      .filter(c => resolutions[c.id]?.statut === 'livree' && ['Cash à la livraison', 'Cash'].includes(resolutions[c.id]?.mode_paiement || ''))
-      .reduce((acc, c) => acc + calculateCashAttenduLocalement(c.id), 0);
-  }, [commandes, resolutions, calculateCashAttenduLocalement]);
+    if (modeCalculEcart === 'brut') return financeDetails.cashAvecLivraison;
+    if (modeCalculEcart === 'sans_livraison') return financeDetails.cashSansLivraison;
+    return financeDetails.cashNet;
+  }, [financeDetails, modeCalculEcart]);
   
   const montantMobileMoney = useMemo(() => {
-    return commandes
-      .filter(c => resolutions[c.id]?.statut === 'livree' && !['Cash à la livraison', 'Cash'].includes(resolutions[c.id]?.mode_paiement || ''))
-      .reduce((acc, c) => acc + calculateOrderTotalLocally(c.id), 0);
-  }, [commandes, resolutions, calculateOrderTotalLocally]);
+    return financeDetails.mmTotal;
+  }, [financeDetails]);
 
   const counts = useMemo(() => {
     const c = { toutes: 0, livrees: 0, a_rappeler: 0, retours: 0, transferes: 0 };
@@ -388,7 +415,7 @@ export const Caisse = () => {
   const primeLivreurParsedForm = parseFloat(primeLivreurStr) || 0;
   const primeLivreurParsedTotal = primeLivreurParsedForm + primesInstallationTotales;
   const isMontantSaisi = montantRemisStr.trim() !== '';
-  const ecart = isMontantSaisi ? montantRemisParsed - (montantAttendu - primeLivreurParsedForm) : 0;
+  const ecart = isMontantSaisi ? montantRemisParsed - montantAttendu : 0;
 
   const handleCloture = async () => {
     if (!feuille || !isMontantSaisi) return;
@@ -428,6 +455,19 @@ export const Caisse = () => {
 
   return (
     <div style={{ animation: 'pageEnter 0.6s ease' }}>
+      <style>{`
+        .caisse-grid-container {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 1.5rem;
+          align-items: start;
+        }
+        @media (min-width: 1025px) {
+          .caisse-grid-container {
+            grid-template-columns: 2.2fr 1fr;
+          }
+        }
+      `}</style>
       <div style={{ marginBottom: '2.5rem' }} className="mobile-stack">
         <div>
           <h1 className="text-premium" style={{ fontSize: 'clamp(1.8rem, 5vw, 2.2rem)', fontWeight: 800, margin: 0 }}>Caisse & Retours</h1>
@@ -560,7 +600,7 @@ export const Caisse = () => {
         )}
         {/* RECONCILIATION */}
         {feuille && (
-          <div className="res-grid" style={{ alignItems: 'start' }}>
+          <div className="caisse-grid-container" style={{ alignItems: 'start' }}>
             
             <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
               <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
@@ -1011,14 +1051,113 @@ export const Caisse = () => {
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 900, margin: 0 }}>Récapitulatif</h3>
               </div>
               
-              <div style={{ marginBottom: '1.5rem', padding: '1.25rem', background: 'rgba(0,0,0,0.03)', borderRadius: '20px', border: '1px solid rgba(0,0,0,0.05)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
-                  <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Attendu (Cash) :</span>
-                  <span style={{ fontWeight: 900, fontSize: '1.5rem', color: 'var(--primary)' }}>{montantAttendu.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>F</span></span>
+              <div style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {/* 3 scenarios selector */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', padding: '1rem', background: 'rgba(0,0,0,0.02)', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.05)' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.25rem' }}>Mode de versement du livreur</div>
+                  
+                  {/* Option 1: Global (Avec livraison) */}
+                  <label style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '0.6rem 0.8rem', 
+                    borderRadius: '10px', 
+                    background: modeCalculEcart === 'brut' ? '#eff6ff' : 'white', 
+                    border: `1.5px solid ${modeCalculEcart === 'brut' ? '#3b82f6' : '#e2e8f0'}`,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input 
+                        type="radio" 
+                        name="modeCalculEcart" 
+                        checked={modeCalculEcart === 'brut'} 
+                        onChange={() => setModeCalculEcart('brut')}
+                        style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: modeCalculEcart === 'brut' ? '#1e40af' : '#475569' }}>
+                        Somme Globale <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>(Avec Livr.)</span>
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 800, color: modeCalculEcart === 'brut' ? '#1e40af' : '#1e293b' }}>
+                      {financeDetails.cashAvecLivraison.toLocaleString()} F
+                    </span>
+                  </label>
+
+                  {/* Option 2: Sans livraison */}
+                  <label style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '0.6rem 0.8rem', 
+                    borderRadius: '10px', 
+                    background: modeCalculEcart === 'sans_livraison' ? '#fffbeb' : 'white', 
+                    border: `1.5px solid ${modeCalculEcart === 'sans_livraison' ? '#f59e0b' : '#e2e8f0'}`,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input 
+                        type="radio" 
+                        name="modeCalculEcart" 
+                        checked={modeCalculEcart === 'sans_livraison'} 
+                        onChange={() => setModeCalculEcart('sans_livraison')}
+                        style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: modeCalculEcart === 'sans_livraison' ? '#92400e' : '#475569' }}>
+                        Sans Livraison <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>(Frais déduits)</span>
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 800, color: modeCalculEcart === 'sans_livraison' ? '#92400e' : '#1e293b' }}>
+                      {financeDetails.cashSansLivraison.toLocaleString()} F
+                    </span>
+                  </label>
+
+                  {/* Option 3: Net (Sans livraison & sans primes) */}
+                  <label style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    padding: '0.6rem 0.8rem', 
+                    borderRadius: '10px', 
+                    background: modeCalculEcart === 'net' ? '#f0fdf4' : 'white', 
+                    border: `1.5px solid ${modeCalculEcart === 'net' ? '#10b981' : '#e2e8f0'}`,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input 
+                        type="radio" 
+                        name="modeCalculEcart" 
+                        checked={modeCalculEcart === 'net'} 
+                        onChange={() => setModeCalculEcart('net')}
+                        style={{ width: '15px', height: '15px', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: modeCalculEcart === 'net' ? '#166534' : '#475569' }}>
+                        Somme Net à Verser <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>(Livr. & Primes déduites)</span>
+                      </span>
+                    </div>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 800, color: modeCalculEcart === 'net' ? '#166534' : '#1e293b' }}>
+                      {financeDetails.cashNet.toLocaleString()} F
+                    </span>
+                  </label>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                  <span style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.8rem' }}>Mobile Money :</span>
-                  <span style={{ fontWeight: 800, color: 'var(--text-muted)', fontSize: '0.9rem' }}>{montantMobileMoney.toLocaleString()} F</span>
+
+                {/* Detail Summary info */}
+                <div style={{ padding: '0.8rem 1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Frais Livraison collectés (Cash) :</span>
+                    <span style={{ fontWeight: 700, color: '#475569' }}>-{financeDetails.cashFraisLivraison.toLocaleString()} F</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>Primes d'Installation validées :</span>
+                    <span style={{ fontWeight: 700, color: '#475569' }}>-{financeDetails.cashPrimesInstallation.toLocaleString()} F</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', paddingTop: '0.4rem', borderTop: '1px dashed #cbd5e1' }}>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>Mobile Money (Non impacté) :</span>
+                    <span style={{ fontWeight: 800, color: '#0369a1' }}>{montantMobileMoney.toLocaleString()} F</span>
+                  </div>
                 </div>
               </div>
 
