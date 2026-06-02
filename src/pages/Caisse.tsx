@@ -3,7 +3,7 @@ import { getAvailableLivreurs, reassignCommandeToFeuille } from '../services/log
 import { getFeuillesEnCours, getFeuillesDuJour, getCommandesConcernees, processCaisse, CaisseResolution } from '../services/caisseService';
 import { insforge } from '../lib/insforge';
 import type { User, Commande, FeuilleRoute } from '../types';
-import { Calculator, CheckCircle2, ChevronRight, Plus, Search, Eye, AlertCircle } from 'lucide-react';
+import { Calculator, CheckCircle2, ChevronRight, Plus, Search, Eye, AlertCircle, Calendar, RefreshCw, X, Check } from 'lucide-react';
 import { format } from 'date-fns';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -31,6 +31,8 @@ export const Caisse = () => {
 
   const [loading, setLoading] = useState(false);
   const [extraSearch, setExtraSearch] = useState('');
+  const [selectedTab, setSelectedTab] = useState<'toutes' | 'livrees' | 'a_rappeler' | 'retours' | 'transferes'>('toutes');
+  const [orderSearchTerm, setOrderSearchTerm] = useState('');
 
   // Form State
   const [montantRemisStr, setMontantRemisStr] = useState<string>('');
@@ -267,6 +269,40 @@ export const Caisse = () => {
       .filter(c => resolutions[c.id]?.statut === 'livree' && !['Cash à la livraison', 'Cash'].includes(resolutions[c.id]?.mode_paiement || ''))
       .reduce((acc, c) => acc + calculateOrderTotalLocally(c.id), 0);
   }, [commandes, resolutions, calculateOrderTotalLocally]);
+
+  const counts = useMemo(() => {
+    const c = { toutes: 0, livrees: 0, a_rappeler: 0, retours: 0, transferes: 0 };
+    commandes.forEach(cmd => {
+      c.toutes++;
+      const status = resolutions[cmd.id]?.statut;
+      if (status === 'livree') c.livrees++;
+      else if (status === 'a_rappeler') c.a_rappeler++;
+      else if (['retour_livreur', 'echouee', 'annulee'].includes(status || '')) c.retours++;
+      else if (status === 'transfere') c.transferes++;
+    });
+    return c;
+  }, [commandes, resolutions]);
+
+  const filteredCommandes = useMemo(() => {
+    return commandes.filter(c => {
+      const searchLower = orderSearchTerm.toLowerCase().trim();
+      const matchesSearch = !searchLower ||
+        c.id.toLowerCase().includes(searchLower) ||
+        (c.nom_client || '').toLowerCase().includes(searchLower) ||
+        (c.telephone_client || '').toLowerCase().includes(searchLower) ||
+        (c.commune_livraison || '').toLowerCase().includes(searchLower);
+
+      if (!matchesSearch) return false;
+
+      const status = resolutions[c.id]?.statut;
+      if (selectedTab === 'toutes') return true;
+      if (selectedTab === 'livrees') return status === 'livree';
+      if (selectedTab === 'a_rappeler') return status === 'a_rappeler';
+      if (selectedTab === 'retours') return ['retour_livreur', 'echouee', 'annulee'].includes(status || '');
+      if (selectedTab === 'transferes') return status === 'transfere';
+      return true;
+    });
+  }, [commandes, resolutions, selectedTab, orderSearchTerm]);
 
   const toggleInstallation = (orderId: string, lineId: string) => {
     const res = resolutions[orderId];
@@ -569,168 +605,400 @@ export const Caisse = () => {
                   </button>
               </div>
 
+              {/* FILTRAGE LOCAL ET ONGLETS */}
+              <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid #f1f5f9', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ position: 'relative' }}>
+                  <Search size={16} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="Filtrer les commandes de cette feuille (Nom, Téléphone, Commune, Réf...)"
+                    style={{ paddingLeft: '2.5rem', height: '38px', fontSize: '0.85rem', borderRadius: '10px', width: '100%' }}
+                    value={orderSearchTerm}
+                    onChange={e => setOrderSearchTerm(e.target.value)}
+                  />
+                  {orderSearchTerm && (
+                    <button 
+                      onClick={() => setOrderSearchTerm('')}
+                      style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button 
+                    onClick={() => setSelectedTab('toutes')}
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '20px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      border: '1px solid #cbd5e1',
+                      background: selectedTab === 'toutes' ? 'var(--text-main)' : 'white',
+                      color: selectedTab === 'toutes' ? 'white' : 'var(--text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    📦 Toutes ({counts.toutes})
+                  </button>
+
+                  <button 
+                    onClick={() => setSelectedTab('livrees')}
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '20px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      border: '1px solid #dcfce7',
+                      background: selectedTab === 'livrees' ? '#10b981' : 'white',
+                      color: selectedTab === 'livrees' ? 'white' : '#15803d',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    ✅ OK / Livrées ({counts.livrees})
+                  </button>
+
+                  <button 
+                    onClick={() => setSelectedTab('a_rappeler')}
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '20px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      border: '1px solid #fef3c7',
+                      background: selectedTab === 'a_rappeler' ? '#f59e0b' : 'white',
+                      color: selectedTab === 'a_rappeler' ? 'white' : '#b45309',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    🔄 À reporter ({counts.a_rappeler})
+                  </button>
+
+                  <button 
+                    onClick={() => setSelectedTab('retours')}
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '20px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      border: '1px solid #fee2e2',
+                      background: selectedTab === 'retours' ? '#ef4444' : 'white',
+                      color: selectedTab === 'retours' ? 'white' : '#b91c1c',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    ❌ Retours (X) ({counts.retours})
+                  </button>
+
+                  <button 
+                    onClick={() => setSelectedTab('transferes')}
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '20px',
+                      fontSize: '0.8rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      border: '1px solid #e0f2fe',
+                      background: selectedTab === 'transferes' ? '#0ea5e9' : 'white',
+                      color: selectedTab === 'transferes' ? 'white' : '#0369a1',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    ➡️ Transférées ({counts.transferes})
+                  </button>
+                </div>
+              </div>
+
               <div className="table-container table-to-cards">
                 <div className="table-container">
-<table style={{ tableLayout: 'fixed', width: '100%' }}>
-                  <colgroup>
-                    <col style={{ width: '10%' }} />
-                    <col style={{ width: '28%' }} />
-                    <col style={{ width: '16%' }} />
-                    <col style={{ width: '23%' }} />
-                    <col style={{ width: '23%' }} />
-                  </colgroup>
-                  <thead className="mobile-hide">
-                    <tr>
-                      <th>Ref</th>
-                      <th>Client</th>
-                      <th style={{ textAlign: 'right' }}>Montant</th>
-                      <th>Statut</th>
-                      <th>Paiement</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {commandes.map(c => (
-                      <Fragment key={c.id}>
-                        <tr>
-                          <td data-label="Ref">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <button className="btn btn-outline" style={{ padding: '0.25rem', borderRadius: '6px', border: '1px solid #e2e8f0', width: 'auto' }} onClick={() => setSelectedOrderId(c.id)}>
-                                <Eye size={12} />
-                              </button>
-                              <span style={{ fontWeight: 800, color: 'var(--text-muted)', fontSize: '0.9rem' }}>#{c.id.slice(0, 5).toUpperCase()}</span>
-                            </div>
-                          </td>
-                          <td data-label="Client">
-                            <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.95rem' }}>{c.nom_client || `Anonyme`}</div>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 700 }}>{c.telephone_client}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{c.commune_livraison}</div>
-                          </td>
-                          <td data-label="Montant" style={{ fontWeight: 900, textAlign: 'right', fontSize: '1rem' }}>
-                            {calculateOrderTotalLocally(c.id).toLocaleString()}
-                          </td>
-                          <td data-label="Statut">
-                            <select 
-                              className="form-select" 
-                              style={{ 
-                                padding: '0.35rem 0.5rem', 
-                                borderRadius: '8px',
-                                fontWeight: 700,
-                                fontSize: '0.8rem',
-                                border: 'none',
-                                backgroundColor: resolutions[c.id]?.statut === 'livree' ? '#dcfce7' : resolutions[c.id]?.statut === 'retour_livreur' ? '#fee2e2' : '#f3f4f6'
-                              }}
-                              value={resolutions[c.id]?.statut || 'retour_livreur'}
-                              onChange={(e) => updateResolution(c.id, 'statut', e.target.value)}
-                            >
-                              <option value="livree">Encaissé ✅</option>
-                              <option value="retour_livreur">Retour 🔙</option>
-                              <option value="echouee">Échec ❌</option>
-                              <option value="a_rappeler">Reprog. 🔄</option>
-                              <option value="annulee">Annulé 🚫</option>
-                              <option value="transfere">Transférer ➡️</option>
-                            </select>
-                            {resolutions[c.id]?.statut === 'a_rappeler' && (
-                              <input 
-                                type="date"
-                                className="form-input"
-                                style={{ marginTop: '0.5rem', padding: '0.2rem 0.5rem', fontSize: '0.75rem', borderRadius: '6px' }}
-                                value={resolutions[c.id]?.date_report || ''}
-                                onChange={(e) => updateResolution(c.id, 'date_report', e.target.value)}
-                              />
-                            )}
-                          </td>
-                          <td data-label="Paiement">
-                            {resolutions[c.id]?.statut === 'livree' ? (
-                              <select 
-                                className="form-select" 
-                                style={{ padding: '0.35rem 0.5rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700 }}
-                                value={resolutions[c.id]?.mode_paiement}
-                                onChange={(e) => updateResolution(c.id, 'mode_paiement', e.target.value)}
-                              >
-                                <option value="Cash à la livraison">CASH</option>
-                                <option value="Mobile Money">MOBILE</option>
-                                <option value="Carte">CARTE</option>
-                              </select>
-                            ) : (
-                              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>N/A</span>
-                            )}
-                          </td>
-                        </tr>
-                        {resolutions[c.id]?.statut === 'livree' && resolutions[c.id]?.updatedLines?.length && (
-                          <tr style={{ background: 'rgba(99, 102, 255, 0.02)' }}>
-                            <td colSpan={5} style={{ padding: '0.5rem 1.5rem', borderTop: 'none' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                                {/* Installation Primes */}
-                                {resolutions[c.id].updatedLines!.some(l => Number(l.frais_installation) > 0) && (
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                                    <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>Installations :</span>
-                                    {resolutions[c.id].updatedLines!.filter(l => Number(l.frais_installation) > 0).map(l => (
-                                      <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.25rem 0.6rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
-                                          <input 
-                                            type="checkbox" 
-                                            checked={l.choix_installation} 
-                                            onChange={() => toggleInstallation(c.id, l.id)}
-                                            style={{ width: '14px', height: '14px' }}
-                                          />
-                                          {l.nom_produit} (+{Number(l.frais_installation).toLocaleString()})
-                                        </label>
-                                        {l.choix_installation && (
-                                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, marginLeft: '0.5rem', borderLeft: '1px solid #e2e8f0', paddingLeft: '0.5rem', color: '#10b981' }}>
-                                            <input 
-                                              type="checkbox" 
-                                              checked={l.prime_payee} 
-                                              onChange={() => togglePrimePayee(c.id, l.id)}
-                                              style={{ width: '14px', height: '14px' }}
-                                            />
-                                            Prime payée
-                                          </label>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                                
-                                {/* Lignes Adjustment (Partial sales) */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                  <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Ajustement Lots / Quantités :</span>
-                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
-                                    {resolutions[c.id].updatedLines!.map(l => (
-                                      <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.35rem 0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                                        <span style={{ fontSize: '0.75rem', fontWeight: 700, maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.nom_produit}>{l.nom_produit}</span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                          <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700 }}>Qté:</span>
-                                          <input 
-                                            type="number" 
-                                            min={0}
-                                            value={l.quantite} 
-                                            onChange={e => updateLine(c.id, l.id, 'quantite', Number(e.target.value))}
-                                            style={{ width: '50px', padding: '0.15rem 0.25rem', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                                          />
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                                          <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700 }}>Prix Unitaire:</span>
-                                          <input 
-                                            type="number" 
-                                            min={0}
-                                            value={l.prix_unitaire} 
-                                            onChange={e => updateLine(c.id, l.id, 'prix_unitaire', Number(e.target.value))}
-                                            style={{ width: '80px', padding: '0.15rem 0.25rem', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
-                                          />
-                                        </div>
-                                      </div>
-                                    ))}
-                                  </div>
+                  <table style={{ tableLayout: 'fixed', width: '100%' }}>
+                    <colgroup>
+                      <col style={{ width: '10%' }} />
+                      <col style={{ width: '28%' }} />
+                      <col style={{ width: '16%' }} />
+                      <col style={{ width: '23%' }} />
+                      <col style={{ width: '23%' }} />
+                    </colgroup>
+                    <thead className="mobile-hide">
+                      <tr>
+                        <th>Ref</th>
+                        <th>Client</th>
+                        <th style={{ textAlign: 'right' }}>Montant</th>
+                        <th>Statut</th>
+                        <th>Paiement</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredCommandes.map(c => {
+                        const resolution = resolutions[c.id];
+                        const isDelivered = resolution?.statut === 'livree';
+                        const isPostponed = resolution?.statut === 'a_rappeler';
+                        const isReturned = ['retour_livreur', 'echouee', 'annulee'].includes(resolution?.statut || '');
+                        const isTransferred = resolution?.statut === 'transfere';
+
+                        let rowBg = 'white';
+                        let rowBorderLeft = '4px solid transparent';
+                        if (isDelivered) {
+                          rowBg = '#f0fdf4';
+                          rowBorderLeft = '4px solid #22c55e';
+                        } else if (isPostponed) {
+                          rowBg = '#fffbeb';
+                          rowBorderLeft = '4px solid #f59e0b';
+                        } else if (isReturned) {
+                          rowBg = '#fef2f2';
+                          rowBorderLeft = '4px solid #ef4444';
+                        } else if (isTransferred) {
+                          rowBg = '#f0f9ff';
+                          rowBorderLeft = '4px solid #0ea5e9';
+                        }
+
+                        return (
+                          <Fragment key={c.id}>
+                            <tr style={{ backgroundColor: rowBg, borderLeft: rowBorderLeft, transition: 'all 0.2s' }}>
+                              <td data-label="Ref">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <button className="btn btn-outline" style={{ padding: '0.25rem', borderRadius: '6px', border: '1px solid #e2e8f0', width: 'auto' }} onClick={() => setSelectedOrderId(c.id)}>
+                                    <Eye size={12} />
+                                  </button>
+                                  <span style={{ fontWeight: 800, color: 'var(--text-muted)', fontSize: '0.9rem' }}>#{c.id.slice(0, 5).toUpperCase()}</span>
                                 </div>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
-                    ))}
-                  </tbody>
-                </table>
-</div>
+                              </td>
+                              <td data-label="Client">
+                                <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.95rem' }}>{c.nom_client || `Anonyme`}</div>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 700 }}>{c.telephone_client}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{c.commune_livraison}</div>
+                              </td>
+                              <td data-label="Montant" style={{ fontWeight: 900, textAlign: 'right', fontSize: '1rem' }}>
+                                {calculateOrderTotalLocally(c.id).toLocaleString()}
+                              </td>
+                              <td data-label="Statut">
+                                {/* Boutons rapides */}
+                                <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.4rem' }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateResolution(c.id, 'statut', 'livree')}
+                                    style={{
+                                      flex: 1,
+                                      padding: '0.35rem 0',
+                                      borderRadius: '6px',
+                                      border: '1.5px solid #10b981',
+                                      background: isDelivered ? '#10b981' : 'transparent',
+                                      color: isDelivered ? 'white' : '#10b981',
+                                      fontWeight: 800,
+                                      fontSize: '0.75rem',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '2px',
+                                      transition: 'all 0.15s'
+                                    }}
+                                    title="Livré (OK)"
+                                  >
+                                    <Check size={12} strokeWidth={3} /> OK
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      updateResolution(c.id, 'statut', 'a_rappeler');
+                                      if (!resolution?.date_report) {
+                                        const tomorrow = new Date();
+                                        tomorrow.setDate(tomorrow.getDate() + 1);
+                                        updateResolution(c.id, 'date_report', tomorrow.toISOString().split('T')[0]);
+                                      }
+                                    }}
+                                    style={{
+                                      flex: 1,
+                                      padding: '0.35rem 0',
+                                      borderRadius: '6px',
+                                      border: '1.5px solid #f59e0b',
+                                      background: isPostponed ? '#f59e0b' : 'transparent',
+                                      color: isPostponed ? 'white' : '#b45309',
+                                      fontWeight: 800,
+                                      fontSize: '0.75rem',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '2px',
+                                      transition: 'all 0.15s'
+                                    }}
+                                    title="Reporter"
+                                  >
+                                    <RefreshCw size={10} strokeWidth={3} /> Reprog
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => updateResolution(c.id, 'statut', 'retour_livreur')}
+                                    style={{
+                                      flex: 1,
+                                      padding: '0.35rem 0',
+                                      borderRadius: '6px',
+                                      border: '1.5px solid #ef4444',
+                                      background: isReturned ? '#ef4444' : 'transparent',
+                                      color: isReturned ? 'white' : '#ef4444',
+                                      fontWeight: 800,
+                                      fontSize: '0.75rem',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      gap: '2px',
+                                      transition: 'all 0.15s'
+                                    }}
+                                    title="Retour (X)"
+                                  >
+                                    <X size={12} strokeWidth={3} /> X
+                                  </button>
+                                </div>
+
+                                <select 
+                                  className="form-select" 
+                                  style={{ 
+                                    padding: '0.25rem 0.5rem', 
+                                    borderRadius: '6px',
+                                    fontWeight: 700,
+                                    fontSize: '0.75rem',
+                                    width: '100%',
+                                    border: '1px solid #cbd5e1',
+                                    backgroundColor: 'white'
+                                  }}
+                                  value={resolution?.statut || 'retour_livreur'}
+                                  onChange={(e) => updateResolution(c.id, 'statut', e.target.value)}
+                                >
+                                  <option value="livree">Encaissé ✅</option>
+                                  <option value="retour_livreur">Retour 🔙</option>
+                                  <option value="echouee">Échec ❌</option>
+                                  <option value="a_rappeler">Reprog. 🔄</option>
+                                  <option value="annulee">Annulé 🚫</option>
+                                  <option value="transfere">Transférer ➡️</option>
+                                </select>
+                                {isPostponed && (
+                                  <input 
+                                    type="date"
+                                    className="form-input"
+                                    style={{ marginTop: '0.4rem', padding: '0.2rem 0.5rem', fontSize: '0.75rem', borderRadius: '6px', width: '100%' }}
+                                    value={resolution?.date_report || ''}
+                                    onChange={(e) => updateResolution(c.id, 'date_report', e.target.value)}
+                                  />
+                                )}
+                              </td>
+                              <td data-label="Paiement">
+                                {isDelivered ? (
+                                  <select 
+                                    className="form-select" 
+                                    style={{ padding: '0.35rem 0.5rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700, width: '100%' }}
+                                    value={resolution?.mode_paiement || 'Cash à la livraison'}
+                                    onChange={(e) => updateResolution(c.id, 'mode_paiement', e.target.value)}
+                                  >
+                                    <option value="Cash à la livraison">CASH</option>
+                                    <option value="Mobile Money">MOBILE</option>
+                                    <option value="Carte">CARTE</option>
+                                  </select>
+                                ) : (
+                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600 }}>N/A</span>
+                                )}
+                              </td>
+                            </tr>
+                            {isDelivered && resolution?.updatedLines?.length && (
+                              <tr style={{ background: 'rgba(99, 102, 255, 0.02)' }}>
+                                <td colSpan={5} style={{ padding: '0.5rem 1.5rem', borderTop: 'none' }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                    {/* Installation Primes */}
+                                    {resolution.updatedLines.some(l => Number(l.frais_installation) > 0) && (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase' }}>Installations :</span>
+                                        {resolution.updatedLines.filter(l => Number(l.frais_installation) > 0).map(l => (
+                                          <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.25rem 0.6rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+                                              <input 
+                                                type="checkbox" 
+                                                checked={l.choix_installation} 
+                                                onChange={() => toggleInstallation(c.id, l.id)}
+                                                style={{ width: '14px', height: '14px' }}
+                                              />
+                                              {l.nom_produit} (+{Number(l.frais_installation).toLocaleString()})
+                                            </label>
+                                            {l.choix_installation && (
+                                              <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, marginLeft: '0.5rem', borderLeft: '1px solid #e2e8f0', paddingLeft: '0.5rem', color: '#10b981' }}>
+                                                <input 
+                                                  type="checkbox" 
+                                                  checked={l.prime_payee} 
+                                                  onChange={() => togglePrimePayee(c.id, l.id)}
+                                                  style={{ width: '14px', height: '14px' }}
+                                                />
+                                                Prime payée
+                                              </label>
+                                            )}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Lignes Adjustment (Partial sales) */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                      <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Ajustement Lots / Quantités :</span>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+                                        {resolution.updatedLines.map(l => (
+                                          <div key={l.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.35rem 0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: 700, maxWidth: '120px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={l.nom_produit}>{l.nom_produit}</span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                              <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700 }}>Qté:</span>
+                                              <input 
+                                                type="number" 
+                                                min={0}
+                                                value={l.quantite} 
+                                                onChange={e => updateLine(c.id, l.id, 'quantite', Number(e.target.value))}
+                                                style={{ width: '50px', padding: '0.15rem 0.25rem', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                              />
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                                              <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 700 }}>Prix Unitaire:</span>
+                                              <input 
+                                                type="number" 
+                                                min={0}
+                                                value={l.prix_unitaire} 
+                                                onChange={e => updateLine(c.id, l.id, 'prix_unitaire', Number(e.target.value))}
+                                                style={{ width: '80px', padding: '0.15rem 0.25rem', fontSize: '0.75rem', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                              />
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
 
