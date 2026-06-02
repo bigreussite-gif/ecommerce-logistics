@@ -284,8 +284,8 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
   if (ids.length === 0) return;
 
   // Vérification et rafraîchissement de la session pour éviter l'erreur "JWT expired"
-  const { data: authData, error: authError } = await insforge.auth.getCurrentUser();
-  if (authError || !authData?.user) {
+  const { data: authData, error: authError } = await insforge.auth.refreshSession();
+  if (authError || !authData?.session) {
     throw new Error("Votre session a expiré. Veuillez recharger la page pour vous reconnecter.");
   }
 
@@ -732,8 +732,8 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
 
   try {
     // Vérification et rafraîchissement de la session pour éviter l'erreur "JWT expired"
-    const { data: authData, error: authError } = await insforge.auth.getCurrentUser();
-    if (authError || !authData?.user) {
+    const { data: authData, error: authError } = await insforge.auth.refreshSession();
+    if (authError || !authData?.session) {
       throw new Error("Votre session a expiré. Veuillez recharger la page pour vous reconnecter.");
     }
 

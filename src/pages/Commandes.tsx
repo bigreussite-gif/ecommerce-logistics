@@ -424,10 +424,10 @@ export const Commandes = () => {
             </div>
 
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button className="btn btn-primary" onClick={handleBulkValidate} style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, background: 'white', color: '#1e293b' }}>
+              <button className="btn btn-primary" onClick={handleBulkValidate} style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, background: 'white', color: '#1e293b', whiteSpace: 'nowrap' }}>
                 <CheckCircle size={20} /> Valider Groupée
               </button>
-              <button className="btn btn-outline" onClick={handleLogisticsExport} style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, border: '1px solid rgba(255,255,255,0.2)', color: 'white' }}>
+              <button className="btn btn-outline" onClick={handleLogisticsExport} style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, border: '1px solid rgba(255,255,255,0.2)', color: 'white', whiteSpace: 'nowrap' }}>
                 <Download size={20} /> Export Livreurs
               </button>
             </div>
