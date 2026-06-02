@@ -604,10 +604,13 @@ export const Caisse = () => {
             
             <div className="card" style={{ padding: '0', overflow: 'hidden' }}>
               <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                     Encaissements
-                    <span style={{ marginLeft: '0.75rem', padding: '0.2rem 0.5rem', background: 'var(--primary-glow)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--primary)' }}>
+                    <span style={{ padding: '0.2rem 0.5rem', background: 'var(--primary-glow)', borderRadius: '6px', fontSize: '0.75rem', color: 'var(--primary)' }}>
                       #{feuille.id.slice(0, 8).toUpperCase()}
+                    </span>
+                    <span style={{ padding: '0.2rem 0.6rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '20px', fontSize: '0.8rem', color: '#1e40af', fontWeight: 800 }}>
+                      🚚 {(feuille as any).nom_livreur || livreurs.find(l => l.id === selectedLivreur)?.nom_complet || 'Livreur'}
                     </span>
                   </h3>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
