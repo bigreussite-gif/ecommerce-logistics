@@ -4,7 +4,8 @@ import { CommandeList } from '../components/commandes/CommandeList';
 import { CommandeForm } from '../components/commandes/CommandeForm';
 import { BulkImportModal } from '../components/commandes/BulkImportModal';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
-import { subscribeToCommandes, deleteCommande, getCommandeWithLines, bulkUpdateCommandeStatus, getCommandesByIds } from '../services/commandeService';
+import { subscribeToCommandes, deleteCommande, getCommandeWithLines, bulkUpdateCommandeStatus, getCommandesByIds, bulkUpdateCommandeCommune } from '../services/commandeService';
+import { getCommunes } from '../services/adminService';
 import { generateInvoicePDF } from '../services/pdfService';
 import type { Commande, LigneCommande } from '../types';
 import { useToast } from '../contexts/ToastContext';
@@ -25,6 +26,7 @@ export const Commandes = () => {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingCommande, setEditingCommande] = useState<Commande | null>(null);
   const [originalLines, setOriginalLines] = useState<LigneCommande[]>([]);
+  const [communesDb, setCommunesDb] = useState<any[]>([]);
   
   const [period, setPeriod] = useState<Period>('7d'); // Default to 7 days for better focus
   const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
@@ -114,6 +116,19 @@ export const Commandes = () => {
     }
   };
 
+  const handleBulkCommune = async (commune: string) => {
+    if (selectedIds.length === 0) return;
+    try {
+      showToast(`Attribution de la commune "${commune}" à ${selectedIds.length} commandes...`, "info");
+      await bulkUpdateCommandeCommune(selectedIds, commune);
+      showToast(`Commune attribuée avec succès !`, "success");
+      setSelectedIds([]);
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de l'attribution de la commune.", "error");
+    }
+  };
+
   useEffect(() => {
     (window as any).openBulkImport = () => setIsBulkOpen(true);
     return () => { delete (window as any).openBulkImport; };
@@ -125,6 +140,7 @@ export const Commandes = () => {
       setCommandes(data);
       setLoading(false);
     });
+    getCommunes().then(setCommunesDb).catch(console.error);
     return () => unsubscribe();
   }, []);
 
@@ -423,7 +439,26 @@ export const Commandes = () => {
               </button>
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <select 
+                onChange={(e) => {
+                  if (e.target.value) {
+                    handleBulkCommune(e.target.value);
+                    e.target.value = "";
+                  }
+                }}
+                style={{ 
+                  height: '48px', borderRadius: '14px', padding: '0 1rem', 
+                  fontWeight: 800, border: '1px solid rgba(255,255,255,0.2)', 
+                  background: '#334155', color: 'white', cursor: 'pointer', outline: 'none'
+                }}
+              >
+                <option value="">Attribuer Commune...</option>
+                {communesDb.map(c => (
+                  <option key={c.id} value={c.nom} style={{ background: '#1e293b', color: 'white' }}>{c.nom}</option>
+                ))}
+              </select>
+
               <button className="btn btn-primary" onClick={handleBulkValidate} style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, background: 'white', color: '#1e293b', whiteSpace: 'nowrap' }}>
                 <CheckCircle size={20} /> Valider Groupée
               </button>

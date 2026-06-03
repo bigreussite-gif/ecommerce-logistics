@@ -913,3 +913,49 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
     return { count: 0, error: e.message };
   }
 };
+
+export const bulkUpdateCommandeCommune = async (ids: string[], commune: string): Promise<void> => {
+  if (ids.length === 0) return;
+
+  const { data: authData, error: authError } = await insforge.auth.refreshSession();
+  if (authError || !authData?.user) {
+    throw new Error("Votre session a expiré. Veuillez recharger la page pour vous reconnecter.");
+  }
+
+  let deliveryFee = 0;
+  try {
+    const zone = await getCommuneByName(commune);
+    if (zone) {
+      deliveryFee = Number(zone.tarif_livraison) || 0;
+    }
+  } catch (e) {
+    console.error("Could not fetch commune fee during bulk update", e);
+  }
+
+  const { data: currentCmds, error: fetchError } = await insforge.database
+    .from('commandes')
+    .select('id, montant_total, frais_livraison')
+    .in('id', ids);
+
+  if (fetchError || !currentCmds) throw fetchError || new Error("Erreur de récupération des commandes");
+
+  for (const cmd of currentCmds) {
+    const prevFee = Number(cmd.frais_livraison) || 0;
+    const prevTotal = Number(cmd.montant_total) || 0;
+    const newTotal = prevTotal - prevFee + deliveryFee;
+
+    const { error: updateError } = await insforge.database
+      .from('commandes')
+      .update({
+        commune_livraison: commune,
+        frais_livraison: deliveryFee,
+        montant_total: newTotal
+      })
+      .eq('id', cmd.id);
+
+    if (updateError) throw updateError;
+  }
+
+  globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
+};
+
