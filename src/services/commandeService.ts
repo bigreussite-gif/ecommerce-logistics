@@ -87,7 +87,8 @@ export const getCommandesPaginated = async (
   startDateISO: string | null,
   endDateISO: string | null,
   searchTerm: string,
-  communeFilter?: string | null
+  communeFilter?: string | null,
+  statusFilter?: string | null
 ): Promise<{
   commandes: Commande[];
   totalCount: number;
@@ -118,6 +119,11 @@ export const getCommandesPaginated = async (
     query = query.eq('statut_commande', 'annulee');
   } else if (activeTab === 'retours') {
     query = query.eq('statut_commande', 'retour_client');
+  }
+
+  // 1.5 Specific Status Filter (État Flux)
+  if (statusFilter) {
+    query = query.eq('statut_commande', statusFilter);
   }
 
   // 2. Date Range Filter

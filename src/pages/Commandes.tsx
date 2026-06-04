@@ -50,6 +50,7 @@ export const Commandes = () => {
 
   // Commune filter & WhatsApp campaign states
   const [selectedCommuneFilter, setSelectedCommuneFilter] = useState('');
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('');
   const [whatsAppQueue, setWhatsAppQueue] = useState<any[]>([]);
   const [currentQueueIndex, setCurrentQueueIndex] = useState(-1);
   const [whatsAppTemplate, setWhatsAppTemplate] = useState('');
@@ -256,10 +257,15 @@ export const Commandes = () => {
     };
   }, [period, startDate, endDate]);
 
+  // Reset status filter when tab changes
+  useEffect(() => {
+    setSelectedStatusFilter('');
+  }, [activeTab]);
+
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, searchTerm, period, startDate, endDate, selectedCommuneFilter]);
+  }, [activeTab, searchTerm, period, startDate, endDate, selectedCommuneFilter, selectedStatusFilter]);
 
   // Fetch paginated data
   useEffect(() => {
@@ -277,7 +283,8 @@ export const Commandes = () => {
           dateRange.start,
           dateRange.end,
           searchTerm,
-          selectedCommuneFilter
+          selectedCommuneFilter,
+          selectedStatusFilter
         );
 
         if (!active) return;
@@ -318,7 +325,8 @@ export const Commandes = () => {
           dateRange.start,
           dateRange.end,
           searchTerm,
-          selectedCommuneFilter
+          selectedCommuneFilter,
+          selectedStatusFilter
         ).then(result => {
           if (!active) return;
           setCommandes(result.commandes);
@@ -346,7 +354,57 @@ export const Commandes = () => {
       active = false;
       clearInterval(interval);
     };
-  }, [currentPage, pageSize, activeTab, dateRange, searchTerm, selectedCommuneFilter]);
+  }, [currentPage, pageSize, activeTab, dateRange, searchTerm, selectedCommuneFilter, selectedStatusFilter]);
+
+  const getStatusOptionsForTab = () => {
+    switch (activeTab) {
+      case 'to_process':
+        return [
+          { value: 'nouvelle', label: 'Nouvelle' },
+          { value: 'en_attente_appel', label: 'En attente appel' },
+          { value: 'a_rappeler', label: 'À rappeler (Reporté)' }
+        ];
+      case 'in_delivery':
+        return [
+          { value: 'en_cours_livraison', label: 'En cours de livraison' }
+        ];
+      case 'done':
+        return [
+          { value: 'livree', label: 'Livrée' },
+          { value: 'terminee', label: 'Terminée' }
+        ];
+      case 'failed':
+        return [
+          { value: 'echouee', label: 'Échouée' },
+          { value: 'retour_livreur', label: 'Retour Livreur' },
+          { value: 'retour_stock', label: 'Retour en Stock' }
+        ];
+      case 'annulee':
+        return [
+          { value: 'annulee', label: 'Annulée' }
+        ];
+      case 'retours':
+        return [
+          { value: 'retour_client', label: 'Retour Client' }
+        ];
+      default:
+        return [
+          { value: 'nouvelle', label: 'Nouvelle' },
+          { value: 'en_attente_appel', label: 'En attente appel' },
+          { value: 'a_rappeler', label: 'À rappeler (Reporté)' },
+          { value: 'validee', label: 'Validée' },
+          { value: 'en_cours_livraison', label: 'En cours de livraison' },
+          { value: 'livree', label: 'Livrée' },
+          { value: 'terminee', label: 'Terminée' },
+          { value: 'echouee', label: 'Échouée' },
+          { value: 'retour_livreur', label: 'Retour Livreur' },
+          { value: 'retour_stock', label: 'Retour en Stock' },
+          { value: 'annulee', label: 'Annulée' },
+          { value: 'retour_client', label: 'Retour Client' }
+        ];
+    }
+  };
+
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -551,6 +609,31 @@ export const Commandes = () => {
                   {communesDb.map((c: any) => (
                     <option key={c.id} value={c.nom}>
                       {c.nom}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={selectedStatusFilter}
+                  onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                  style={{
+                    height: '48px',
+                    borderRadius: '16px',
+                    padding: '0 1rem',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    border: '1px solid #e2e8f0',
+                    background: '#f8fafc',
+                    color: '#1e293b',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    minWidth: '160px'
+                  }}
+                >
+                  <option value="">Tous les états</option>
+                  {getStatusOptionsForTab().map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
                     </option>
                   ))}
                 </select>
