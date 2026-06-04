@@ -580,10 +580,10 @@ export const Commandes = () => {
 
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flex: 1, minWidth: '320px', maxWidth: '700px' }}>
                 <div style={{ position: 'relative', flex: 1 }}>
-                  <Search size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <Search size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#6366f1' }} />
                   <input 
                     type="text" placeholder="Rechercher (Client, Tel, ID)..." 
-                    className="form-input" style={{ paddingLeft: '3.5rem', height: '48px', borderRadius: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', fontWeight: 600, fontSize: '0.95rem' }}
+                    className="form-input" style={{ paddingLeft: '3.5rem', height: '48px', borderRadius: '16px', background: 'white', border: '2px solid #6366f1', fontWeight: 600, fontSize: '0.95rem' }}
                     value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
