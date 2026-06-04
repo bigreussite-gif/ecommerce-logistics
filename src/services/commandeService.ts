@@ -80,6 +80,136 @@ export const getCommandes = async (limit: number | null = null, offset = 0): Pro
   }));
 };
 
+export const getCommandesPaginated = async (
+  limit: number,
+  offset: number,
+  activeTab: string,
+  startDateISO: string | null,
+  endDateISO: string | null,
+  searchTerm: string,
+  communeFilter?: string | null
+): Promise<{
+  commandes: Commande[];
+  totalCount: number;
+  stats: {
+    total: number;
+    processing: number;
+    inDelivery: number;
+    delivered: number;
+    failed: number;
+    cancelled: number;
+    retours: number;
+  };
+}> => {
+  let query = insforge.database
+    .from('commandes')
+    .select('*, clients!inner(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*, produits(*))', { count: 'exact' });
+
+  // 1. Status Filter
+  if (activeTab === 'to_process') {
+    query = query.in('statut_commande', ['nouvelle', 'a_rappeler', 'en_attente_appel']);
+  } else if (activeTab === 'in_delivery') {
+    query = query.eq('statut_commande', 'en_cours_livraison');
+  } else if (activeTab === 'done') {
+    query = query.in('statut_commande', ['livree', 'terminee']);
+  } else if (activeTab === 'failed') {
+    query = query.in('statut_commande', ['echouee', 'retour_livreur', 'retour_stock']);
+  } else if (activeTab === 'annulee') {
+    query = query.eq('statut_commande', 'annulee');
+  } else if (activeTab === 'retours') {
+    query = query.eq('statut_commande', 'retour_client');
+  }
+
+  // 2. Date Range Filter
+  if (startDateISO) {
+    query = query.gte('date_creation', startDateISO);
+  }
+  if (endDateISO) {
+    query = query.lte('date_creation', endDateISO);
+  }
+
+  // 3. Search Filter
+  if (searchTerm.trim()) {
+    const term = searchTerm.trim();
+    query = query.or(`ref_text.ilike.%${term}%,clients.nom_complet.ilike.%${term}%,clients.telephone.ilike.%${term}%`);
+  }
+
+  // 3.5 Commune Filter
+  if (communeFilter) {
+    query = query.eq('commune_livraison', communeFilter);
+  }
+
+  // 4. Order and Range
+  query = query.order('date_creation', { ascending: false });
+  query = query.range(offset, offset + limit - 1);
+
+  const { data, count, error } = await query;
+  if (error) throw error;
+
+  const commandes = (data || []).map((c: any) => ({
+    ...c,
+    nom_client: c.clients?.nom_complet,
+    telephone_client: c.clients?.telephone,
+    telephone_secondaire: c.clients?.telephone_secondaire
+  }));
+
+  // Fetch stats count using lightweight head: true queries
+  const getCountForStatuses = async (statuses: string[] | null) => {
+    let q = insforge.database
+      .from('commandes')
+      .select('*', { count: 'exact', head: true });
+    
+    if (statuses) {
+      q = q.in('statut_commande', statuses);
+    }
+    if (startDateISO) {
+      q = q.gte('date_creation', startDateISO);
+    }
+    if (endDateISO) {
+      q = q.lte('date_creation', endDateISO);
+    }
+    if (communeFilter) {
+      q = q.eq('commune_livraison', communeFilter);
+    }
+    const { count: cVal, error: cErr } = await q;
+    if (cErr) throw cErr;
+    return cVal || 0;
+  };
+
+  const [
+    total,
+    processing,
+    inDelivery,
+    delivered,
+    failed,
+    cancelled,
+    retours
+  ] = await Promise.all([
+    getCountForStatuses(null),
+    getCountForStatuses(['nouvelle', 'a_rappeler', 'en_attente_appel']),
+    getCountForStatuses(['en_cours_livraison']),
+    getCountForStatuses(['livree', 'terminee']),
+    getCountForStatuses(['echouee', 'retour_livreur', 'retour_stock']),
+    getCountForStatuses(['annulee']),
+    getCountForStatuses(['retour_client'])
+  ]);
+
+  return {
+    commandes,
+    totalCount: count || 0,
+    stats: {
+      total,
+      processing,
+      inDelivery,
+      delivered,
+      failed,
+      cancelled,
+      retours
+    }
+  };
+};
+
+
 export const subscribeToCommandes = (callback: (commandes: Commande[]) => void) => {
   const fetch = () => {
     if (document.visibilityState === 'visible') {

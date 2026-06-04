@@ -181,10 +181,11 @@ export const processCaisse = async (
       updateData.date_livraison_effective = new Date().toISOString();
     }
     
-    await insforge.database
+    const { error: cmdErr } = await insforge.database
       .from('commandes')
       .update(updateData)
       .eq('id', res.id);
+    if (cmdErr) throw cmdErr;
 
     // Update lines and recalculate total if delivered and lines are provided
     if (isDelivered && res.updatedLines) {
@@ -206,24 +207,28 @@ export const processCaisse = async (
         newMontantTotal += lineTotal;
         if (l.choix_installation) newTotalPrimes += (Number(l.frais_installation) * Number(l.quantite));
 
-        await insforge.database
+        const { error: lineErr } = await insforge.database
           .from('lignes_commandes')
           .update({ 
             choix_installation: !!l.choix_installation, 
             montant_ligne: lineTotal,
             quantite: Number(l.quantite),
-            prix_unitaire: Number(l.prix_unitaire)
+            prix_unitaire: Number(l.prix_unitaire),
+            prime_payee: !!l.prime_payee,
+            frais_installation: Number(l.frais_installation) || 0
           })
           .eq('id', l.id);
+        if (lineErr) throw lineErr;
       }
 
-      await insforge.database
+      const { error: cmdTotalErr } = await insforge.database
         .from('commandes')
         .update({ 
           montant_total: newMontantTotal + shipping - remise, 
           total_primes_installation: newTotalPrimes 
         })
         .eq('id', res.id);
+      if (cmdTotalErr) throw cmdTotalErr;
     }
 
     // Handle stock returns

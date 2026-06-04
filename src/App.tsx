@@ -29,6 +29,7 @@ const Dashboard = lazyWithRetry(() => import('./pages/Dashboard').then(m => ({ d
 const Produits = lazyWithRetry(() => import('./pages/Produits').then(m => ({ default: m.Produits })));
 const ProduitHistorique = lazyWithRetry(() => import('./pages/ProduitHistorique').then(m => ({ default: m.ProduitHistorique })));
 const Commandes = lazyWithRetry(() => import('./pages/Commandes').then(m => ({ default: m.Commandes })));
+const AnalyseProduits = lazyWithRetry(() => import('./pages/AnalyseProduits').then(m => ({ default: m.AnalyseProduits })));
 const CentreAppel = lazyWithRetry(() => import('./pages/CentreAppel').then(m => ({ default: m.CentreAppel })));
 const Logistique = lazyWithRetry(() => import('./pages/Logistique').then(m => ({ default: m.Logistique })));
 const Livraison = lazyWithRetry(() => import('./pages/Livraison').then(m => ({ default: m.Livraison })));
@@ -120,6 +121,10 @@ const AppRoutes = () => {
         
         <Route path="produits/:id/historique" element={
           <ProtectedRoute requiredPermission="PRODUITS"><ProduitHistorique /></ProtectedRoute>
+        } />
+
+        <Route path="analyse-produits" element={
+          <ProtectedRoute requiredPermission="PRODUITS"><AnalyseProduits /></ProtectedRoute>
         } />
 
         <Route path="achats" element={

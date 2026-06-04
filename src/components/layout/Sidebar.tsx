@@ -33,6 +33,7 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
     { path: '/', label: 'Accueil', icon: HomeIcon, permission: 'PROFIL' },
     { path: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard, permission: 'DASHBOARD' },
     { path: '/produits', label: 'Produits & Stock', icon: Package, permission: 'PRODUITS' },
+    { path: '/analyse-produits', label: 'Analyse Produits', icon: TrendingUp, permission: 'PRODUITS' },
     { path: '/achats', label: 'Approvisionnements', icon: ShoppingBag, permission: 'PRODUITS' },
     { path: '/fournisseurs', label: 'Fournisseurs', icon: Building2, permission: 'PRODUITS' },
     { path: '/commandes', label: 'Commandes', icon: ShoppingCart, permission: 'COMMANDES' },
