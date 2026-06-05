@@ -43,6 +43,8 @@ export interface Produit {
   sku: string;
   stock_actuel: number;
   stock_minimum: number;
+  stock_reserve?: number;
+  stock_disponible?: number;
   actif: boolean;
   image_url?: string;
   frais_installation?: number;

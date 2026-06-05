@@ -3,13 +3,51 @@ import { insforge } from '../lib/insforge';
 import { globalEventBus, EVENTS } from '../utils/events';
 
 export const getProduits = async (): Promise<Produit[]> => {
-  const { data, error } = await insforge.database
+  const { data: products, error } = await insforge.database
     .from('produits')
     .select('*')
     .order('nom', { ascending: true });
   
   if (error) throw error;
-  return data || [];
+  if (!products || products.length === 0) return [];
+
+  try {
+    const { data: lines, error: linesError } = await insforge.database
+      .from('lignes_commandes')
+      .select('produit_id, quantite, commandes!inner(statut_commande)')
+      .in('commandes.statut_commande', ['validee', 'en_cours_livraison', 'retour_livreur', 'echouee']);
+
+    if (linesError) {
+      console.error("Error fetching reserved stock lines:", linesError);
+      return products.map(p => ({
+        ...p,
+        stock_reserve: 0,
+        stock_disponible: p.stock_actuel
+      }));
+    }
+
+    const reservedMap = new Map<string, number>();
+    (lines || []).forEach((l: any) => {
+      const current = reservedMap.get(l.produit_id) || 0;
+      reservedMap.set(l.produit_id, current + Number(l.quantite || 0));
+    });
+
+    return products.map(p => {
+      const stock_reserve = reservedMap.get(p.id) || 0;
+      return {
+        ...p,
+        stock_reserve,
+        stock_disponible: Math.max(0, p.stock_actuel - stock_reserve)
+      };
+    });
+  } catch (err) {
+    console.error("Error in advanced stock calculation:", err);
+    return products.map(p => ({
+      ...p,
+      stock_reserve: 0,
+      stock_disponible: p.stock_actuel
+    }));
+  }
 };
 
 export const subscribeToProduits = (callback: (produits: Produit[]) => void) => {

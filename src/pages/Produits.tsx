@@ -48,9 +48,9 @@ export const Produits = () => {
 
   const stats = useMemo(() => {
     const total = produits.length;
-    const enStock = produits.filter(p => (p.stock_actuel ?? 0) > (p.stock_minimum ?? 0)).length;
-    const stockBas = produits.filter(p => (p.stock_actuel ?? 0) <= (p.stock_minimum ?? 0) && (p.stock_actuel ?? 0) > 0).length;
-    const rupture = produits.filter(p => (p.stock_actuel ?? 0) === 0).length;
+    const enStock = produits.filter(p => (p.stock_disponible ?? p.stock_actuel ?? 0) > (p.stock_minimum ?? 0)).length;
+    const stockBas = produits.filter(p => (p.stock_disponible ?? p.stock_actuel ?? 0) <= (p.stock_minimum ?? 0) && (p.stock_disponible ?? p.stock_actuel ?? 0) > 0).length;
+    const rupture = produits.filter(p => (p.stock_disponible ?? p.stock_actuel ?? 0) === 0).length;
     const nbCategories = new Set(produits.map(p => p.categorie_id).filter(Boolean)).size;
     return { total, enStock, stockBas, rupture, nbCategories };
   }, [produits]);
@@ -236,14 +236,18 @@ export const Produits = () => {
                   <p style={{ margin: 0, opacity: 0.9, fontSize: '0.9rem', fontWeight: 600 }}>{statsModalProduit.nom}</p>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '2rem', marginTop: '1.5rem' }}>
+              <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
                 <div>
-                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8, fontWeight: 700 }}>Stock Actuel</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{statsModalProduit.stock_actuel}</div>
+                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8, fontWeight: 700 }}>Stock Physique</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{statsModalProduit.stock_actuel} u.</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8, fontWeight: 700 }}>Stock Dispo</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#10b981' }}>{statsModalProduit.stock_disponible ?? statsModalProduit.stock_actuel} u.</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8, fontWeight: 700 }}>Prix Unitaire</div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{statsModalProduit.prix_vente?.toLocaleString()} F</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{statsModalProduit.prix_vente?.toLocaleString()} F</div>
                 </div>
               </div>
             </div>

@@ -351,7 +351,8 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
 };
 
 // Helper for stock state machine
-const activeStates = ['en_attente_appel', 'validee', 'en_cours_livraison', 'livree', 'terminee', 'echouee', 'retour_livreur'];
+// Helper for stock state machine
+const deliveredStates = ['livree', 'terminee'];
 
 export const updateCommandeStatus = async (id: string, status: string, additionalData: any = {}): Promise<void> => {
   const { data: currentCmd } = await insforge.database
@@ -422,10 +423,10 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   
   if (error) throw error;
 
-  const wasActive = activeStates.includes(prevStatus?.toLowerCase());
-  const isNowActive = activeStates.includes(nextStatus?.toLowerCase());
+  const wasDelivered = deliveredStates.includes(prevStatus?.toLowerCase());
+  const isNowDelivered = deliveredStates.includes(nextStatus?.toLowerCase());
 
-  if (wasActive !== isNowActive) {
+  if (wasDelivered !== isNowDelivered) {
     try {
       const { data: lines } = await insforge.database
         .from('lignes_commandes')
@@ -436,9 +437,9 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
         for (const l of lines) {
           await addMouvementStock({
             produit_id: l.produit_id,
-            type_mouvement: isNowActive ? 'sortie' : 'entree',
+            type_mouvement: isNowDelivered ? 'sortie' : 'entree',
             quantite: l.quantite,
-            reference: `${isNowActive ? 'Sortie' : 'Retour'} Stock (${nextStatus}) Cmd #${id.substring(0, 8)}`
+            reference: `${isNowDelivered ? 'Sortie' : 'Retour'} Stock (${nextStatus}) Cmd #${id.substring(0, 8)}`
           } as any);
         }
       }
@@ -468,7 +469,7 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
   if (!currentCmds) return;
 
   const nextStatus = status;
-  const isNextActive = activeStates.includes(nextStatus.toLowerCase());
+  const isNextDelivered = deliveredStates.includes(nextStatus.toLowerCase());
 
   // 2. Perform bulk update on commandes table
   const updatePayload: any = { statut_commande: nextStatus };
@@ -490,9 +491,9 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
 
   if (bulkErr) throw bulkErr;
 
-  // 3. Handle stock movements for commands that changed "active" state
+  // 3. Handle stock movements for commands that changed "delivered" state
   const idsChangingState = currentCmds
-    .filter(c => activeStates.includes(c.statut_commande?.toLowerCase()) !== isNextActive)
+    .filter(c => deliveredStates.includes(c.statut_commande?.toLowerCase()) !== isNextDelivered)
     .map(c => c.id);
 
   if (idsChangingState.length > 0) {
@@ -502,15 +503,18 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
       .in('commande_id', idsChangingState);
 
     if (lines && lines.length > 0) {
-      // Group movements by product to minimize DB calls if possible, 
-      // but addMouvementStock is not bulk-friendly yet, so we process sequentially
       for (const l of lines) {
-        await addMouvementStock({
-          produit_id: l.produit_id,
-          type_mouvement: isNextActive ? 'sortie' : 'entree',
-          quantite: l.quantite,
-          reference: `Bulk ${isNextActive ? 'Sortie' : 'Retour'} (${nextStatus})`
-        } as any);
+        const cmdObj = currentCmds.find(c => c.id === l.commande_id);
+        const wasCmdDelivered = deliveredStates.includes(cmdObj?.statut_commande?.toLowerCase());
+
+        if (wasCmdDelivered !== isNextDelivered) {
+          await addMouvementStock({
+            produit_id: l.produit_id,
+            type_mouvement: isNextDelivered ? 'sortie' : 'entree',
+            quantite: l.quantite,
+            reference: `Bulk ${isNextDelivered ? 'Sortie' : 'Retour'} (${nextStatus})`
+          } as any);
+        }
       }
     }
   }
@@ -821,16 +825,25 @@ export const updateCommandeBase = async (id: string, updates: Partial<Commande>,
 };
 
 export const updateCommandeLignesAndStock = async (commandeId: string, oldLines: LigneCommande[], newLines: any[]): Promise<void> => {
+  const { data: cmd } = await insforge.database
+    .from('commandes')
+    .select('statut_commande')
+    .eq('id', commandeId)
+    .single();
+
+  const isDelivered = ['livree', 'terminee'].includes(cmd?.statut_commande?.toLowerCase() || '');
   const oldMap = new Map(oldLines.map(l => [l.id, l]));
   
   for (const oldLine of oldLines) {
     if (!newLines.find(l => l.id === oldLine.id)) {
-      await addMouvementStock({
-        produit_id: oldLine.produit_id,
-        type_mouvement: 'retour',
-        quantite: oldLine.quantite,
-        reference: `RETOUR Suppr Ligne Cmd #${commandeId.substring(0, 8)}`
-      } as any);
+      if (isDelivered) {
+        await addMouvementStock({
+          produit_id: oldLine.produit_id,
+          type_mouvement: 'retour',
+          quantite: oldLine.quantite,
+          reference: `RETOUR Suppr Ligne Cmd #${commandeId.substring(0, 8)}`
+        } as any);
+      }
 
       await insforge.database
         .from('lignes_commandes')
@@ -852,12 +865,14 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
         .select()
         .single();
 
-      await addMouvementStock({
-        produit_id: newLine.produit_id,
-        type_mouvement: 'sortie',
-        quantite: newLine.quantite,
-        reference: `Sortie Nouvel Article Cmd #${commandeId.substring(0, 8)}`
-      } as any);
+      if (isDelivered) {
+        await addMouvementStock({
+          produit_id: newLine.produit_id,
+          type_mouvement: 'sortie',
+          quantite: newLine.quantite,
+          reference: `Sortie Nouvel Article Cmd #${commandeId.substring(0, 8)}`
+        } as any);
+      }
     } else {
       const oldLine = oldMap.get(newLine.id);
       if (oldLine) {
@@ -874,12 +889,14 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
             })
             .eq('id', newLine.id);
 
-          await addMouvementStock({
-            produit_id: newLine.produit_id,
-            type_mouvement: diff > 0 ? 'sortie' : 'retour',
-            quantite: Math.abs(diff),
-            reference: `Modif Qté Ligne Cmd #${commandeId.substring(0, 8)}`
-          } as any);
+          if (isDelivered) {
+            await addMouvementStock({
+              produit_id: newLine.produit_id,
+              type_mouvement: diff > 0 ? 'sortie' : 'retour',
+              quantite: Math.abs(diff),
+              reference: `Modif Qté Ligne Cmd #${commandeId.substring(0, 8)}`
+            } as any);
+          }
         }
       }
     }

@@ -108,32 +108,35 @@ export const ProduitList = ({ produits, onEdit, onStock, onView }: ProduitListPr
                 </div>
               </td>
               <td data-label="Stock">
-                <div style={{ 
-                  display: 'inline-flex', 
-                  alignItems: 'center', 
-                  gap: '8px', 
-                  padding: '0.4rem 0.8rem', 
-                  background: produit.stock_actuel <= (produit.stock_minimum || 5) ? '#fff1f2' : '#f0fdf4', 
-                  borderRadius: '12px', 
-                  border: `1px solid ${produit.stock_actuel <= (produit.stock_minimum || 5) ? '#fecaca' : '#bbf7d0'}`,
-                  transition: 'all 0.2s ease' 
-                }}>
-                   <div style={{ 
-                     width: '8px', 
-                     height: '8px', 
-                     borderRadius: '50%', 
-                     background: produit.stock_actuel <= (produit.stock_minimum || 5) ? '#ef4444' : '#10b981',
-                     animation: produit.stock_actuel <= (produit.stock_minimum || 5) ? 'pulse-red 2s infinite' : 'none'
-                   }}></div>
-                   <span style={{ fontWeight: 900, fontSize: '0.9rem', color: produit.stock_actuel <= (produit.stock_minimum || 5) ? '#991b1b' : '#15803d' }}>
-                     {produit.stock_actuel} {produit.stock_actuel > 1 ? 'UNITÉS' : 'UNITÉ'}
-                   </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '160px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', fontWeight: 700, color: '#475569', padding: '0 4px' }}>
+                    <span>Physique:</span>
+                    <span style={{ fontWeight: 950, color: '#1e293b' }}>{produit.stock_actuel} u.</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', fontWeight: 700, color: '#e28743', padding: '0 4px' }}>
+                    <span>Réservé:</span>
+                    <span style={{ fontWeight: 950, color: '#d97706' }}>{produit.stock_reserve ?? 0} u.</span>
+                  </div>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between',
+                    alignItems: 'center', 
+                    padding: '4px 8px', 
+                    background: (produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) ? '#fff1f2' : '#f0fdf4', 
+                    borderRadius: '8px', 
+                    border: `1px solid ${(produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) ? '#fecaca' : '#bbf7d0'}`,
+                  }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: (produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) ? '#991b1b' : '#15803d' }}>Dispo:</span>
+                    <span style={{ fontWeight: 950, fontSize: '0.85rem', color: (produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) ? '#ef4444' : '#10b981' }}>
+                      {produit.stock_disponible ?? produit.stock_actuel} u.
+                    </span>
+                  </div>
+                  {(produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) && (
+                     <div style={{ fontSize: '0.6rem', color: '#dc2626', fontWeight: 900, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                       ⚠️ STOCK BAS
+                     </div>
+                  )}
                 </div>
-                {produit.stock_actuel <= (produit.stock_minimum || 5) && (
-                   <div style={{ fontSize: '0.65rem', color: '#dc2626', fontWeight: 800, marginTop: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                     ⚠️ STOCK CRITIQUE
-                   </div>
-                )}
               </td>
               <td data-label="Visibilité">
                 <div 
