@@ -127,15 +127,15 @@ export const processCaisse = async (
       .eq('id', livreurId)
       .single();
     
-    await insforge.database.from('depenses').insert([{
+    const { error: primeErr } = await insforge.database.from('depenses').insert([{
       date: new Date().toISOString(),
       categorie: 'Personnel / Prime',
       description: `Prime Livreur : ${livreur?.nom_complet || 'Agent'} - Feuille #${feuilleRouteId.slice(0,8)}`,
       montant: primeLivreur,
-      mode_paiement: 'Espèces',
-      valide: true,
-      cree_par: caissiereId
+      paye_par_id: caissiereId,
+      created_at: new Date().toISOString()
     }]);
+    if (primeErr) throw primeErr;
   }
 
   // 1. Update Feuille Route status
@@ -268,14 +268,15 @@ export const processCaisse = async (
   // 3. Handle Cash Discrepancy (Ecart) as a Financial Entry
   if (Math.abs(ecart) > 0) {
     const isLoss = ecart < 0;
-    await insforge.database.from('depenses').insert([{
+    const { error: ecartErr } = await insforge.database.from('depenses').insert([{
       date: new Date().toISOString(),
       categorie: isLoss ? 'Manquant Caisse' : 'Surplus Caisse',
       description: `Écart de caisse - Livreur #${livreurId.slice(0,8)} - Feuille #${feuilleRouteId.slice(0,8)}`,
       montant: Math.abs(ecart),
-      mode_paiement: 'Espèces',
+      paye_par_id: caissiereId,
       created_at: new Date().toISOString()
     }]);
+    if (ecartErr) throw ecartErr;
   }
 };
 
