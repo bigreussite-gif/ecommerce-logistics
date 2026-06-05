@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Package, TrendingUp, DollarSign, ShoppingBag, AlertTriangle, Info, ArrowLeftRight, Percent } from 'lucide-react';
+import { Package, TrendingUp, DollarSign, ShoppingBag, Info, Percent } from 'lucide-react';
 import { getProduits } from '../services/produitService';
 import { insforge } from '../lib/insforge';
 import type { Produit } from '../types';
@@ -19,25 +19,27 @@ interface ProductStats {
     total: number;
     commune: string;
   }[];
+  totalOrders: number;
+  deliveredOrders: number;
+  cancelledOrders: number;
+  failedOrders: number;
+  deliveryRate: number;
+  cancellationRate: number;
+  failureRate: number;
 }
 
 export const AnalyseProduits = () => {
   const { showToast } = useToast();
   const [products, setProducts] = useState<Produit[]>([]);
-  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(true);
   const [loadingStats, setLoadingStats] = useState(false);
   const [period, setPeriod] = useState<PeriodDays>(30);
   const [customDays, setCustomDays] = useState<string>('30');
   const [useCustomDays, setUseCustomDays] = useState(false);
 
-  // Raw sales data for the selected product
+  // Raw sales data for the selected products
   const [rawSales, setRawSales] = useState<any[]>([]);
-
-  // Selected product object
-  const selectedProduct = useMemo(() => {
-    return products.find(p => p.id === selectedProductId) || null;
-  }, [products, selectedProductId]);
 
   // Load products list
   useEffect(() => {
@@ -46,7 +48,8 @@ export const AnalyseProduits = () => {
       .then(data => {
         setProducts(data);
         if (data.length > 0) {
-          setSelectedProductId(data[0].id);
+          // Select the first product by default
+          setSelectedProductIds([data[0].id]);
         }
         setLoadingProducts(false);
       })
@@ -57,18 +60,20 @@ export const AnalyseProduits = () => {
       });
   }, []);
 
-  // Fetch sales for selected product
+  // Fetch sales for selected products
   useEffect(() => {
-    if (!selectedProductId) return;
+    if (selectedProductIds.length === 0) {
+      setRawSales([]);
+      return;
+    }
 
     setLoadingStats(true);
     const fetchSales = async () => {
       try {
         const { data, error } = await insforge.database
           .from('lignes_commandes')
-          .select('id, quantite, prix_unitaire, montant_ligne, prix_achat_unitaire, commande_id, commandes!inner(statut_commande, date_creation, commune_livraison)')
-          .eq('produit_id', selectedProductId)
-          .in('commandes.statut_commande', ['livree', 'terminee']);
+          .select('id, quantite, prix_unitaire, montant_ligne, prix_achat_unitaire, commande_id, produit_id, commandes!inner(statut_commande, date_creation, commune_livraison)')
+          .in('produit_id', selectedProductIds);
 
         if (error) throw error;
         setRawSales(data || []);
@@ -81,7 +86,7 @@ export const AnalyseProduits = () => {
     };
 
     fetchSales();
-  }, [selectedProductId]);
+  }, [selectedProductIds]);
 
   // Calculate effective days limit
   const activeDaysLimit = useMemo(() => {
@@ -105,24 +110,57 @@ export const AnalyseProduits = () => {
       return diffDays <= activeDaysLimit;
     });
 
+    // 1. Volumes of completed sales
+    const deliveredSales = filteredSales.filter(sale => 
+      ['livree', 'terminee'].includes(sale.commandes?.statut_commande?.toLowerCase())
+    );
+
     let deliveredQty = 0;
     let revenue = 0;
     let cost = 0;
 
-    filteredSales.forEach(sale => {
+    deliveredSales.forEach(sale => {
       const qty = Number(sale.quantite || 0);
       deliveredQty += qty;
       revenue += Number(sale.montant_ligne || 0);
       
-      // Fallback purchase price if not recorded at the time of purchase
-      const purchasePrice = Number(sale.prix_achat_unitaire) || Number(selectedProduct?.prix_achat) || 0;
+      // Find the specific product purchase price since we have multiple selected products
+      const prod = products.find(p => p.id === sale.produit_id);
+      const purchasePrice = Number(sale.prix_achat_unitaire) || Number(prod?.prix_achat) || 0;
       cost += qty * purchasePrice;
     });
 
     const profit = revenue - cost;
 
+    // 2. Compute order-level transformation stats
+    const uniqueOrdersMap = new Map<string, string>(); // commande_id -> statut_commande
+    filteredSales.forEach(sale => {
+      if (sale.commande_id && sale.commandes) {
+        uniqueOrdersMap.set(sale.commande_id, sale.commandes.statut_commande?.toLowerCase() || '');
+      }
+    });
+
+    const totalOrdersCount = uniqueOrdersMap.size;
+    let deliveredOrdersCount = 0;
+    let cancelledOrdersCount = 0;
+    let failedOrdersCount = 0;
+
+    uniqueOrdersMap.forEach((status) => {
+      if (['livree', 'terminee'].includes(status)) {
+        deliveredOrdersCount++;
+      } else if (['annulee'].includes(status)) {
+        cancelledOrdersCount++;
+      } else if (['echouee', 'retour_livreur', 'retour_stock', 'retour_client'].includes(status)) {
+        failedOrdersCount++;
+      }
+    });
+
+    const deliveryRate = totalOrdersCount > 0 ? Math.round((deliveredOrdersCount / totalOrdersCount) * 100) : 0;
+    const cancellationRate = totalOrdersCount > 0 ? Math.round((cancelledOrdersCount / totalOrdersCount) * 100) : 0;
+    const failureRate = totalOrdersCount > 0 ? Math.round((failedOrdersCount / totalOrdersCount) * 100) : 0;
+
     // Build list of recent sales
-    const recent = filteredSales
+    const recent = deliveredSales
       .map(sale => ({
         commandeId: sale.commande_id,
         date: new Date(sale.commandes?.date_creation).toLocaleDateString('fr-FR'),
@@ -138,27 +176,46 @@ export const AnalyseProduits = () => {
       revenue,
       cost,
       profit,
-      recentSales: recent
+      recentSales: recent,
+      totalOrders: totalOrdersCount,
+      deliveredOrders: deliveredOrdersCount,
+      cancelledOrders: cancelledOrdersCount,
+      failedOrders: failedOrdersCount,
+      deliveryRate,
+      cancellationRate,
+      failureRate
     };
-  }, [rawSales, activeDaysLimit, selectedProduct]);
+  }, [rawSales, activeDaysLimit, products]);
 
-  // Stock values
+  // Aggregate stock values
   const stockValue = useMemo(() => {
-    if (!selectedProduct) return { purchase: 0, sale: 0 };
-    const stock = Number(selectedProduct.stock_actuel || 0);
-    return {
-      purchase: stock * Number(selectedProduct.prix_achat || 0),
-      sale: stock * Number(selectedProduct.prix_vente || 0)
-    };
-  }, [selectedProduct]);
+    let purchase = 0;
+    let sale = 0;
+    let totalStock = 0;
+    
+    products.forEach(p => {
+      if (selectedProductIds.includes(p.id)) {
+        const stock = Number(p.stock_actuel || 0);
+        totalStock += stock;
+        purchase += stock * Number(p.prix_achat || 0);
+        sale += stock * Number(p.prix_vente || 0);
+      }
+    });
+    
+    return { purchase, sale, totalStock };
+  }, [products, selectedProductIds]);
 
   // Sparkline calculation for SVG chart
   const sparklinePoints = useMemo(() => {
-    if (rawSales.length === 0) return '';
+    const deliveredSales = rawSales.filter(sale => 
+      ['livree', 'terminee'].includes(sale.commandes?.statut_commande?.toLowerCase())
+    );
+
+    if (deliveredSales.length === 0) return '';
     
     // Group sales by day
     const dailyMap: Record<string, number> = {};
-    rawSales.forEach(sale => {
+    deliveredSales.forEach(sale => {
       const dateKey = new Date(sale.commandes?.date_creation).toISOString().split('T')[0];
       dailyMap[dateKey] = (dailyMap[dateKey] || 0) + Number(sale.quantite || 0);
     });
@@ -206,7 +263,7 @@ export const AnalyseProduits = () => {
               Performance & Analyse Produit
             </h1>
             <p style={{ color: '#64748b', fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>
-              Analyse détaillée des stocks, ventes et rentabilité par produit.
+              Analyse détaillée des stocks, ventes et rentabilité par produit ou groupe de produits.
             </p>
           </div>
         </div>
@@ -215,37 +272,64 @@ export const AnalyseProduits = () => {
       {/* FILTER & SELECTOR GRID */}
       <section style={{ marginBottom: '2.5rem' }}>
         <div className="card" style={{ padding: '1.5rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-          <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between' }}>
             
-            {/* Product Selector */}
-            <div style={{ flex: 1, minWidth: '300px' }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.5rem', letterSpacing: '0.05em' }}>
-                Sélectionner un produit
-              </label>
-              <select
-                value={selectedProductId}
-                onChange={(e) => setSelectedProductId(e.target.value)}
-                style={{
-                  width: '100%',
-                  height: '48px',
-                  borderRadius: '14px',
-                  padding: '0 1rem',
-                  fontWeight: 700,
-                  fontSize: '1rem',
-                  border: '1px solid #e2e8f0',
-                  background: '#f8fafc',
-                  color: '#1e293b',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  transition: 'all 0.2s'
-                }}
-              >
-                {products.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.nom} {p.sku ? `(${p.sku})` : ''}
-                  </option>
-                ))}
-              </select>
+            {/* Multi-Product Selector */}
+            <div style={{ flex: 1, minWidth: '320px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>
+                  Sélectionner un ou plusieurs articles
+                </label>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button 
+                    onClick={() => setSelectedProductIds(products.map(p => p.id))}
+                    style={{ border: 'none', background: 'none', fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', cursor: 'pointer', padding: 0 }}
+                  >
+                    Tout sélectionner
+                  </button>
+                  <span style={{ color: '#cbd5e1', fontSize: '0.75rem' }}>|</span>
+                  <button 
+                    onClick={() => setSelectedProductIds([])}
+                    style={{ border: 'none', background: 'none', fontSize: '0.75rem', fontWeight: 800, color: '#ef4444', cursor: 'pointer', padding: 0 }}
+                  >
+                    Tout effacer
+                  </button>
+                </div>
+              </div>
+
+              {/* Scrollable Checkbox List */}
+              <div style={{ 
+                maxHeight: '160px', 
+                overflowY: 'auto', 
+                border: '1px solid #e2e8f0', 
+                borderRadius: '14px', 
+                background: '#f8fafc',
+                padding: '0.75rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem'
+              }}>
+                {products.map(p => {
+                  const isChecked = selectedProductIds.includes(p.id);
+                  return (
+                    <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.9rem', fontWeight: 700, color: '#334155' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={isChecked}
+                        onChange={() => {
+                          if (isChecked) {
+                            setSelectedProductIds(selectedProductIds.filter(id => id !== p.id));
+                          } else {
+                            setSelectedProductIds([...selectedProductIds, p.id]);
+                          }
+                        }}
+                        style={{ width: '16px', height: '16px', borderRadius: '4px', cursor: 'pointer' }}
+                      />
+                      <span>{p.nom} {p.sku ? `(${p.sku})` : ''}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Time Filter */}
@@ -317,52 +401,47 @@ export const AnalyseProduits = () => {
         </div>
       </section>
 
-      {selectedProduct && (
+      {selectedProductIds.length > 0 ? (
         <>
-          {/* PRODUCT SNAPSHOT CARD */}
+          {/* MULTI-PRODUCT SNAPSHOT CARD */}
           <section style={{ marginBottom: '2.5rem' }}>
             <div className="card" style={{ padding: '1.5rem', borderRadius: '24px', background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', color: 'white', border: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem' }}>
               <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                {selectedProduct.image_url ? (
-                  <img src={selectedProduct.image_url} alt={selectedProduct.nom} style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'cover', background: 'white' }} />
-                ) : (
-                  <div style={{ width: '80px', height: '80px', borderRadius: '16px', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Package size={36} color="white" />
-                  </div>
-                )}
+                <div style={{ width: '60px', height: '60px', borderRadius: '16px', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                  <Package size={28} />
+                </div>
                 <div>
-                  <h2 style={{ fontSize: '1.6rem', fontWeight: 900, margin: '0 0 0.25rem 0' }}>{selectedProduct.nom}</h2>
-                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)', padding: '0.25rem 0.75rem', borderRadius: '8px', fontWeight: 700 }}>
-                      SKU: {selectedProduct.sku || 'N/A'}
-                    </span>
-                    <span style={{ fontSize: '0.8rem', background: selectedProduct.actif ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)', color: selectedProduct.actif ? '#10b981' : '#ef4444', padding: '0.25rem 0.75rem', borderRadius: '8px', fontWeight: 700 }}>
-                      {selectedProduct.actif ? 'ACTIF' : 'INACTIF'}
-                    </span>
-                  </div>
+                  <h2 style={{ fontSize: '1.4rem', fontWeight: 900, margin: '0 0 0.25rem 0' }}>
+                    {selectedProductIds.length === 1 
+                      ? `${products.find(p => p.id === selectedProductIds[0])?.nom}`
+                      : `${selectedProductIds.length} articles sélectionnés`}
+                  </h2>
+                  <p style={{ margin: 0, opacity: 0.8, fontSize: '0.85rem', fontWeight: 600, maxWidth: '600px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {products.filter(p => selectedProductIds.includes(p.id)).map(p => p.nom).join(', ')}
+                  </p>
                 </div>
               </div>
 
-              {/* Purchase vs Sale Price display */}
-              <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap' }}>
+              {/* Aggregated stock details */}
+              <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
                 <div>
-                  <p style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Prix d'Achat</p>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 950, color: '#f59e0b' }}>
-                    {Number(selectedProduct.prix_achat).toLocaleString()} <span style={{ fontSize: '0.9rem' }}>FCFA</span>
+                  <p style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Stock Physique Total</p>
+                  <p style={{ fontSize: '1.4rem', fontWeight: 950, color: '#f59e0b', margin: 0 }}>
+                    {stockValue.totalStock} <span style={{ fontSize: '0.8rem' }}>unités</span>
                   </p>
                 </div>
-                <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)', height: '40px' }}></div>
+                <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)', height: '32px' }}></div>
                 <div>
-                  <p style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Prix de Vente</p>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 950, color: '#10b981' }}>
-                    {Number(selectedProduct.prix_vente).toLocaleString()} <span style={{ fontSize: '0.9rem' }}>FCFA</span>
+                  <p style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Valeur Stock Achat</p>
+                  <p style={{ fontSize: '1.4rem', fontWeight: 950, color: '#10b981', margin: 0 }}>
+                    {stockValue.purchase.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>F</span>
                   </p>
                 </div>
-                <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)', height: '40px' }}></div>
+                <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)', height: '32px' }}></div>
                 <div>
-                  <p style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Marge Théorique</p>
-                  <p style={{ fontSize: '1.5rem', fontWeight: 950, color: 'var(--primary)' }}>
-                    {(Number(selectedProduct.prix_vente) - Number(selectedProduct.prix_achat)).toLocaleString()} <span style={{ fontSize: '0.9rem' }}>FCFA</span>
+                  <p style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Valeur Stock Vente</p>
+                  <p style={{ fontSize: '1.4rem', fontWeight: 950, color: 'var(--primary)', margin: 0 }}>
+                    {stockValue.sale.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>F</span>
                   </p>
                 </div>
               </div>
@@ -391,49 +470,7 @@ export const AnalyseProduits = () => {
                       </div>
                       <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginTop: '0.3rem' }}>Unités Livrées</div>
                       <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#10b981', marginTop: '0.2rem', textTransform: 'uppercase' }}>
-                        Commandes complétées
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Stock Remaining */}
-                  <div className="card" style={{ padding: '1.5rem', borderRadius: '24px', border: '1px solid #e2e8f0', background: 'white', display: 'flex', gap: '1.25rem', alignItems: 'center', transition: 'all 0.3s ease', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-                    <div style={{ 
-                      width: '54px', height: '54px', borderRadius: '16px', 
-                      background: selectedProduct.stock_actuel <= selectedProduct.stock_minimum ? 'rgba(239,68,68,0.1)' : 'rgba(99,102,255,0.1)', 
-                      color: selectedProduct.stock_actuel <= selectedProduct.stock_minimum ? '#ef4444' : 'var(--primary)', 
-                      display: 'flex', alignItems: 'center', justifyContent: 'center' 
-                    }}>
-                      <Package size={24} />
-                    </div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: '1.8rem', fontWeight: 950, color: '#1e293b', lineHeight: 1, display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
-                        {selectedProduct.stock_actuel}
-                        {selectedProduct.stock_actuel <= selectedProduct.stock_minimum && (
-                          <span style={{ fontSize: '0.7rem', color: '#ef4444', background: '#fef2f2', padding: '0.2rem 0.5rem', borderRadius: '6px', fontWeight: 800, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
-                            <AlertTriangle size={10} /> CRITIQUE
-                          </span>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginTop: '0.3rem' }}>Stock Restant</div>
-                      <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', marginTop: '0.2rem', textTransform: 'uppercase' }}>
-                        Alerte à {selectedProduct.stock_minimum} unités
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Stock Value */}
-                  <div className="card" style={{ padding: '1.5rem', borderRadius: '24px', border: '1px solid #e2e8f0', background: 'white', display: 'flex', gap: '1.25rem', alignItems: 'center', transition: 'all 0.3s ease', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-                    <div style={{ width: '54px', height: '54px', borderRadius: '16px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <ArrowLeftRight size={24} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '1.6rem', fontWeight: 950, color: '#1e293b', lineHeight: 1 }}>
-                        {stockValue.purchase.toLocaleString()} F
-                      </div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginTop: '0.3rem' }}>Valeur Actifs (Achat)</div>
-                      <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#f59e0b', marginTop: '0.2rem', textTransform: 'uppercase' }}>
-                        Vente pot. : {stockValue.sale.toLocaleString()} F
+                        Sur articles sélectionnés
                       </div>
                     </div>
                   </div>
@@ -449,7 +486,7 @@ export const AnalyseProduits = () => {
                       </div>
                       <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginTop: '0.3rem' }}>Chiffre d'Affaires</div>
                       <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', marginTop: '0.2rem', textTransform: 'uppercase' }}>
-                        Sur les {activeDaysLimit || 'tous les'} derniers jours
+                        Sur la période choisie
                       </div>
                     </div>
                   </div>
@@ -463,13 +500,81 @@ export const AnalyseProduits = () => {
                       <div style={{ fontSize: '1.6rem', fontWeight: 950, color: '#10b981', lineHeight: 1 }}>
                         {stats.profit.toLocaleString()} F
                       </div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginTop: '0.3rem' }}>Marge de Profit Réelle</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', marginTop: '0.3rem' }}>Marge Bénéficiaire Réelle</div>
                       <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#10b981', marginTop: '0.2rem', textTransform: 'uppercase' }}>
                         Marge : {stats.revenue > 0 ? Math.round((stats.profit / stats.revenue) * 100) : 0}% du CA
                       </div>
                     </div>
                   </div>
 
+                </div>
+              </section>
+
+              {/* CONVERSION RATES & FLUX ANALYSIS */}
+              <section style={{ marginBottom: '2.5rem' }}>
+                <div className="card" style={{ padding: '1.75rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0' }}>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 950, color: '#1e293b', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Percent size={22} color="var(--primary)" />
+                    Indicateurs de Performance des Ventes et Conversion des Flux
+                  </h3>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                    {/* Total Orders */}
+                    <div style={{ padding: '1.25rem', borderRadius: '18px', background: '#f8fafc', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Commandes Initiées</span>
+                      <div style={{ fontSize: '2rem', fontWeight: 950, color: '#1e293b', margin: '0.5rem 0 0 0' }}>{stats.totalOrders}</div>
+                      <span style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 700 }}>Intégralité des statuts</span>
+                    </div>
+                    {/* Delivered Orders */}
+                    <div style={{ padding: '1.25rem', borderRadius: '18px', background: '#f0fdf4', border: '1px solid #bbf7d0', textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Commandes Livrées</span>
+                      <div style={{ fontSize: '2rem', fontWeight: 950, color: '#16a34a', margin: '0.5rem 0 0 0' }}>{stats.deliveredOrders}</div>
+                      <span style={{ fontSize: '0.75rem', color: '#16a34a', fontWeight: 800 }}>Taux : {stats.deliveryRate}%</span>
+                    </div>
+                    {/* Cancelled Orders */}
+                    <div style={{ padding: '1.25rem', borderRadius: '18px', background: '#fef2f2', border: '1px solid #fecaca', textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#991b1b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Commandes Annulées</span>
+                      <div style={{ fontSize: '2rem', fontWeight: 950, color: '#dc2626', margin: '0.5rem 0 0 0' }}>{stats.cancelledOrders}</div>
+                      <span style={{ fontSize: '0.75rem', color: '#dc2626', fontWeight: 800 }}>Taux : {stats.cancellationRate}%</span>
+                    </div>
+                    {/* Failed Orders */}
+                    <div style={{ padding: '1.25rem', borderRadius: '18px', background: '#fffbeb', border: '1px solid #fef3c7', textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Échecs & Retours</span>
+                      <div style={{ fontSize: '2rem', fontWeight: 950, color: '#d97706', margin: '0.5rem 0 0 0' }}>{stats.failedOrders}</div>
+                      <span style={{ fontSize: '0.75rem', color: '#d97706', fontWeight: 800 }}>Taux : {stats.failureRate}%</span>
+                    </div>
+                  </div>
+
+                  {/* Horizontal visual progress bars */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 800, color: '#334155' }}>
+                        <span>Taux de Réussite Livraison (Objectif Efficacité)</span>
+                        <span style={{ color: '#16a34a' }}>{stats.deliveryRate}%</span>
+                      </div>
+                      <div style={{ height: '12px', background: '#f1f5f9', borderRadius: '30px', overflow: 'hidden' }}>
+                        <div style={{ width: `${stats.deliveryRate}%`, height: '100%', background: 'linear-gradient(90deg, #10b981, #059669)', borderRadius: '30px', transition: 'width 0.5s ease' }}></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 800, color: '#334155' }}>
+                        <span>Taux d'Annulation Directe</span>
+                        <span style={{ color: '#dc2626' }}>{stats.cancellationRate}%</span>
+                      </div>
+                      <div style={{ height: '12px', background: '#f1f5f9', borderRadius: '30px', overflow: 'hidden' }}>
+                        <div style={{ width: `${stats.cancellationRate}%`, height: '100%', background: 'linear-gradient(90deg, #ef4444, #dc2626)', borderRadius: '30px', transition: 'width 0.5s ease' }}></div>
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 800, color: '#334155' }}>
+                        <span>Taux d'Échec / Retour Client (SAV ou Refus)</span>
+                        <span style={{ color: '#d97706' }}>{stats.failureRate}%</span>
+                      </div>
+                      <div style={{ height: '12px', background: '#f1f5f9', borderRadius: '30px', overflow: 'hidden' }}>
+                        <div style={{ width: `${stats.failureRate}%`, height: '100%', background: 'linear-gradient(90deg, #f59e0b, #d97706)', borderRadius: '30px', transition: 'width 0.5s ease' }}></div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </section>
 
@@ -480,7 +585,7 @@ export const AnalyseProduits = () => {
                 <div className="card" style={{ padding: '1.75rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
                   <h3 style={{ fontSize: '1.15rem', fontWeight: 900, color: '#1e293b', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <TrendingUp size={18} color="var(--primary)" />
-                    Tendance des ventes quotidiennes
+                    Tendance des ventes quotidiennes (Livrées)
                   </h3>
                   
                   {sparklinePoints ? (
@@ -567,6 +672,12 @@ export const AnalyseProduits = () => {
             </>
           )}
         </>
+      ) : (
+        <div className="card" style={{ padding: '4rem 1rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', textAlign: 'center', color: '#64748b' }}>
+          <Info size={40} style={{ opacity: 0.3, marginBottom: '1rem', color: 'var(--primary)' }} />
+          <h3 style={{ margin: 0, fontWeight: 800, fontSize: '1.2rem', color: '#1e293b' }}>Aucun produit sélectionné</h3>
+          <p style={{ margin: '0.5rem 0 0 0', fontWeight: 600 }}>Veuillez cocher au moins un article dans la liste de sélection pour afficher l'analyse.</p>
+        </div>
       )}
 
     </div>
