@@ -137,7 +137,23 @@ export const getCommandesPaginated = async (
   // 3. Search Filter
   if (searchTerm.trim()) {
     const term = searchTerm.trim();
-    query = query.or(`ref_text.ilike.%${term}%,clients.nom_complet.ilike.%${term}%,clients.telephone.ilike.%${term}%`);
+    try {
+      const { data: matchedClients } = await insforge.database
+        .from('clients')
+        .select('id')
+        .or(`nom_complet.ilike.%${term}%,telephone.ilike.%${term}%`);
+      
+      const clientIds = (matchedClients || []).map(c => c.id);
+      
+      if (clientIds.length > 0) {
+        query = query.or(`ref_text.ilike.%${term}%,client_id.in.(${clientIds.map(id => `"${id}"`).join(',')})`);
+      } else {
+        query = query.or(`ref_text.ilike.%${term}%`);
+      }
+    } catch (err) {
+      console.error("Search clients error:", err);
+      query = query.or(`ref_text.ilike.%${term}%`);
+    }
   }
 
   // 3.5 Commune Filter
@@ -366,6 +382,24 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   if (additionalData.date_livraison_effective !== undefined) updatePayload.date_livraison_effective = additionalData.date_livraison_effective;
   if (additionalData.date_livraison_prevue !== undefined) updatePayload.date_livraison_prevue = additionalData.date_livraison_prevue;
   if (additionalData.date_validation_appel !== undefined) updatePayload.date_validation_appel = additionalData.date_validation_appel;
+  if (additionalData.montant_encaisse !== undefined) {
+    updatePayload.montant_encaisse = additionalData.montant_encaisse;
+  } else if (['livree', 'terminee'].includes(nextStatus?.toLowerCase())) {
+    try {
+      const { data: cmdTotalData } = await insforge.database
+        .from('commandes')
+        .select('montant_total')
+        .eq('id', id)
+        .single();
+      if (cmdTotalData) {
+        updatePayload.montant_encaisse = cmdTotalData.montant_total;
+      }
+    } catch (err) {
+      console.warn("Could not auto-fetch total for montant_encaisse:", err);
+    }
+  } else if (['nouvelle', 'en_attente_appel', 'a_rappeler', 'annulee', 'echouee', 'retour_livreur', 'retour_stock', 'retour_client'].includes(nextStatus?.toLowerCase())) {
+    updatePayload.montant_encaisse = null;
+  }
   
   if (additionalData.frais_livraison !== undefined) {
     updatePayload.frais_livraison = additionalData.frais_livraison;

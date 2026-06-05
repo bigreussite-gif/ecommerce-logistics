@@ -158,7 +158,7 @@ export const Livraison = () => {
   }
 
   const currentCommandes = commandes || [];
-  const totalEncaiss = currentCommandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).reduce((acc, c) => acc + (Number(c.montant_encaisse) || 0), 0);
+  const totalEncaiss = currentCommandes.filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase())).reduce((acc, c) => acc + (Number(c.montant_encaisse) || Number(c.montant_total) || 0), 0);
   const currentFeuilleTotal = Number(feuille?.total_montant_theorique) || 0;
   const progressPercent = currentCommandes.length > 0 ? Math.round((currentCommandes.filter(c => ['livree', 'retour_livreur', 'terminee'].includes(c.statut_commande?.toLowerCase())).length / currentCommandes.length) * 100) : 0;
 

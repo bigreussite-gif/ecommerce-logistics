@@ -50,12 +50,21 @@ export const Caisse = () => {
     if (term.trim().length < 2) { setFeuilleSearchResults([]); return; }
     setSearchingFeuille(true);
     try {
+      // Search clients by name or phone
+      const { data: clientData } = await insforge.database
+        .from('clients')
+        .select('id')
+        .or(`nom_complet.ilike.%${term}%,telephone.ilike.%${term}%`);
+
+      const clientIds = (clientData || []).map((c: any) => c.id);
+      if (clientIds.length === 0) { setFeuilleSearchResults([]); return; }
+
       // Search commandes by client name or phone
       const { data: cmdData } = await (insforge as any).database
         .from('commandes')
         .select('feuille_route_id')
         .not('feuille_route_id', 'is', null)
-        .or(`nom_client.ilike.%${term}%,telephone_client.ilike.%${term}%`)
+        .in('client_id', clientIds)
         .limit(20);
 
       const ids = [...new Set((cmdData || []).map((c: any) => c.feuille_route_id as string).filter(Boolean))];
