@@ -21,6 +21,16 @@ export const RelanceWhatsApp = () => {
   const [pendingRelance, setPendingRelance] = useState<any | null>(null);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
 
+  // New states for period and status filtering
+  const [period, setPeriod] = useState<string>('30d');
+  const [startDate, setStartDate] = useState<string>(
+    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  );
+  const [endDate, setEndDate] = useState<string>(
+    new Date().toISOString().split('T')[0]
+  );
+  const [selectedStatus, setSelectedStatus] = useState<string>('AllActive');
+
   // Fetch Communes & Orders
   const fetchData = async () => {
     setLoading(true);
@@ -29,12 +39,68 @@ export const RelanceWhatsApp = () => {
       const communesList = await getCommunes();
       setCommunes(communesList);
 
-      // 2. Fetch Pending/Active Orders (not delivered, completed or cancelled)
-      const { data, error } = await insforge.database
+      // 2. Fetch Orders with date filter and status filter
+      let query = insforge.database
         .from('commandes')
-        .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*)')
-        .not('statut_commande', 'in', '("livree","terminee","annulee")')
-        .order('date_creation', { ascending: false });
+        .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*)');
+
+      // Apply Status filter
+      if (selectedStatus === 'AllActive') {
+        query = query.not('statut_commande', 'in', '("livree","terminee","annulee")');
+      } else if (selectedStatus !== 'All') {
+        query = query.eq('statut_commande', selectedStatus);
+      }
+
+      // Apply Period filter
+      if (period !== 'all') {
+        let startISO = '';
+        let endISO = '';
+        const now = new Date();
+
+        if (period === 'today') {
+          const start = new Date(now);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(now);
+          end.setHours(23, 59, 59, 999);
+          startISO = start.toISOString();
+          endISO = end.toISOString();
+        } else if (period === 'yesterday') {
+          const start = new Date(now);
+          start.setDate(now.getDate() - 1);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(now);
+          end.setDate(now.getDate() - 1);
+          end.setHours(23, 59, 59, 999);
+          startISO = start.toISOString();
+          endISO = end.toISOString();
+        } else if (period === '7d') {
+          const start = new Date(now);
+          start.setDate(now.getDate() - 7);
+          start.setHours(0, 0, 0, 0);
+          startISO = start.toISOString();
+          endISO = now.toISOString();
+        } else if (period === '30d') {
+          const start = new Date(now);
+          start.setDate(now.getDate() - 30);
+          start.setHours(0, 0, 0, 0);
+          startISO = start.toISOString();
+          endISO = now.toISOString();
+        } else if (period === 'custom') {
+          const start = new Date(startDate);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          startISO = start.toISOString();
+          endISO = end.toISOString();
+        }
+
+        if (startISO) query = query.gte('date_creation', startISO);
+        if (endISO) query = query.lte('date_creation', endISO);
+      }
+
+      query = query.order('date_creation', { ascending: false });
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -56,7 +122,7 @@ export const RelanceWhatsApp = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [period, startDate, endDate, selectedStatus]);
 
   // Filter Commandes
   const filteredCommandes = useMemo(() => {
@@ -262,54 +328,41 @@ export const RelanceWhatsApp = () => {
 
           {/* FILTRES & TABS */}
           <section style={{ marginBottom: '2rem' }}>
-            <div className="card" style={{ padding: '1.25rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
+            <div className="card" style={{ padding: '1.5rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 
-                {/* TABS */}
-                <div style={{ display: 'flex', gap: '0.5rem', background: '#f1f5f9', padding: '4px', borderRadius: '16px' }}>
-                  <button
-                    onClick={() => setActiveTab('attente')}
-                    style={{
-                      padding: '0.6rem 1.25rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 800,
-                      border: 'none', cursor: 'pointer', transition: 'all 0.2s',
-                      background: activeTab === 'attente' ? 'white' : 'transparent',
-                      color: activeTab === 'attente' ? '#1e293b' : '#64748b',
-                      boxShadow: activeTab === 'attente' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
-                    }}
-                  >
-                    En attente ({commandes.filter(c => !c.whatsapp_sent).length})
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('envoyes')}
-                    style={{
-                      padding: '0.6rem 1.25rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 800,
-                      border: 'none', cursor: 'pointer', transition: 'all 0.2s',
-                      background: activeTab === 'envoyes' ? 'white' : 'transparent',
-                      color: activeTab === 'envoyes' ? '#1e293b' : '#64748b',
-                      boxShadow: activeTab === 'envoyes' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
-                    }}
-                  >
-                    Déjà envoyés ({commandes.filter(c => c.whatsapp_sent).length})
-                  </button>
-                </div>
-
-                {/* FILTERS */}
-                <div style={{ display: 'flex', gap: '1rem', flex: 1, justifySelf: 'end', maxWidth: '800px', flexWrap: 'wrap', width: '100%' }}>
-                  {/* Commune dropdown */}
-                  <select
-                    className="form-input"
-                    value={selectedCommune}
-                    onChange={e => setSelectedCommune(e.target.value)}
-                    style={{ flex: '1 1 200px', height: '48px', borderRadius: '16px', fontWeight: 600, border: '1px solid #e2e8f0', background: '#f8fafc' }}
-                  >
-                    <option value="All">Toutes les Communes</option>
-                    {communes.map(c => (
-                      <option key={c.id} value={c.nom}>{c.nom}</option>
-                    ))}
-                  </select>
+                {/* ROW 1: TABS & SEARCH */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.25rem' }}>
+                  {/* TABS */}
+                  <div style={{ display: 'flex', gap: '0.5rem', background: '#f1f5f9', padding: '4px', borderRadius: '16px' }}>
+                    <button
+                      onClick={() => setActiveTab('attente')}
+                      style={{
+                        padding: '0.6rem 1.25rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 800,
+                        border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+                        background: activeTab === 'attente' ? 'white' : 'transparent',
+                        color: activeTab === 'attente' ? '#1e293b' : '#64748b',
+                        boxShadow: activeTab === 'attente' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
+                      }}
+                    >
+                      En attente ({commandes.filter(c => !c.whatsapp_sent).length})
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('envoyes')}
+                      style={{
+                        padding: '0.6rem 1.25rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 800,
+                        border: 'none', cursor: 'pointer', transition: 'all 0.2s',
+                        background: activeTab === 'envoyes' ? 'white' : 'transparent',
+                        color: activeTab === 'envoyes' ? '#1e293b' : '#64748b',
+                        boxShadow: activeTab === 'envoyes' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
+                      }}
+                    >
+                      Déjà envoyés ({commandes.filter(c => c.whatsapp_sent).length})
+                    </button>
+                  </div>
 
                   {/* Search Bar */}
-                  <div className="search-wrapper" style={{ position: 'relative', flex: '2 1 300px' }}>
+                  <div className="search-wrapper" style={{ position: 'relative', flex: '1 1 350px', maxWidth: '500px' }}>
                     <Search size={18} style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                     <input
                       type="text"
@@ -320,6 +373,94 @@ export const RelanceWhatsApp = () => {
                       onChange={e => setSearchTerm(e.target.value)}
                     />
                   </div>
+                </div>
+
+                {/* ROW 2: FILTERS (Commune, Status, Period, Dates) */}
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', width: '100%', alignItems: 'center' }}>
+                  {/* Commune dropdown */}
+                  <div style={{ flex: '1 1 200px' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Commune</label>
+                    <select
+                      className="form-input"
+                      value={selectedCommune}
+                      onChange={e => setSelectedCommune(e.target.value)}
+                      style={{ width: '100%', height: '44px', borderRadius: '12px', fontWeight: 600, border: '1px solid #e2e8f0', background: '#f8fafc' }}
+                    >
+                      <option value="All">Toutes les Communes</option>
+                      {communes.map(c => (
+                        <option key={c.id} value={c.nom}>{c.nom}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Status dropdown */}
+                  <div style={{ flex: '1 1 200px' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Statut Commande</label>
+                    <select
+                      className="form-input"
+                      value={selectedStatus}
+                      onChange={e => setSelectedStatus(e.target.value)}
+                      style={{ width: '100%', height: '44px', borderRadius: '12px', fontWeight: 600, border: '1px solid #e2e8f0', background: '#f8fafc' }}
+                    >
+                      <option value="AllActive">Actifs (Non livrées/annulées)</option>
+                      <option value="All">Tous les statuts</option>
+                      <option value="nouvelle">Nouvelle</option>
+                      <option value="a_rappeler">À rappeler</option>
+                      <option value="en_attente_appel">En attente appel</option>
+                      <option value="validee">Validée</option>
+                      <option value="en_cours_livraison">En cours de livraison</option>
+                      <option value="livree">Livrée</option>
+                      <option value="terminee">Terminée</option>
+                      <option value="echouee">Échouée</option>
+                      <option value="retour_livreur">Retour livreur</option>
+                      <option value="annulee">Annulée</option>
+                      <option value="retour_client">Retour client</option>
+                    </select>
+                  </div>
+
+                  {/* Period dropdown */}
+                  <div style={{ flex: '1 1 180px' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Période</label>
+                    <select
+                      className="form-input"
+                      value={period}
+                      onChange={e => setPeriod(e.target.value)}
+                      style={{ width: '100%', height: '44px', borderRadius: '12px', fontWeight: 600, border: '1px solid #e2e8f0', background: '#f8fafc' }}
+                    >
+                      <option value="30d">30 derniers jours</option>
+                      <option value="7d">7 derniers jours</option>
+                      <option value="today">Aujourd'hui</option>
+                      <option value="yesterday">Hier</option>
+                      <option value="all">Tout</option>
+                      <option value="custom">Personnalisé</option>
+                    </select>
+                  </div>
+
+                  {/* Custom Dates */}
+                  {period === 'custom' && (
+                    <div style={{ display: 'flex', gap: '0.5rem', flex: '1 1 300px' }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Du</label>
+                        <input
+                          type="date"
+                          className="form-input"
+                          value={startDate}
+                          onChange={e => setStartDate(e.target.value)}
+                          style={{ width: '100%', height: '44px', borderRadius: '12px', fontWeight: 600, border: '1px solid #e2e8f0', background: '#f8fafc', padding: '0 0.75rem' }}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Au</label>
+                        <input
+                          type="date"
+                          className="form-input"
+                          value={endDate}
+                          onChange={e => setEndDate(e.target.value)}
+                          style={{ width: '100%', height: '44px', borderRadius: '12px', fontWeight: 600, border: '1px solid #e2e8f0', background: '#f8fafc', padding: '0 0.75rem' }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
               </div>
