@@ -194,7 +194,7 @@ export const Caisse = () => {
       // 2. Query commandes by ref_text or client_ids
       let query = insforge.database
         .from('commandes')
-        .select('*, clients(nom_complet, telephone), users(nom_complet), lignes:lignes_commandes(*)');
+        .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*)');
       
       if (clientIds.length > 0) {
         query = query.or(`ref_text.ilike.%${cleanId}%,client_id.in.(${clientIds.map(id => `"${id}"`).join(',')})`);
