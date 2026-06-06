@@ -54,6 +54,7 @@ const Landing = lazyWithRetry(() => import('./pages/Landing').then(m => ({ defau
 const Approvisionnement = lazyWithRetry(() => import('./pages/Approvisionnement').then(m => ({ default: m.Approvisionnement })));
 const Fournisseurs = lazyWithRetry(() => import('./pages/Fournisseurs').then(m => ({ default: m.Fournisseurs })));
 const FournisseurAchats = lazyWithRetry(() => import('./pages/FournisseurAchats').then(m => ({ default: m.FournisseurAchats })));
+const RelanceWhatsApp = lazyWithRetry(() => import('./pages/RelanceWhatsApp').then(m => ({ default: m.RelanceWhatsApp })));
 
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '5rem' }}>
@@ -145,6 +146,9 @@ const AppRoutes = () => {
         } />
         <Route path="commandes/:id/historique" element={
           <ProtectedRoute requiredPermission="COMMANDES"><CommandeHistorique /></ProtectedRoute>
+        } />
+        <Route path="whatsapp-relance" element={
+          <ProtectedRoute requiredPermission="COMMANDES"><RelanceWhatsApp /></ProtectedRoute>
         } />
         
         {/* Module 3: Centre d'Appel */}

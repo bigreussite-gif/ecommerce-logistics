@@ -22,7 +22,8 @@ import {
   RefreshCw,
   AlertCircle,
   ShoppingBag,
-  Building2
+  Building2,
+  MessageSquare
 } from 'lucide-react';
 
 export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
@@ -37,6 +38,7 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
     { path: '/achats', label: 'Approvisionnements', icon: ShoppingBag, permission: 'PRODUITS' },
     { path: '/fournisseurs', label: 'Fournisseurs', icon: Building2, permission: 'PRODUITS' },
     { path: '/commandes', label: 'Commandes', icon: ShoppingCart, permission: 'COMMANDES' },
+    { path: '/whatsapp-relance', label: 'Relance WhatsApp', icon: MessageSquare, permission: 'COMMANDES' },
     { path: '/centre-appel', label: 'Centre d\'Appel', icon: Headset, permission: 'CENTRE_APPEL' },
     { path: '/clients', label: 'CRM & Clients', icon: Users, permission: 'CLIENTS' },
     { path: '/logistique', label: 'Logistique', icon: Truck, permission: 'LOGISTIQUE' },
