@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
   MessageSquare, Search, RefreshCw, X, Check, MapPin, 
-  Send, AlertCircle, ShoppingBag, Calendar, CheckSquare
+  Send, CheckSquare
 } from 'lucide-react';
 import { insforge } from '../lib/insforge';
 import { getCommunes } from '../services/adminService';
-import type { Commande, Commune } from '../types';
+import type { Commune } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
