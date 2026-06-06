@@ -28,6 +28,7 @@ export const Caisse = () => {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [transferringCommande, setTransferringCommande] = useState<Commande | null>(null);
   const [transferLivreurId, setTransferLivreurId] = useState<string>('');
+  const [pendingAddCommande, setPendingAddCommande] = useState<any | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [extraSearch, setExtraSearch] = useState('');
@@ -211,16 +212,8 @@ export const Caisse = () => {
         showToast("Aucune commande trouvée avec cette référence ou ce client.", "error");
         return;
       }
-
       const cmd = results[0];
       
-      // Check if already on another sheet
-      if (cmd.feuille_route_id && cmd.feuille_route_id !== feuille.id) {
-        const livreurName = cmd.users?.nom_complet || "un autre agent";
-        const confirmed = window.confirm(`Cette commande est actuellement affectée à ${livreurName}. Voulez-vous la transférer sur cette feuille de route ?`);
-        if (!confirmed) return;
-      }
-
       const fullCmd = {
         ...cmd,
         nom_client: cmd.clients?.nom_complet,
@@ -228,23 +221,37 @@ export const Caisse = () => {
         lignes: cmd.lignes || []
       };
 
-      // Use the new reassignment service
-      await reassignCommandeToFeuille(cmd.id, feuille.id, selectedLivreur);
+      setPendingAddCommande(fullCmd);
 
-      setCommandes(prev => [...prev, fullCmd]);
+    } catch (e) {
+      console.error(e);
+      showToast("Erreur lors de la recherche de la commande.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const confirmAddExtraOrder = async () => {
+    if (!pendingAddCommande || !feuille) return;
+    setLoading(true);
+    try {
+      // Use the new reassignment service
+      await reassignCommandeToFeuille(pendingAddCommande.id, feuille.id, selectedLivreur);
+
+      setCommandes(prev => [...prev, pendingAddCommande]);
       setResolutions(prev => ({
         ...prev,
-        [cmd.id]: {
-          id: cmd.id,
+        [pendingAddCommande.id]: {
+          id: pendingAddCommande.id,
           statut: 'livree',
           mode_paiement: 'Cash à la livraison',
-          updatedLines: fullCmd.lignes.map((l: any) => ({ ...l }))
+          updatedLines: pendingAddCommande.lignes.map((l: any) => ({ ...l }))
         }
       }));
 
       setExtraSearch('');
-      showToast(`Commande #${cmd.id.slice(0,8)} réaffectée et ajoutée.`, "success");
-
+      showToast(`Commande #${pendingAddCommande.id.slice(0,8)} réaffectée et ajoutée.`, "success");
+      setPendingAddCommande(null);
     } catch (e) {
       console.error(e);
       showToast("Erreur lors de l'ajout ou du transfert.", "error");
@@ -1293,6 +1300,89 @@ export const Caisse = () => {
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
               <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setTransferringCommande(null)}>Annuler</button>
               <button className="btn btn-primary" style={{ flex: 1 }} disabled={!transferLivreurId || loading} onClick={executeTransfer}>Transférer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmation Ajout / Transfert de commande */}
+      {pendingAddCommande && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', animation: 'fadeIn 0.2s ease' }}>
+          <div className="card" style={{ width: '100%', maxWidth: '500px', padding: '2rem', borderRadius: '24px', border: '1px solid #e2e8f0', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)', background: 'white' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 950, color: '#0f172a', margin: 0 }}>🔍 Confirmer la commande</h3>
+              <button onClick={() => setPendingAddCommande(null)} style={{ background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={16} /></button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+              <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '16px', border: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', display: 'block', textTransform: 'uppercase' }}>Commande</span>
+                <span style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--primary)' }}>#{pendingAddCommande.id.slice(0, 8).toUpperCase()}</span>
+                
+                <div style={{ marginTop: '0.75rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', display: 'block', textTransform: 'uppercase' }}>Client</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e293b' }}>{pendingAddCommande.nom_client || 'Inconnu'}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', display: 'block', textTransform: 'uppercase' }}>Téléphone</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e293b' }}>{pendingAddCommande.telephone_client || 'Non renseigné'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ border: '1px solid #e2e8f0', padding: '1rem', borderRadius: '14px' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', display: 'block', textTransform: 'uppercase' }}>Destination</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1e293b' }}>{pendingAddCommande.commune_livraison || '-'}</span>
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginTop: '2px' }}>{pendingAddCommande.quartier_livraison || ''}</span>
+                </div>
+                <div style={{ border: '1px solid #e2e8f0', padding: '1rem', borderRadius: '14px' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', display: 'block', textTransform: 'uppercase' }}>Montant total</span>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 900, color: '#10b981', display: 'block', marginTop: '2px' }}>{Number(pendingAddCommande.montant_total).toLocaleString()} F</span>
+                </div>
+              </div>
+
+              {pendingAddCommande.lignes && pendingAddCommande.lignes.length > 0 && (
+                <div style={{ border: '1px solid #e2e8f0', padding: '1rem', borderRadius: '14px' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', display: 'block', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Articles ({pendingAddCommande.lignes.length})</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', maxHeight: '100px', overflowY: 'auto' }}>
+                    {pendingAddCommande.lignes.map((l: any, i: number) => (
+                      <span key={i} style={{ fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>
+                        📦 {l.quantite}x {l.nom_produit}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Status information and warning */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                {pendingAddCommande.feuille_route_id ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', background: '#fff1f2', border: '1px solid #fee2e2', borderRadius: '12px' }}>
+                    <AlertCircle size={16} color="#ef4444" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#991b1b' }}>
+                      Cette commande est déjà sur la feuille d'un autre livreur. Elle sera **transférée** ici.
+                    </span>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', background: '#ecfdf5', border: '1px solid #d1fae5', borderRadius: '12px' }}>
+                    <CheckCircle2 size={16} color="#10b981" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#065f46' }}>
+                      Cette commande est en logistique (non affectée). Elle sera ajoutée à cette feuille.
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button className="btn btn-outline" style={{ flex: 1, height: '48px', borderRadius: '12px', fontWeight: 800 }} onClick={() => setPendingAddCommande(null)}>
+                Annuler
+              </button>
+              <button className="btn btn-primary" style={{ flex: 2, height: '48px', borderRadius: '12px', fontWeight: 900 }} disabled={loading} onClick={confirmAddExtraOrder}>
+                {loading ? 'Traitement...' : pendingAddCommande.feuille_route_id ? 'Confirmer le Transfert ➡️' : 'Confirmer l\'Ajout ✅'}
+              </button>
             </div>
           </div>
         </div>
