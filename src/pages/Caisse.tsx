@@ -147,7 +147,8 @@ export const Caisse = () => {
   const handleAddExtraOrder = async () => {
     if (!extraSearch || !feuille) return;
     
-    const cleanId = extraSearch.trim().replace('#', '').toLowerCase();
+    const term = extraSearch.trim();
+    const cleanId = term.toLowerCase().replace('#', '');
     
     if (commandes.find(c => c.id.toLowerCase().includes(cleanId) || cleanId.includes(c.id.toLowerCase()))) {
       showToast("Cette commande est déjà dans la liste.", "info");
@@ -156,28 +157,55 @@ export const Caisse = () => {
 
     setLoading(true);
     try {
-      let results = [];
-      const { data: refResults } = await insforge.database
-        .from('commandes')
-        .select('*, clients(nom_complet, telephone), users(nom_complet), lignes:lignes_commandes(*)')
-        .or(`ref_text.ilike.%${cleanId}%`)
-        .limit(1);
+      // 1. Search for matching clients first
+      const clientIds: string[] = [];
+      const cleanTerm = term.replace(/\s+/g, '');
 
-      if (refResults && refResults.length > 0) {
-        results = refResults;
-      } else {
-        // Try searching by client name or phone
-        const { data: clientResults } = await insforge.database
-          .from('commandes')
-          .select('*, clients!inner(nom_complet, telephone), users(nom_complet), lignes:lignes_commandes(*)')
-          .or(`nom_complet.ilike.%${cleanId}%,telephone.ilike.%${cleanId}%`, { referencedTable: 'clients' })
-          .order('created_at', { ascending: false })
-          .limit(1);
-        
-        if (clientResults && clientResults.length > 0) {
-          results = clientResults;
+      // A. If it looks like a phone number, use the robust searchClientByPhone helper
+      const isMaybePhone = /\d{6,}/.test(cleanTerm);
+      if (isMaybePhone) {
+        const { searchClientByPhone } = await import('../services/clientService');
+        const client = await searchClientByPhone(cleanTerm);
+        if (client) {
+          clientIds.push(client.id);
         }
       }
+
+      // B. General ILIKE search with spaced variant for 10-digit phone numbers (e.g. "05 05 44 11 18")
+      let spacedTerm = term;
+      if (/^\d{10}$/.test(cleanTerm)) {
+        spacedTerm = cleanTerm.replace(/(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1 $2 $3 $4 $5');
+      }
+
+      const { data: matchedClients } = await insforge.database
+        .from('clients')
+        .select('id')
+        .or(`nom_complet.ilike.%${term}%,telephone.ilike.%${term}%,telephone.ilike.%${cleanTerm}%,telephone.ilike.%${spacedTerm}%`);
+      
+      if (matchedClients) {
+        matchedClients.forEach(c => {
+          if (!clientIds.includes(c.id)) {
+            clientIds.push(c.id);
+          }
+        });
+      }
+      
+      // 2. Query commandes by ref_text or client_ids
+      let query = insforge.database
+        .from('commandes')
+        .select('*, clients(nom_complet, telephone), users(nom_complet), lignes:lignes_commandes(*)');
+      
+      if (clientIds.length > 0) {
+        query = query.or(`ref_text.ilike.%${cleanId}%,client_id.in.(${clientIds.map(id => `"${id}"`).join(',')})`);
+      } else {
+        query = query.or(`ref_text.ilike.%${cleanId}%`);
+      }
+      
+      const { data: results, error: queryError } = await query
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (queryError) throw queryError;
 
       if (!results || results.length === 0) {
         showToast("Aucune commande trouvée avec cette référence ou ce client.", "error");

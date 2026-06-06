@@ -10,6 +10,7 @@ import { generateInvoicePDF } from '../services/pdfService';
 import type { Commande, LigneCommande } from '../types';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
+import { globalEventBus, EVENTS } from '../utils/events';
 
 type Period = 'today' | '7d' | '30d' | 'all' | 'custom';
 
@@ -27,6 +28,7 @@ export const Commandes = () => {
   const [editingCommande, setEditingCommande] = useState<Commande | null>(null);
   const [originalLines, setOriginalLines] = useState<LigneCommande[]>([]);
   const [communesDb, setCommunesDb] = useState<any[]>([]);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   const [period, setPeriod] = useState<Period>('7d'); // Default to 7 days for better focus
   const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
@@ -354,7 +356,18 @@ export const Commandes = () => {
       active = false;
       clearInterval(interval);
     };
-  }, [currentPage, pageSize, activeTab, dateRange, searchTerm, selectedCommuneFilter, selectedStatusFilter]);
+  }, [currentPage, pageSize, activeTab, dateRange, searchTerm, selectedCommuneFilter, selectedStatusFilter, refreshTrigger]);
+
+  // Listen for local events to trigger instant updates
+  useEffect(() => {
+    const handleUpdate = () => {
+      setRefreshTrigger(prev => prev + 1);
+    };
+    globalEventBus.on(EVENTS.COMMANDES_UPDATED, handleUpdate);
+    return () => {
+      globalEventBus.off(EVENTS.COMMANDES_UPDATED, handleUpdate);
+    };
+  }, []);
 
   const getStatusOptionsForTab = () => {
     switch (activeTab) {

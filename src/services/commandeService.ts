@@ -239,8 +239,12 @@ export const subscribeToCommandes = (callback: (commandes: Commande[]) => void) 
     }
   };
   fetch();
+  globalEventBus.on(EVENTS.COMMANDES_UPDATED, fetch);
   const interval = setInterval(fetch, 5000);
-  return () => clearInterval(interval);
+  return () => {
+    globalEventBus.off(EVENTS.COMMANDES_UPDATED, fetch);
+    clearInterval(interval);
+  };
 };
 
 export const getCommandesByStatus = async (statusList: string[]): Promise<(Commande & { lignes: LigneCommande[] })[]> => {
@@ -268,8 +272,12 @@ export const subscribeToCommandesByStatus = (statusList: string[], callback: (co
     }
   };
   fetch();
+  globalEventBus.on(EVENTS.COMMANDES_UPDATED, fetch);
   const interval = setInterval(fetch, 5000);
-  return () => clearInterval(interval);
+  return () => {
+    globalEventBus.off(EVENTS.COMMANDES_UPDATED, fetch);
+    clearInterval(interval);
+  };
 };
 
 export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes: Omit<LigneCommande, 'id' | 'commande_id'>[]): Promise<string> => {
