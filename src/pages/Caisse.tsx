@@ -203,7 +203,7 @@ export const Caisse = () => {
       }
       
       const { data: results, error: queryError } = await query
-        .order('created_at', { ascending: false })
+        .order('date_creation', { ascending: false })
         .limit(1);
 
       if (queryError) throw queryError;
