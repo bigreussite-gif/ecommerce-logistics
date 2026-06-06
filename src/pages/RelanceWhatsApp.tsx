@@ -82,24 +82,90 @@ export const RelanceWhatsApp = () => {
     });
   }, [commandes, activeTab, selectedCommune, searchTerm]);
 
-  // Generate WhatsApp Message Template
+  // Détection commune intérieure (hors Abidjan)
+  const isInteriorCommune = (commune: string): boolean => {
+    if (!commune) return false;
+    const n = commune.toLowerCase().trim();
+    return n.includes('intérieur') || n.includes('interieur') || n.includes('hors') || n === 'autre';
+  };
+
+  const getWAType = (cmd: any) => {
+    const status = (cmd?.statut_commande || '').toLowerCase();
+    if (['a_rappeler', 'absent', 'injoignable'].includes(status)) return 'relance';
+    if (status === 'annulee') return 'annulation';
+    if (['echouee', 'retour_livreur'].includes(status)) return 'echec';
+    if (['livree', 'terminee'].includes(status)) return 'cloture';
+    return 'validation';
+  };
+
+  // Generate WhatsApp Message Template matching CommandeDetails
   const generateMessage = (cmd: any) => {
     if (!cmd) return '';
-    const firstName = cmd.nom_client.split(' ')[0] || 'Client';
-    const amount = Number(cmd.montant_total).toLocaleString();
-    const commune = cmd.commune_livraison || 'votre ville';
+    const nom = `*${cmd.nom_client || 'Client'}*`;
+    const ref = `*#${cmd.id.slice(0, 8).toUpperCase()}*`;
+    const articlesList = (cmd.lignes || []).map((l: any) => ` - *${l.quantite}x ${l.nom_produit}*`).join('\n');
+    const subtotal = (cmd.lignes || []).reduce((acc: number, l: any) => acc + (l.montant_ligne || 0), 0);
+    const delivery = Number(cmd.frais_livraison) || 0;
+    const remise = Number(cmd.remise_totale) || 0;
+    const total = Math.max(0, subtotal + delivery - remise);
+
+    const bSubtotal = `*${subtotal.toLocaleString()} CFA*`;
+    const bDelivery = `*${delivery > 0 ? delivery.toLocaleString() + " CFA" : "À définir"}*`;
+    const bRemise = remise > 0 ? `\n- Remise : *-${remise.toLocaleString()} CFA*` : "";
+    const bTotal = `*${total.toLocaleString()} CFA*`;
+
+    const communeEffective = cmd.commune_livraison || '';
+    const isInterior = isInteriorCommune(communeEffective);
+
+    const summary = `\n\n📦 *Détails de votre commande ${ref} :*\n${articlesList}\n\n- Sous-total articles : ${bSubtotal}\n- Frais d'envoi : ${bDelivery}${bRemise}\n💰 *Total à régler : ${bTotal}*`;
+
+    let text = "";
+    const status = (cmd.statut_commande || '').toLowerCase();
+
+    if (['a_rappeler', 'absent', 'injoignable'].includes(status)) {
+      if (isInterior && communeEffective) {
+        text = `Bonjour ${nom} 👋\n\nC'est votre conseiller chez *Jachete Côte d'Ivoire*.\n\nNous avons essayé de vous joindre plusieurs fois pour votre commande mais sans succès.\n\nVotre colis est prêt et attend d'être expédié vers *${communeEffective}* ! 🚀\n\nPour ne pas perdre votre commande, confirmez-nous votre disponibilité en répondant *OUI* et on relance tout de suite.${summary}\n\n📞 Appelez-nous au *+225 01 72 57 13 52* pour toute question.`;
+      } else {
+        text = `Bonjour ${nom} 👋\n\nC'est votre conseiller de *Jachete Côte d'Ivoire*.\n\nNous avons tenté de vous joindre pour votre livraison mais sans succès. Votre colis est prêt ! 📦\n\nPouvons-nous reprogrammer votre livraison pour demain ? Répondez *OUI* et le livreur sera chez vous dans les plus brefs délais.${summary}\n\n📞 Besoin d'aide ? Appelez-nous au *+225 01 72 57 13 52*.`;
+      }
+    } else if (status === 'annulee') {
+      text = `Bonjour ${nom} 👋\n\nNous avons bien noté l'annulation de votre commande ${ref}. On ne va pas vous retenir si vous avez changé d'avis... *mais avant de partir*, on voulait juste vous dire quelque chose. 🙏\n\n🔥 *L'article que vous aviez choisi part très vite.* Les stocks sont limités et d'autres clients l'ont déjà commandé aujourd'hui. Si vous hésitez encore, il risque de ne plus être disponible dans quelques jours.\n\n💬 *Qu'est-ce qui vous a fait hésiter ?*\nSi c'est le prix, le délai ou une inquiétude sur la livraison — dites-le nous franchement. On trouvera une solution ensemble. Chez *Jachete Côte d'Ivoire*, chaque client compte et on est là pour vous.\n\n🎁 *Offre spéciale pour vous :* Si vous relancez votre commande maintenant, on vous réserve une *attention spéciale* en cadeau de notre part. Répondez juste *OUI* ici et on s'en occupe immédiatement !\n${summary}\n\n🛍️ *Et si vous cherchez autre chose ?*\nNotre boutique regorge d'articles de qualité livrés partout en Côte d'Ivoire :\n👉 *www.jachete.ci*\n\nParcourez nos nouveautés, nos promos du moment et commandez en quelques clics. La livraison est rapide et sécurisée — à Abidjan et dans tout le pays ! 🚀\n\n📞 Appelez notre service client au *+225 01 72 57 13 52* pour toute question. À très bientôt ! 🤝`;
+    } else if (['echouee', 'retour_livreur'].includes(status)) {
+      if (isInterior && communeEffective) {
+        text = `Bonjour ${nom} 👋\n\nVotre conseiller chez *Jachete Côte d'Ivoire* à l'appareil.\n\nNous avons eu un empêchement lors de l'expédition de votre commande vers *${communeEffective}*. Nous nous en excusons sincèrement. 🙏\n\nBonne nouvelle : votre colis est toujours disponible et prêt à partir ! Confirmez-nous et on expédie dès demain.${summary}\n\n📞 Appelez-nous au *+225 01 72 57 13 52* ou répondez *OUI* ici.`;
+      } else {
+        text = `Bonjour ${nom} 👋\n\nVotre conseiller de *Jachete Côte d'Ivoire* ici.\n\nNous avons eu un souci lors de votre livraison et nous en sommes vraiment désolés. 🙏\n\nVotre livreur sera chez vous demain à la première heure en *priorité absolue*. Êtes-vous toujours disponible ?${summary}\n\n📞 Appelez-nous au *+225 01 72 57 13 52* pour confirmer le créneau.`;
+      }
+    } else if (['livree', 'terminee'].includes(status)) {
+      text = `Bonjour ${nom} 🎉\n\nVotre commande ${ref} a bien été livrée avec succès !\n\nNous vous remercions sincèrement pour votre confiance. 🙏 C'était un plaisir de vous servir !${summary}\n\nVous avez aimé votre expérience ? Parlez-en autour de vous ! Et retrouvez nos nouveaux articles sur *www.jachete.ci* 🛍️\n\n📞 Pour nous joindre : *+225 01 72 57 13 52*. À très bientôt ! 🤝`;
+    } else {
+      // Confirmation / En attente
+      if (isInterior && communeEffective) {
+        const lieuExact = [
+          communeEffective,
+          cmd.quartier_livraison || '',
+          cmd.adresse_livraison || ''
+        ].filter(Boolean).join(', ');
+
+        text = `Bonjour ${nom} ! 🙌\n\nC'est votre conseiller de *Jachete Côte d'Ivoire*. Nous vous informons que votre commande a bien été *enregistrée* ! 🎉\n${summary}\n\n📍 *Lieu de livraison prévu :* ${lieuExact}\n⚠️ Comme vous êtes en *zone intérieure (hors Abidjan)*, votre colis sera expédié à la *gare routière de ${communeEffective}* pour que vous le récupériez sur place.\n\n✅ *Procédure pour l'expédition :*\nPuisque nous n'effectuons pas de livraison directe à l'intérieur du pays, le paiement à la livraison n'est pas possible.\n1️⃣ Veuillez effectuer le dépôt du montant de la commande via *Wave* ou *Orange Money* au :\n💸 *+225 07 57 22 87 31*\n2️⃣ Envoyez-nous la *capture de votre reçu* par WhatsApp sur ce même numéro\n3️⃣ Dès réception de votre dépôt, nous expédions immédiatement votre colis — vous le récupérez à la gare !\n\n💡 *Alternative :* Vous avez un frère ou un proche actuellement à Abidjan ? Donnez-nous son contact — notre livreur peut lui remettre le colis directement ici à Abidjan et il pourra payer à la livraison !\n\n🔒 *Vous hésitez à payer en avance ?* Nous comprenons. Jachete Côte d'Ivoire existe depuis plusieurs années et des centaines de clients dans tout le pays nous font confiance chaque jour. Appelez notre service client au *+225 01 72 57 13 52* pour toutes vos questions avant de payer. Votre satisfaction est notre priorité ! 🤝\n\n📲 Après paiement, envoyez la capture au *+225 07 57 22 87 31*. On s'occupe du reste ! 💪`;
+      } else {
+        text = `Bonjour ${nom} ! 🙌\n\nC'est votre conseiller de *Jachete Côte d'Ivoire*. Nous vous informons que votre commande a bien été *enregistrée* ! 🎉\n${summary}\n\nUn livreur va vous appeler *aujourd'hui ou demain* pour la livraison à *${communeEffective || 'votre adresse'}*. Vous payez à la livraison, *aucune avance requise*.\n\nRépondez *OUI* pour confirmer ! 🚚\n\n📞 Questions ? Appelez-nous au *+225 01 72 57 13 52*.`;
+      }
+    }
     
-    return `Bonjour ${firstName} ! 🙌\n` +
-      `C'est votre conseiller de *Jachete Côte d'Ivoire*. Nous vous informons que votre commande de ${amount} F est prête à être expédiée vers ${commune}. 🚀\n\n` +
-      `Veuillez effectuer le dépôt du montant de la commande via *Wave* ou *Orange Money* au :\n` +
-      `💸 *+225 07 57 22 87 31*\n\n` +
-      `Envoyez-nous la capture de votre reçu par WhatsApp. Dès réception de votre dépôt, nous expédions immédiatement ! 🤝`;
+    const signature = "\n\n*Jachete Côte d'Ivoire* 🛍️\nwww.jachete.ci | +225 01 72 57 13 52";
+    text += signature;
+    return text;
   };
 
   // Mark as Sent
   const handleMarkAsSent = async (cmdId: string, openLink: boolean = false) => {
     setActionLoading(true);
     try {
+      // Log/update via the service
+      const { logWhatsAppMessage } = await import('../services/commandeService');
+      await logWhatsAppMessage(cmdId, getWAType(pendingRelance));
+
       const { error } = await insforge.database
         .from('commandes')
         .update({ 
