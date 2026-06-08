@@ -66,9 +66,14 @@ export const searchClientByPhone = async (phone: string): Promise<Client | null>
 };
 
 export const createClient = async (client: Omit<Client, 'id'>): Promise<string> => {
+  const normalized = {
+    ...client,
+    telephone: normalizePhone(client.telephone),
+    telephone_secondaire: client.telephone_secondaire ? normalizePhone(client.telephone_secondaire) : ''
+  };
   const { data, error } = await insforge.database
     .from('clients')
-    .insert([client])
+    .insert([normalized])
     .select();
 
   if (error) {
@@ -84,9 +89,17 @@ export const createClient = async (client: Omit<Client, 'id'>): Promise<string> 
 };
 
 export const updateClient = async (id: string, updates: Partial<Client>): Promise<void> => {
-  // If we are changing the phone, we must check for collisions (UNIQUE constraint) using normalization
+  const normalizedUpdates = { ...updates };
   if (updates.telephone) {
-    const targetNorm = normalizePhone(updates.telephone);
+    normalizedUpdates.telephone = normalizePhone(updates.telephone);
+  }
+  if (updates.telephone_secondaire) {
+    normalizedUpdates.telephone_secondaire = normalizePhone(updates.telephone_secondaire);
+  }
+
+  // If we are changing the phone, we must check for collisions (UNIQUE constraint) using normalization
+  if (normalizedUpdates.telephone) {
+    const targetNorm = normalizedUpdates.telephone;
     
     // We fetch all and find the collision manually to be sure about normalization consistency
     const all = await getAllClients();
@@ -94,7 +107,7 @@ export const updateClient = async (id: string, updates: Partial<Client>): Promis
     
     // If a DIFFERENT client already has this phone number, we perform a STRATEGIC MERGE
     if (existing) {
-      console.log(`🚀 Strategic Merge: Moving data from ${id} to ${existing.id} (colliding phone: ${updates.telephone})`);
+      console.log(`🚀 Strategic Merge: Moving data from ${id} to ${existing.id} (colliding phone: ${normalizedUpdates.telephone})`);
       
       // 1. Relink all orders to the existing client
       await insforge.database
@@ -103,7 +116,7 @@ export const updateClient = async (id: string, updates: Partial<Client>): Promis
         .eq('client_id', id);
         
       // 2. Update the existing client with any other new info (nom, adresse, etc.)
-      const { telephone, ...otherUpdates } = updates;
+      const { telephone, ...otherUpdates } = normalizedUpdates;
       if (Object.keys(otherUpdates).length > 0) {
         await insforge.database
           .from('clients')
@@ -120,7 +133,7 @@ export const updateClient = async (id: string, updates: Partial<Client>): Promis
   // Standard update if no collision
   const { error } = await insforge.database
     .from('clients')
-    .update(updates)
+    .update(normalizedUpdates)
     .eq('id', id);
 
   if (error) throw error;

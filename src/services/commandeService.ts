@@ -944,19 +944,22 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
     });
 
     const cleanPhone = (p: any): string => String(p || '').replace(/\D/g, '').slice(-10);
-    const rawPhones = data.map(item => String(item.client?.telephone || '').trim()).filter(p => p.length >= 8);
     const cleanPhones = data.map(item => cleanPhone(item.client?.telephone)).filter(p => p.length >= 8);
+    const cleanSecondaries = data.map(item => cleanPhone(item.client?.telephone_secondaire)).filter(p => p.length >= 8);
     
-    // We must search both the cleaned version and the exact raw version to avoid missing existing exact matches
-    const phonesInFile = Array.from(new Set([...rawPhones, ...cleanPhones]));
+    // Search only normalized versions (digits only) to avoid PostgREST decoding + to space
+    const phonesInFile = Array.from(new Set([...cleanPhones, ...cleanSecondaries]));
     
-    // Format the array for Supabase .in() filter (wrap in double quotes to handle spaces/plus signs)
-    const formattedPhones = phonesInFile.map(p => `"${p}"`).join(',');
-    
-    const { data: existingClients } = await insforge.database
-      .from('clients')
-      .select('id, telephone, telephone_secondaire')
-      .or(`telephone.in.(${formattedPhones}),telephone_secondaire.in.(${formattedPhones})`);
+    let existingClients: any[] = [];
+    if (phonesInFile.length > 0) {
+      const formattedPhones = phonesInFile.map(p => `"${p}"`).join(',');
+      const { data: ec, error: searchErr } = await insforge.database
+        .from('clients')
+        .select('id, telephone, telephone_secondaire')
+        .or(`telephone.in.(${formattedPhones}),telephone_secondaire.in.(${formattedPhones})`);
+      if (searchErr) throw searchErr;
+      existingClients = ec || [];
+    }
     
     const clientMapByPhone = new Map<string, string>();
     (existingClients || []).forEach(c => {
@@ -974,8 +977,8 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
       if (phone && phone.length >= 8 && !clientMapByPhone.has(phone) && !processedPhones.has(phone)) {
         newClientsToCreate.push({
           nom_complet: item.client.nom_complet,
-          telephone: item.client.telephone,
-          telephone_secondaire: item.client.telephone_secondaire || '',
+          telephone: phone,
+          telephone_secondaire: item.client.telephone_secondaire ? cleanPhone(item.client.telephone_secondaire) : '',
           commune: item.commune || '',
           quartier: item.quartier || '',
           adresse: item.adresse || ''
