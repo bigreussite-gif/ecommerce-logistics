@@ -21,6 +21,16 @@ CREATE POLICY "Admins can manage all users" ON users FOR ALL TO authenticated US
   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'ADMIN')
 );
 
+-- Table: categories
+CREATE TABLE categories (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  nom TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Staff access categories" ON categories FOR ALL TO authenticated USING (true);
+
 -- Table: produits
 CREATE TABLE produits (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
@@ -38,7 +48,9 @@ CREATE TABLE produits (
   actif BOOLEAN DEFAULT true,
   image_url TEXT,
   images TEXT[],
-  created_at TIMESTAMPTZ DEFAULT now()
+  categorie_id UUID REFERENCES categories(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
 
 ALTER TABLE produits ENABLE ROW LEVEL SECURITY;
