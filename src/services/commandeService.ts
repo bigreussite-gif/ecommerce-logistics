@@ -100,6 +100,7 @@ export const getCommandesPaginated = async (
     failed: number;
     cancelled: number;
     retours: number;
+    sansCommune: number;
   };
 }> => {
   let query = insforge.database
@@ -162,7 +163,9 @@ export const getCommandesPaginated = async (
   }
 
   // 4. Order and Range
-  query = query.order('date_creation', { ascending: false });
+  query = query
+    .order('commune_non_attribuee', { ascending: false })
+    .order('date_creation', { ascending: false });
   query = query.range(offset, offset + limit - 1);
 
   const { data, count, error } = await query;
@@ -198,6 +201,23 @@ export const getCommandesPaginated = async (
     return cVal || 0;
   };
 
+  const getCountSansCommune = async () => {
+    let q = insforge.database
+      .from('commandes')
+      .select('*', { count: 'exact', head: true })
+      .eq('commune_non_attribuee', true);
+    
+    if (startDateISO) {
+      q = q.gte('date_creation', startDateISO);
+    }
+    if (endDateISO) {
+      q = q.lte('date_creation', endDateISO);
+    }
+    const { count: cVal, error: cErr } = await q;
+    if (cErr) throw cErr;
+    return cVal || 0;
+  };
+
   const [
     total,
     processing,
@@ -205,7 +225,8 @@ export const getCommandesPaginated = async (
     delivered,
     failed,
     cancelled,
-    retours
+    retours,
+    sansCommune
   ] = await Promise.all([
     getCountForStatuses(null),
     getCountForStatuses(['nouvelle', 'a_rappeler', 'en_attente_appel']),
@@ -213,7 +234,8 @@ export const getCommandesPaginated = async (
     getCountForStatuses(['livree', 'terminee']),
     getCountForStatuses(['echouee', 'retour_livreur', 'retour_stock']),
     getCountForStatuses(['annulee']),
-    getCountForStatuses(['retour_client'])
+    getCountForStatuses(['retour_client']),
+    getCountSansCommune()
   ]);
 
   return {
@@ -226,7 +248,8 @@ export const getCommandesPaginated = async (
       delivered,
       failed,
       cancelled,
-      retours
+      retours,
+      sansCommune
     }
   };
 };

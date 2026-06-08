@@ -171,7 +171,13 @@ export const CommandeList = ({
 
                 <td style={{ padding: '1.25rem 1rem' }}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 850, color: '#334155', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.commune_livraison}</div>
+                    <div style={{ fontWeight: 850, color: '#334155', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {c.commune_livraison ? c.commune_livraison : (
+                        <span style={{ color: '#ef4444', fontWeight: 800, fontSize: '0.75rem', background: '#fef2f2', padding: '0.2rem 0.5rem', borderRadius: '6px', border: '1px solid #fee2e2', display: 'inline-block' }}>
+                          Sans commune
+                        </span>
+                      )}
+                    </div>
                     <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.adresse_livraison || 'Sans adresse'}</div>
                   </div>
                 </td>

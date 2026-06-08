@@ -46,6 +46,7 @@ export const Commandes = () => {
     failed: 0,
     cancelled: 0,
     retours: 0,
+    sansCommune: 0,
     deliveryRate: 0,
     failureRate: 0
   });
@@ -543,6 +544,7 @@ export const Commandes = () => {
               { label: 'Flux Total', value: stats.total, color: 'var(--primary)', icon: <ShoppingBag size={22} />, desc: 'Commandes traitées' },
               { label: 'Validation', value: stats.processing, color: '#f59e0b', icon: <Clock size={22} />, desc: 'En attente de tri' },
               { label: 'En Livraison', value: stats.inDelivery, color: '#6366f1', icon: <Truck size={22} />, desc: 'Sorties logistique' },
+              { label: 'Sans Commune', value: stats.sansCommune, color: '#f43f5e', icon: <AlertCircle size={22} />, desc: 'Commune à attribuer' },
               { label: 'Livraisons', value: `${stats.deliveryRate}%`, color: '#10b981', icon: <CheckCircle size={22} />, desc: `${stats.delivered} colis livrés` },
               { label: 'Perturbations', value: `${stats.failureRate}%`, color: '#ef4444', icon: <AlertCircle size={22} />, desc: `${stats.failed + stats.cancelled + stats.retours} échecs/retours` }
             ].map((item, idx) => (
