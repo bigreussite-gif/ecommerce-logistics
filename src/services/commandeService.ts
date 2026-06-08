@@ -952,13 +952,20 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
     
     let existingClients: any[] = [];
     if (phonesInFile.length > 0) {
-      const formattedPhones = phonesInFile.map(p => `"${p}"`).join(',');
-      const { data: ec, error: searchErr } = await insforge.database
-        .from('clients')
-        .select('id, telephone, telephone_secondaire')
-        .or(`telephone.in.(${formattedPhones}),telephone_secondaire.in.(${formattedPhones})`);
-      if (searchErr) throw searchErr;
-      existingClients = ec || [];
+      // Query in batches of 30 to avoid URL length limit issues in PostgREST GET requests
+      const batchSize = 30;
+      for (let i = 0; i < phonesInFile.length; i += batchSize) {
+        const batch = phonesInFile.slice(i, i + batchSize);
+        const formattedPhones = batch.map(p => `"${p}"`).join(',');
+        const { data: ec, error: searchErr } = await insforge.database
+          .from('clients')
+          .select('id, telephone, telephone_secondaire')
+          .or(`telephone.in.(${formattedPhones}),telephone_secondaire.in.(${formattedPhones})`);
+        if (searchErr) throw searchErr;
+        if (ec) {
+          existingClients.push(...ec);
+        }
+      }
     }
     
     const clientMapByPhone = new Map<string, string>();
