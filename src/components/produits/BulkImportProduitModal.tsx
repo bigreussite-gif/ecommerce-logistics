@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { X, Upload, CheckCircle, Download } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { insforge } from '../../lib/insforge';
-import { read, utils, writeFile } from 'xlsx';
 
 export const BulkImportProduitModal = ({ onClose, onSave }: { onClose: () => void, onSave: () => void }) => {
   const { showToast } = useToast();
@@ -20,8 +19,9 @@ export const BulkImportProduitModal = ({ onClose, onSave }: { onClose: () => voi
 
   const parseFile = (file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
+        const { read, utils } = await import('xlsx');
         const ab = e.target?.result as ArrayBuffer;
         const wb = read(ab, { type: 'array' });
         const sheetName = wb.SheetNames[0];
@@ -47,7 +47,7 @@ export const BulkImportProduitModal = ({ onClose, onSave }: { onClose: () => voi
     reader.readAsArrayBuffer(file);
   };
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     const data = [{
       "Nom": "iPhone 15 Pro",
       "SKU": "IP15PRO",
@@ -57,6 +57,7 @@ export const BulkImportProduitModal = ({ onClose, onSave }: { onClose: () => voi
       "Stock Min": 2,
       "Catégorie": "Smartphones"
     }];
+    const { utils, writeFile } = await import('xlsx');
     const ws = utils.json_to_sheet(data);
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, "Produits");

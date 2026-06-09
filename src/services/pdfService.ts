@@ -1,5 +1,4 @@
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import type { jsPDF } from 'jspdf';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Commande, LigneCommande } from '../types';
@@ -18,8 +17,10 @@ interface jsPDFWithPlugin extends jsPDF {
   autoTable: (options: any) => jsPDF;
 }
 
-export const generateInvoicePDF = (commande: Commande & { lignes: LigneCommande[] }) => {
-  const doc = new jsPDF() as jsPDFWithPlugin;
+export const generateInvoicePDF = async (commande: Commande & { lignes: LigneCommande[] }) => {
+  const { jsPDF } = await import('jspdf');
+  const { default: autoTable } = await import('jspdf-autotable');
+  const doc = new jsPDF() as unknown as jsPDFWithPlugin;
   const pageWidth = doc.internal.pageSize.width;
   
   // --- HEADER & BRANDING ---
@@ -148,13 +149,15 @@ export const generateInvoicePDF = (commande: Commande & { lignes: LigneCommande[
   doc.save(`Facture_GomboSwift_${(commande.id || "0000").substring(0, 8).toUpperCase()}.pdf`);
 };
 
-export const generateDeliverySlipPDF = (feuilleRoute: any, commandes: Commande[]) => {
+export const generateDeliverySlipPDF = async (feuilleRoute: any, commandes: Commande[]) => {
   if (!feuilleRoute || !feuilleRoute.id) {
     console.error("Impossible de générer le PDF : ID de feuille de route manquant.");
     return;
   }
 
-  const doc = new jsPDF('l', 'mm', 'a4') as jsPDFWithPlugin;
+  const { jsPDF } = await import('jspdf');
+  const { default: autoTable } = await import('jspdf-autotable');
+  const doc = new jsPDF('l', 'mm', 'a4') as unknown as jsPDFWithPlugin;
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
   const lightGrey: [number, number, number] = [226, 232, 240]; 
@@ -300,9 +303,11 @@ export const generateDeliverySlipPDF = (feuilleRoute: any, commandes: Commande[]
   doc.save(`FeuilleRoute_GomboSwift_${format(displayDate, 'dd_MM_yyyy')}.pdf`);
 };
 
-export const generateAnalyticalReportPDF = (data: any, dateString: string) => {
+export const generateAnalyticalReportPDF = async (data: any, dateString: string) => {
   try {
-    const doc = new jsPDF() as jsPDFWithPlugin;
+    const { jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+    const doc = new jsPDF() as unknown as jsPDFWithPlugin;
     const pageWidth = doc.internal.pageSize.width;
 
     if (!data || !data.commandes) {
@@ -390,12 +395,14 @@ export const generateAnalyticalReportPDF = (data: any, dateString: string) => {
   }
 };
 
-export const generateAuditReportPDF = (
+export const generateAuditReportPDF = async (
   metrics: any, 
   transactions: any[], 
   dateRange: { start: string, end: string }
 ) => {
-  const doc = new jsPDF() as jsPDFWithPlugin;
+  const { jsPDF } = await import('jspdf');
+  const { default: autoTable } = await import('jspdf-autotable');
+  const doc = new jsPDF() as unknown as jsPDFWithPlugin;
   const pageWidth = doc.internal.pageSize.width;
 
   // --- 1. HEADER & BRANDING ---

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { X, Upload, AlertCircle, CheckCircle, Download } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { createBulkCommandes } from '../../services/commandeService';
-import { read, utils, writeFile } from 'xlsx';
 
 export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSave: () => void }) => {
   const { showToast } = useToast();
@@ -21,8 +20,9 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
 
   const parseFile = (file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
+        const { read, utils } = await import('xlsx');
         const ab = e.target?.result as ArrayBuffer;
         const wb = read(ab, { type: 'array' });
         const sheetName = wb.SheetNames[0];
@@ -89,7 +89,7 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
     reader.readAsArrayBuffer(file);
   };
 
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
     const data = [
       {
         "Client": "Jean Dupont",
@@ -103,6 +103,7 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
         "Notes": "Livraison matin"
       }
     ];
+    const { utils, writeFile } = await import('xlsx');
     const ws = utils.json_to_sheet(data);
     const wb = utils.book_new();
     utils.book_append_sheet(wb, ws, "Modèle");

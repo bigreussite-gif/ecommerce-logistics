@@ -65,29 +65,16 @@ export const Login = () => {
         let finalEmail = identifier;
         
         if (!identifier.includes('@')) {
-          // Try phone first
-          let { data: userRecord, error: lookupError } = await insforge.database
-            .from('users')
-            .select('email')
-            .eq('telephone', identifier)
-            .single();
-
-          // Try name if phone fails
-          if (lookupError || !userRecord) {
-            const { data: nameRecord, error: nameError } = await insforge.database
-              .from('users')
-              .select('email')
-              .ilike('nom_complet', identifier)
-              .single();
-            
-            if (nameError || !nameRecord) {
-              showToast('Identifiant (Email, Tel ou Nom) non trouvé.', 'error');
-              setLoading(false);
-              return;
-            }
-            userRecord = nameRecord;
+          const { data: emailData, error: rpcError } = await insforge.database.rpc('get_user_email_by_identifier', {
+            ident_value: identifier
+          });
+          
+          if (rpcError || !emailData) {
+            showToast('Identifiant (Email, Tel ou Nom) non trouvé.', 'error');
+            setLoading(false);
+            return;
           }
-          finalEmail = userRecord.email;
+          finalEmail = emailData;
         }
 
         const { data: authData, error } = await insforge.auth.signInWithPassword({
