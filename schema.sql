@@ -191,3 +191,18 @@ CREATE TABLE appels_commandes (
 
 ALTER TABLE appels_commandes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Staff access appels" ON appels_commandes FOR ALL TO authenticated USING (true);
+
+-- RPC for authentication
+CREATE OR REPLACE FUNCTION get_user_email_by_identifier(p_identifier TEXT)
+RETURNS TEXT AS $$
+DECLARE
+    found_email TEXT;
+BEGIN
+    SELECT email INTO found_email
+    FROM users
+    WHERE nom_complet ILIKE p_identifier OR telephone = p_identifier
+    LIMIT 1;
+    
+    RETURN found_email;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
