@@ -365,16 +365,7 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
       throw new Error(`Erreur ligne commande (${l.nom_produit}): ${lineError.message}`);
     }
 
-    try {
-      await addMouvementStock({
-        produit_id: l.produit_id,
-        type_mouvement: 'sortie',
-        quantite: l.quantite,
-        reference: `Sortie Cmd #${id.substring(0, 8)}`
-      } as any);
-    } catch (stkErr) {
-      console.warn("Erreur mise à jour stock (non bloquant):", stkErr);
-    }
+    // Plus de déduction de stock immédiate à la création de commande
   }
   
   globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
@@ -382,9 +373,6 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
 };
 
 // Helper for stock state machine
-// Helper for stock state machine
-const deliveredStates = ['livree', 'terminee'];
-
 export const updateCommandeStatus = async (id: string, status: string, additionalData: any = {}): Promise<void> => {
   const { data: currentCmd } = await insforge.database
     .from('commandes')
@@ -454,10 +442,11 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   
   if (error) throw error;
 
-  const wasDelivered = deliveredStates.includes(prevStatus?.toLowerCase());
-  const isNowDelivered = deliveredStates.includes(nextStatus?.toLowerCase());
+  const outOfWarehouseStates = ['en_cours_livraison', 'livree', 'terminee'];
+  const wasOut = outOfWarehouseStates.includes(prevStatus?.toLowerCase());
+  const isNowOut = outOfWarehouseStates.includes(nextStatus?.toLowerCase());
 
-  if (wasDelivered !== isNowDelivered) {
+  if (wasOut !== isNowOut) {
     try {
       const { data: lines } = await insforge.database
         .from('lignes_commandes')
@@ -468,9 +457,9 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
         for (const l of lines) {
           await addMouvementStock({
             produit_id: l.produit_id,
-            type_mouvement: isNowDelivered ? 'sortie' : 'entree',
+            type_mouvement: isNowOut ? 'sortie' : 'entree',
             quantite: l.quantite,
-            reference: `${isNowDelivered ? 'Sortie' : 'Retour'} Stock (${nextStatus}) Cmd #${id.substring(0, 8)}`
+            reference: `${isNowOut ? 'Sortie' : 'Retour'} Stock (${nextStatus}) Cmd #${id.substring(0, 8)}`
           } as any);
         }
       }
@@ -500,7 +489,6 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
   if (!currentCmds) return;
 
   const nextStatus = status;
-  const isNextDelivered = deliveredStates.includes(nextStatus.toLowerCase());
 
   // 2. Perform bulk update on commandes table
   const updatePayload: any = { statut_commande: nextStatus };
@@ -522,9 +510,12 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
 
   if (bulkErr) throw bulkErr;
 
-  // 3. Handle stock movements for commands that changed "delivered" state
+  // 3. Handle stock movements for commands that physically leave or return to the warehouse
+  const outOfWarehouseStates = ['en_cours_livraison', 'livree', 'terminee'];
+  const isNextOut = outOfWarehouseStates.includes(nextStatus.toLowerCase());
+
   const idsChangingState = currentCmds
-    .filter(c => deliveredStates.includes(c.statut_commande?.toLowerCase()) !== isNextDelivered)
+    .filter(c => outOfWarehouseStates.includes(c.statut_commande?.toLowerCase()) !== isNextOut)
     .map(c => c.id);
 
   if (idsChangingState.length > 0) {
@@ -536,14 +527,14 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
     if (lines && lines.length > 0) {
       for (const l of lines) {
         const cmdObj = currentCmds.find(c => c.id === l.commande_id);
-        const wasCmdDelivered = deliveredStates.includes(cmdObj?.statut_commande?.toLowerCase());
+        const wasCmdOut = outOfWarehouseStates.includes(cmdObj?.statut_commande?.toLowerCase());
 
-        if (wasCmdDelivered !== isNextDelivered) {
+        if (wasCmdOut !== isNextOut) {
           await addMouvementStock({
             produit_id: l.produit_id,
-            type_mouvement: isNextDelivered ? 'sortie' : 'entree',
+            type_mouvement: isNextOut ? 'sortie' : 'entree',
             quantite: l.quantite,
-            reference: `Bulk ${isNextDelivered ? 'Sortie' : 'Retour'} (${nextStatus})`
+            reference: `Bulk ${isNextOut ? 'Sortie' : 'Retour'} (${nextStatus})`
           } as any);
         }
       }
@@ -862,15 +853,16 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
     .eq('id', commandeId)
     .single();
 
-  const isDelivered = ['livree', 'terminee'].includes(cmd?.statut_commande?.toLowerCase() || '');
+  const outOfWarehouseStates = ['en_cours_livraison', 'livree', 'terminee'];
+  const isOut = outOfWarehouseStates.includes(cmd?.statut_commande?.toLowerCase() || '');
   const oldMap = new Map(oldLines.map(l => [l.id, l]));
   
   for (const oldLine of oldLines) {
     if (!newLines.find(l => l.id === oldLine.id)) {
-      if (isDelivered) {
+      if (isOut) {
         await addMouvementStock({
           produit_id: oldLine.produit_id,
-          type_mouvement: 'retour',
+          type_mouvement: 'entree',
           quantite: oldLine.quantite,
           reference: `RETOUR Suppr Ligne Cmd #${commandeId.substring(0, 8)}`
         } as any);
@@ -896,7 +888,7 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
         .select()
         .single();
 
-      if (isDelivered) {
+      if (isOut) {
         await addMouvementStock({
           produit_id: newLine.produit_id,
           type_mouvement: 'sortie',
@@ -920,10 +912,10 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
             })
             .eq('id', newLine.id);
 
-          if (isDelivered) {
+          if (isOut) {
             await addMouvementStock({
               produit_id: newLine.produit_id,
-              type_mouvement: diff > 0 ? 'sortie' : 'retour',
+              type_mouvement: diff > 0 ? 'sortie' : 'entree',
               quantite: Math.abs(diff),
               reference: `Modif Qté Ligne Cmd #${commandeId.substring(0, 8)}`
             } as any);
@@ -1036,10 +1028,15 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
     const now = new Date().toISOString();
     const source = `Import ${now.slice(0, 10)}`;
 
+    const skippedReasons: string[] = [];
+
     data.forEach(item => {
       const phone = cleanPhone(item.client.telephone);
       const clientId = clientMapByPhone.get(phone);
-      if (!clientId) return;
+      if (!clientId) {
+        skippedReasons.push(`Client ignoré (Téléphone invalide ou échec création): ${item.client.telephone}`);
+        return;
+      }
 
       let totalCmd = 0;
       const cmdLines: any[] = [];
@@ -1057,6 +1054,8 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
             prix_unitaire: prix,
             montant_ligne: montant
           });
+        } else {
+          skippedReasons.push(`Produit non trouvé en base (SKU): ${l.produit}`);
         }
       });
 
@@ -1074,10 +1073,15 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
           date_creation: now
         });
         itemsWithValidData.push({ lines: cmdLines });
+      } else {
+        skippedReasons.push(`Commande ignorée (Aucun produit valide trouvé) pour le client: ${item.client.telephone}`);
       }
     });
 
-    if (commandesToInsert.length === 0) return { count: 0, error: "Aucune donnée valide à importer." };
+    if (commandesToInsert.length === 0) {
+      const distinctReasons = Array.from(new Set(skippedReasons));
+      return { count: 0, error: "Aucune donnée valide à importer. Raisons : " + distinctReasons.join(" | ") };
+    }
 
     const { data: createdCmds, error: cmdErr } = await insforge.database
       .from('commandes')
@@ -1086,52 +1090,7 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
 
     if (cmdErr) throw new Error(`Erreur insertion commandes groupée: ${cmdErr.message}`);
 
-    const linesToInsert: any[] = [];
-    const stockMovesToInsert: any[] = [];
-    const stockUpdatesMap = new Map<string, number>();
-
-    (createdCmds || []).forEach((cmd, idx) => {
-      const sourceItem = itemsWithValidData[idx];
-      sourceItem.lines.forEach((l: any) => {
-        linesToInsert.push({
-          commande_id: cmd.id,
-          ...l
-        });
-        stockMovesToInsert.push({
-          produit_id: l.produit_id,
-          type_mouvement: 'sortie',
-          quantite: l.quantite,
-          reference: `Import Cmd #${cmd.id.substring(0, 8)}`,
-          date: now
-        });
-        
-        const currentDelta = stockUpdatesMap.get(l.produit_id) || 0;
-        stockUpdatesMap.set(l.produit_id, currentDelta + l.quantite);
-      });
-    });
-
-    if (linesToInsert.length > 0) {
-      const { error: linesErr } = await insforge.database
-        .from('lignes_commandes')
-        .insert(linesToInsert);
-      if (linesErr) throw new Error(`Erreur lignes: ${linesErr.message}`);
-    }
-
-    if (stockMovesToInsert.length > 0) {
-      await insforge.database
-        .from('mouvements_stock')
-        .insert(stockMovesToInsert);
-      
-      for (const [prodId, delta] of stockUpdatesMap.entries()) {
-        const prod = productById.get(prodId);
-        if (prod) {
-          await insforge.database
-            .from('produits')
-            .update({ stock_actuel: (Number(prod.stock_actuel) || 0) - delta })
-            .eq('id', prodId);
-        }
-      }
-    }
+    // No stock reduction on bulk creation since orders are just created
 
     globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
     return { count: createdCmds?.length || 0 };

@@ -45,6 +45,7 @@ CREATE TABLE produits (
   sku TEXT UNIQUE,
   stock_actuel INTEGER NOT NULL DEFAULT 0,
   stock_minimum INTEGER NOT NULL DEFAULT 0,
+  is_bundle BOOLEAN DEFAULT false,
   actif BOOLEAN DEFAULT true,
   image_url TEXT,
   images TEXT[],
@@ -56,6 +57,21 @@ CREATE TABLE produits (
 ALTER TABLE produits ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public products access" ON produits FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Staff manage products" ON produits FOR ALL TO authenticated USING (
+  EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role IN ('ADMIN', 'GESTIONNAIRE', 'LOGISTIQUE'))
+);
+
+-- Table: produits_composants
+CREATE TABLE produits_composants (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  bundle_id UUID REFERENCES produits(id) ON DELETE CASCADE,
+  composant_id UUID REFERENCES produits(id) ON DELETE CASCADE,
+  quantite INTEGER NOT NULL CHECK (quantite > 0),
+  UNIQUE(bundle_id, composant_id)
+);
+
+ALTER TABLE produits_composants ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public products access" ON produits_composants FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Staff manage products" ON produits_composants FOR ALL TO authenticated USING (
   EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role IN ('ADMIN', 'GESTIONNAIRE', 'LOGISTIQUE'))
 );
 

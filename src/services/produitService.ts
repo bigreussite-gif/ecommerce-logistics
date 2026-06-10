@@ -11,33 +11,58 @@ export const getProduits = async (): Promise<Produit[]> => {
   if (error) throw error;
   if (!products || products.length === 0) return [];
 
+  // Fetch composants for bundles
+  const { data: composantsData } = await insforge.database
+    .from('produits_composants')
+    .select('*, produit:produits!produits_composants_composant_id_fkey(*)');
+    
+  const bundlesMap = new Map<string, any[]>();
+  (composantsData || []).forEach(comp => {
+    if (!bundlesMap.has(comp.bundle_id)) bundlesMap.set(comp.bundle_id, []);
+    bundlesMap.get(comp.bundle_id)!.push(comp);
+  });
+
   try {
     const { data: lines, error: linesError } = await insforge.database
       .from('lignes_commandes')
       .select('produit_id, quantite, commandes!inner(statut_commande)')
-      .in('commandes.statut_commande', ['validee', 'en_cours_livraison', 'retour_livreur', 'echouee']);
+      .in('commandes.statut_commande', ['nouvelle', 'a_rappeler', 'en_attente_appel', 'validee', 'en_cours_livraison']);
 
     if (linesError) {
       console.error("Error fetching reserved stock lines:", linesError);
       return products.map(p => ({
         ...p,
         stock_reserve: 0,
+        stock_en_livraison: 0,
         stock_disponible: p.stock_actuel
       }));
     }
 
     const reservedMap = new Map<string, number>();
+    const enLivraisonMap = new Map<string, number>();
+
     (lines || []).forEach((l: any) => {
-      const current = reservedMap.get(l.produit_id) || 0;
-      reservedMap.set(l.produit_id, current + Number(l.quantite || 0));
+      const cmd = Array.isArray(l.commandes) ? l.commandes[0] : l.commandes;
+      const status = cmd?.statut_commande?.toLowerCase();
+      
+      if (status === 'en_cours_livraison') {
+        const current = enLivraisonMap.get(l.produit_id) || 0;
+        enLivraisonMap.set(l.produit_id, current + Number(l.quantite || 0));
+      } else {
+        const current = reservedMap.get(l.produit_id) || 0;
+        reservedMap.set(l.produit_id, current + Number(l.quantite || 0));
+      }
     });
 
     return products.map(p => {
       const stock_reserve = reservedMap.get(p.id) || 0;
+      const stock_en_livraison = enLivraisonMap.get(p.id) || 0;
       return {
         ...p,
         stock_reserve,
-        stock_disponible: Math.max(0, p.stock_actuel - stock_reserve)
+        stock_en_livraison,
+        stock_disponible: Math.max(0, p.stock_actuel - stock_reserve),
+        composants: bundlesMap.get(p.id) || []
       };
     });
   } catch (err) {
@@ -45,7 +70,9 @@ export const getProduits = async (): Promise<Produit[]> => {
     return products.map(p => ({
       ...p,
       stock_reserve: 0,
-      stock_disponible: p.stock_actuel
+      stock_en_livraison: 0,
+      stock_disponible: p.stock_actuel,
+      composants: bundlesMap.get(p.id) || []
     }));
   }
 };
@@ -66,28 +93,56 @@ export const subscribeToProduits = (callback: (produits: Produit[]) => void) => 
 };
 
 export const createProduit = async (produit: Omit<Produit, 'id'>): Promise<string> => {
+  const { composants, ...prodData } = produit;
   const { data, error } = await insforge.database
     .from('produits')
     .insert([{
-      ...produit,
+      ...prodData,
       created_at: new Date().toISOString()
     }])
     .select();
   
   if (error) throw error;
+  const newId = data?.[0]?.id;
+
+  if (newId && prodData.is_bundle && composants && composants.length > 0) {
+    const compData = composants.map(c => ({
+      bundle_id: newId,
+      composant_id: c.composant_id,
+      quantite: c.quantite
+    }));
+    await insforge.database.from('produits_composants').insert(compData);
+  }
+
   globalEventBus.emit(EVENTS.STOCK_UPDATED);
-  return data?.[0]?.id;
+  return newId;
 };
 
 export const updateProduit = async (id: string, data: Partial<Produit>): Promise<void> => {
+  const { composants, ...prodData } = data;
   const { error } = await insforge.database
     .from('produits')
-    .update({
-      ...data
-    })
+    .update({ ...prodData })
     .eq('id', id);
   
   if (error) throw error;
+
+  if (data.is_bundle !== undefined) {
+    if (data.is_bundle && composants) {
+      await insforge.database.from('produits_composants').delete().eq('bundle_id', id);
+      const compData = composants.map(c => ({
+        bundle_id: id,
+        composant_id: c.composant_id,
+        quantite: c.quantite
+      }));
+      if (compData.length > 0) {
+        await insforge.database.from('produits_composants').insert(compData);
+      }
+    } else if (data.is_bundle === false) {
+      await insforge.database.from('produits_composants').delete().eq('bundle_id', id);
+    }
+  }
+
   globalEventBus.emit(EVENTS.STOCK_UPDATED);
 };
 

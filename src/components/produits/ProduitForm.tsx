@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Produit, Categorie } from '../../types';
-import { createProduit, updateProduit } from '../../services/produitService';
+import { createProduit, updateProduit, getProduits } from '../../services/produitService';
 import { getCategories } from '../../services/adminService';
 import { X } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
@@ -28,8 +28,11 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
     actif: true,
     image_url: '',
     frais_installation: 0,
-    categorie_id: ''
+    categorie_id: '',
+    is_bundle: false,
+    composants: []
   });
+  const [allProduits, setAllProduits] = useState<Produit[]>([]);
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasPromo, setHasPromo] = useState(false);
@@ -46,6 +49,7 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
       if (produit.prix_promo) setHasPromo(true);
     }
     getCategories().then(setCategories);
+    getProduits().then(setAllProduits);
   }, [produit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -167,6 +171,73 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
                     <div style={{ fontWeight: 800, color: 'var(--primary)', marginBottom: '2px' }}>Aperçu du visuel</div>
                     L'image sera affichée sur le catalogue et les factures.
                  </div>
+              </div>
+            )}
+          </div>
+
+          {/* SECTION BUNDLE */}
+          <div style={{ marginBottom: '2.5rem', padding: '2rem', background: formData.is_bundle ? '#f0f9ff' : 'white', borderRadius: '24px', border: `2px solid ${formData.is_bundle ? '#0ea5e9' : '#f1f5f9'}`, transition: 'all 0.3s ease' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontWeight: 800, color: formData.is_bundle ? '#0369a1' : 'var(--text-muted)' }}>
+              <input type="checkbox" style={{ width: '20px', height: '20px', accentColor: '#0ea5e9' }} checked={formData.is_bundle} onChange={e => setFormData({...formData, is_bundle: e.target.checked})} />
+              Ce produit est un Pack / Bundle (Produit composé)
+            </label>
+
+            {formData.is_bundle && (
+              <div style={{ marginTop: '1.5rem', animation: 'pageEnter 0.3s ease' }}>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#0369a1', textTransform: 'uppercase', marginBottom: '1rem' }}>Contenu du Pack</h4>
+                {(formData.composants || []).map((comp, idx) => (
+                  <div key={idx} style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'center' }}>
+                    <select 
+                      className="form-select" 
+                      style={{ flex: 1, height: '48px', borderRadius: '12px' }}
+                      value={comp.composant_id}
+                      onChange={e => {
+                        const newComps = [...(formData.composants || [])];
+                        newComps[idx].composant_id = e.target.value;
+                        setFormData({...formData, composants: newComps});
+                      }}
+                      required
+                    >
+                      <option value="">Sélectionner un article...</option>
+                      {allProduits.filter(p => p.id !== produit?.id && !p.is_bundle).map(p => (
+                        <option key={p.id} value={p.id}>{p.nom}</option>
+                      ))}
+                    </select>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      min="1" 
+                      style={{ width: '100px', height: '48px', borderRadius: '12px' }} 
+                      value={comp.quantite} 
+                      onChange={e => {
+                        const newComps = [...(formData.composants || [])];
+                        newComps[idx].quantite = Number(e.target.value);
+                        setFormData({...formData, composants: newComps});
+                      }}
+                      required
+                    />
+                    <button 
+                      type="button"
+                      className="btn btn-outline"
+                      style={{ height: '48px', width: '48px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', borderColor: '#fee2e2' }}
+                      onClick={() => {
+                        const newComps = [...(formData.composants || [])];
+                        newComps.splice(idx, 1);
+                        setFormData({...formData, composants: newComps});
+                      }}
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                ))}
+                <button 
+                  type="button" 
+                  className="btn btn-outline" 
+                  style={{ fontSize: '0.85rem', fontWeight: 700, borderRadius: '10px', padding: '0.5rem 1rem' }}
+                  onClick={() => setFormData({...formData, composants: [...(formData.composants || []), { composant_id: '', quantite: 1 }]})}
+                >
+                  + Ajouter un article au pack
+                </button>
               </div>
             )}
           </div>

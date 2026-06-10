@@ -44,6 +44,7 @@ export interface Produit {
   stock_actuel: number;
   stock_minimum: number;
   stock_reserve?: number;
+  stock_en_livraison?: number;
   stock_disponible?: number;
   actif: boolean;
   image_url?: string;
@@ -56,6 +57,16 @@ export interface Produit {
   created_at?: string;
   updated_at?: string;
   tenant_id?: string;
+  is_bundle?: boolean;
+  composants?: ProduitComposant[];
+}
+
+export interface ProduitComposant {
+  id?: string;
+  bundle_id?: string;
+  composant_id: string;
+  quantite: number;
+  produit?: Produit;
 }
 
 export interface Client {

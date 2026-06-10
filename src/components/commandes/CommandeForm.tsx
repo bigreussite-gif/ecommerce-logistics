@@ -160,6 +160,36 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
     setLignes(newLignes);
   };
 
+  const handleSplitBundle = (index: number, bundleProd: Produit) => {
+    if (!bundleProd.composants || bundleProd.composants.length === 0) {
+      showToast("Ce pack n'a aucun composant défini.", "error");
+      return;
+    }
+    
+    const qtyMultiplier = Number(lignes[index].quantite) || 1;
+    const newLignes = [...lignes];
+    newLignes.splice(index, 1);
+
+    bundleProd.composants.forEach(comp => {
+      const compProd = catalogue.find(p => p.id === comp.composant_id);
+      if (compProd) {
+        const qte = comp.quantite * qtyMultiplier;
+        const prixActif = parsePrice(compProd);
+        newLignes.push({
+          produit_id: compProd.id,
+          nom_produit: compProd.nom,
+          quantite: qte,
+          prix_unitaire: prixActif,
+          choix_installation: false,
+          frais_installation: compProd.frais_installation || 0,
+          montant_ligne: prixActif * qte
+        });
+      }
+    });
+    setLignes(newLignes);
+    showToast("Le pack a été éclaté en articles individuels.", "info");
+  };
+
   const subtotal = lignes.reduce((acc, l) => acc + Number(l.montant_ligne || 0), 0);
   const discountAmount = remiseType === 'fixe' 
     ? (Number(remiseValue) || 0) 
@@ -368,7 +398,10 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
             </div>
             
             <div style={{ display: 'grid', gap: '1rem' }}>
-              {lignes.map((l, idx) => (
+              {lignes.map((l, idx) => {
+                const selectedProd = catalogue.find(p => p.id === l.produit_id);
+                const isBundle = selectedProd?.is_bundle;
+                return (
                 <div key={idx} className="glass-effect" style={{ display: 'flex', gap: '1.5rem', padding: '1.25rem', borderRadius: '18px', alignItems: 'center', flexWrap: 'wrap', background: 'rgba(241, 245, 249, 0.5)' }}>
                   <div style={{ flex: '2', minWidth: '240px', display: 'flex', flexDirection: 'column' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -405,9 +438,14 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
                     <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>Sous-total</label>
                     <div className="brand-glow" style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--primary)' }}>{(l.montant_ligne || 0).toLocaleString()} <span style={{ fontSize: '0.75rem' }}>CFA</span></div>
                   </div>
+                  {isBundle && (
+                    <button type="button" className="btn btn-outline" style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.4rem 0.8rem', borderRadius: '10px', color: '#0ea5e9', borderColor: '#bae6fd', background: 'rgba(14, 165, 233, 0.05)' }} onClick={() => handleSplitBundle(idx, selectedProd)}>
+                      Éclater le pack
+                    </button>
+                  )}
                   <button type="button" className="btn" style={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'none', padding: '0.75rem', borderRadius: '12px' }} onClick={() => setLignes(lignes.filter((_, i) => i !== idx))}><Trash2 size={20} /></button>
                 </div>
-              ))}
+              )})}
             </div>
 
             {lignes.length > 0 && (
