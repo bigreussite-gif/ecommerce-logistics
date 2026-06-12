@@ -233,6 +233,12 @@ export const Caisse = () => {
 
   const confirmAddExtraOrder = async () => {
     if (!pendingAddCommande || !feuille) return;
+    
+    if (!pendingAddCommande.lignes || pendingAddCommande.lignes.length === 0) {
+      showToast("Impossible d'ajouter cette commande car elle n'a aucun article.", "error");
+      return;
+    }
+
     setLoading(true);
     try {
       // Use the new reassignment service

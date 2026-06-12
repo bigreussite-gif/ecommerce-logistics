@@ -1090,6 +1090,33 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
 
     if (cmdErr) throw new Error(`Erreur insertion commandes groupée: ${cmdErr.message}`);
 
+    const lignesToInsert: any[] = [];
+    (createdCmds || []).forEach((cmd, idx) => {
+      const lines = itemsWithValidData[idx]?.lines || [];
+      lines.forEach((l: any) => {
+        lignesToInsert.push({
+          commande_id: cmd.id,
+          produit_id: l.produit_id,
+          nom_produit: l.nom_produit,
+          quantite: l.quantite,
+          prix_unitaire: l.prix_unitaire,
+          montant_ligne: l.montant_ligne,
+          choix_installation: false,
+          frais_installation: 0
+        });
+      });
+    });
+
+    if (lignesToInsert.length > 0) {
+      const { error: lignesErr } = await insforge.database
+        .from('lignes_commandes')
+        .insert(lignesToInsert);
+      
+      if (lignesErr) {
+        console.error("Erreur insertion lignes de commandes groupée:", lignesErr);
+      }
+    }
+
     // No stock reduction on bulk creation since orders are just created
 
     globalEventBus.emit(EVENTS.COMMANDES_UPDATED);

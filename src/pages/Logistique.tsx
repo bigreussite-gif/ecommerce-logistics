@@ -65,6 +65,13 @@ export const Logistique = () => {
     if (!selectedLivreur) return showToast("Sélectionnez un livreur.", "error");
     if (selectedCommands.size === 0) return showToast("Sélectionnez au moins une commande.", "error");
 
+    const selectedFullCommandes = commandes.filter(c => selectedCommands.has(c.id));
+    const commandesSansArticles = selectedFullCommandes.filter((c: any) => !c.lignes || c.lignes.length === 0);
+    
+    if (commandesSansArticles.length > 0) {
+      return showToast(`Impossible : ${commandesSansArticles.length} commande(s) sélectionnée(s) n'ont aucun article. Veuillez d'abord leur ajouter des articles.`, "error");
+    }
+
     try {
       setLoading(true);
       const feuilleId = await creerFeuilleRoute(selectedLivreur, Array.from(selectedCommands));
