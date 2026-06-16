@@ -92,8 +92,30 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
     setSearchTerm('');
   };
 
+  const checkLivraisonIncluse = () => {
+    return lignesLocal.some(l => {
+      const prod = catalogue.find(p => p.id === l.produit_id);
+      return prod?.livraison_incluse === true;
+    });
+  };
+
+  useEffect(() => {
+    if (communeLocal) {
+      if (checkLivraisonIncluse()) {
+        setFraisLivraison(0);
+      } else {
+        const selected = communesDb.find(c => c.nom === communeLocal);
+        setFraisLivraison(selected?.tarif_livraison || 0);
+      }
+    }
+  }, [lignesLocal, catalogue, communeLocal, communesDb]);
+
   const handleCommuneChange = (nom: string) => {
     setCommuneLocal(nom);
+    if (checkLivraisonIncluse()) {
+      setFraisLivraison(0);
+      return;
+    }
     const selected = communesDb.find(c => c.nom === nom);
     if (selected) {
       setFraisLivraison(selected.tarif_livraison);

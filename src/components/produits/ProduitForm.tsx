@@ -30,6 +30,7 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
     frais_installation: 0,
     categorie_id: '',
     is_bundle: false,
+    livraison_incluse: false,
     composants: []
   });
   const [allProduits, setAllProduits] = useState<Produit[]>([]);
@@ -248,6 +249,11 @@ export const ProduitForm = ({ produit, onClose, onSave }: ProduitFormProps) => {
               <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'currentColor' }}></div>
               Modèle Économique & Prix
             </h3>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontWeight: 800, color: formData.livraison_incluse ? '#0369a1' : 'var(--text-muted)', marginBottom: '1.5rem' }}>
+              <input type="checkbox" style={{ width: '20px', height: '20px', accentColor: '#0ea5e9' }} checked={formData.livraison_incluse} onChange={e => setFormData({...formData, livraison_incluse: e.target.checked})} />
+              Livraison incluse dans le prix (0 CFA)
+            </label>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
               <div className="form-group">

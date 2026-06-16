@@ -307,7 +307,22 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
   commande.date_creation = new Date();
   commande.statut_commande = 'en_attente_appel'; 
 
-  if ((!commande.frais_livraison || commande.frais_livraison === 0) && commande.commune_livraison) {
+  let hasLivraisonIncluse = false;
+  if (lignes && lignes.length > 0) {
+    const prodIds = lignes.map(l => l.produit_id);
+    try {
+      const { data: prods } = await insforge.database.from('produits').select('livraison_incluse').in('id', prodIds);
+      if (prods && prods.some(p => p.livraison_incluse)) {
+        hasLivraisonIncluse = true;
+      }
+    } catch (e) {
+      console.error("Could not check livraison_incluse", e);
+    }
+  }
+
+  if (hasLivraisonIncluse) {
+    commande.frais_livraison = 0;
+  } else if ((!commande.frais_livraison || commande.frais_livraison === 0) && commande.commune_livraison) {
      try {
         const zone = await getCommuneByName(commande.commune_livraison);
         if (zone) {
@@ -425,8 +440,21 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
     updatePayload.frais_livraison = additionalData.frais_livraison;
   } else if (additionalData.commune_livraison) {
     try {
-      const zone = await getCommuneByName(additionalData.commune_livraison);
-      if (zone) updatePayload.frais_livraison = zone.tarif_livraison;
+      let hasLivraisonIncluse = false;
+      const { data: lignesCmd } = await insforge.database.from('lignes_commandes').select('produit_id').eq('commande_id', id);
+      if (lignesCmd && lignesCmd.length > 0) {
+        const prodIds = lignesCmd.map((l: any) => l.produit_id);
+        const { data: prods } = await insforge.database.from('produits').select('livraison_incluse').in('id', prodIds);
+        if (prods && prods.some((p: any) => p.livraison_incluse)) {
+          hasLivraisonIncluse = true;
+        }
+      }
+      if (hasLivraisonIncluse) {
+        updatePayload.frais_livraison = 0;
+      } else {
+        const zone = await getCommuneByName(additionalData.commune_livraison);
+        if (zone) updatePayload.frais_livraison = zone.tarif_livraison;
+      }
     } catch (e) { console.error("Could not fetch commune fee during status update", e); }
   }
 
@@ -1154,15 +1182,27 @@ export const bulkUpdateCommandeCommune = async (ids: string[], commune: string):
   if (fetchError || !currentCmds) throw fetchError || new Error("Erreur de récupération des commandes");
 
   for (const cmd of currentCmds) {
+    let finalDeliveryFee = deliveryFee;
+    try {
+      const { data: lignesCmd } = await insforge.database.from('lignes_commandes').select('produit_id').eq('commande_id', cmd.id);
+      if (lignesCmd && lignesCmd.length > 0) {
+        const prodIds = lignesCmd.map((l: any) => l.produit_id);
+        const { data: prods } = await insforge.database.from('produits').select('livraison_incluse').in('id', prodIds);
+        if (prods && prods.some((p: any) => p.livraison_incluse)) {
+          finalDeliveryFee = 0;
+        }
+      }
+    } catch (e) { console.error("Could not check livraison_incluse for bulk update", e); }
+
     const prevFee = Number(cmd.frais_livraison) || 0;
     const prevTotal = Number(cmd.montant_total) || 0;
-    const newTotal = prevTotal - prevFee + deliveryFee;
+    const newTotal = prevTotal - prevFee + finalDeliveryFee;
 
     const { error: updateError } = await insforge.database
       .from('commandes')
       .update({
         commune_livraison: commune,
-        frais_livraison: deliveryFee,
+        frais_livraison: finalDeliveryFee,
         montant_total: newTotal
       })
       .eq('id', cmd.id);

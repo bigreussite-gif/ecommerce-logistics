@@ -58,6 +58,7 @@ export interface Produit {
   updated_at?: string;
   tenant_id?: string;
   is_bundle?: boolean;
+  livraison_incluse?: boolean;
   composants?: ProduitComposant[];
 }
 

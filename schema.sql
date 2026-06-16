@@ -46,6 +46,7 @@ CREATE TABLE produits (
   stock_actuel INTEGER NOT NULL DEFAULT 0,
   stock_minimum INTEGER NOT NULL DEFAULT 0,
   is_bundle BOOLEAN DEFAULT false,
+  livraison_incluse BOOLEAN DEFAULT false,
   actif BOOLEAN DEFAULT true,
   image_url TEXT,
   images TEXT[],

@@ -65,7 +65,18 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
     return () => unsubscribe();
   }, []);
 
+  const checkLivraisonIncluse = () => {
+    return lignes.some(l => {
+      const prod = catalogue.find(p => p.id === l.produit_id);
+      return prod?.livraison_incluse === true;
+    });
+  };
+
   const updateFraisLivraison = (communeNom: string) => {
+    if (checkLivraisonIncluse()) {
+      setFraisLivraison(0);
+      return;
+    }
     const commune = communesDb.find(c => c.nom === communeNom);
     setFraisLivraison(commune?.tarif_livraison || 0);
   };
@@ -74,7 +85,7 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
     if (clientRecherche.commune) {
       updateFraisLivraison(clientRecherche.commune);
     }
-  }, [clientRecherche.commune, communesDb]);
+  }, [clientRecherche.commune, communesDb, lignes, catalogue]);
 
   const handleSearchClient = async () => {
     if (!clientRecherche.telephone) return;
