@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getCommandesByStatus } from '../services/commandeService';
-import { getAvailableLivreurs, creerFeuilleRoute, getFeuillesRoute, getCommandesByFeuille } from '../services/logistiqueService';
+import { getAvailableLivreurs, creerFeuilleRoute, getFeuillesRoute, getCommandesByFeuille, supprimerFeuilleRoute, updateLivreurFeuilleRoute } from '../services/logistiqueService';
 import type { Commande, User, FeuilleRoute } from '../types';
-import { Truck, Printer, Eye, Clock } from 'lucide-react';
+import { Truck, Printer, Eye, Clock, Trash2, Edit3, Check, X } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import { generateDeliverySlipPDF } from '../services/pdfService';
 import { format } from 'date-fns';
@@ -19,6 +19,10 @@ export const Logistique = () => {
   const [selectedLivreur, setSelectedLivreur] = useState<string>('');
   const [selectedCommandeId, setSelectedCommandeId] = useState<string | null>(null);
   const [selectedZone, setSelectedZone] = useState<string>('');
+
+  const [editingFeuilleId, setEditingFeuilleId] = useState<string | null>(null);
+  const [editLivreurId, setEditLivreurId] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState(false);
 
   const availableZones = Array.from(new Set(commandes.map(c => c.commune_livraison).filter(Boolean))).sort();
   const filteredCommandes = selectedZone 
@@ -335,23 +339,101 @@ export const Logistique = () => {
                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                         <div>
                            <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-main)' }}>#{(f.id || '').slice(0, 8).toUpperCase()}</div>
-                           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{f.nom_livreur}</div>
+                           {editingFeuilleId === f.id ? (
+                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                               <select 
+                                 className="form-select form-select-sm" 
+                                 value={editLivreurId} 
+                                 onChange={e => setEditLivreurId(e.target.value)}
+                                 style={{ padding: '0.2rem 1.5rem 0.2rem 0.5rem', fontSize: '0.8rem', height: '28px' }}
+                               >
+                                 <option value="">Sélectionner...</option>
+                                 {livreurs.map(l => (
+                                   <option key={l.id} value={l.id}>{l.nom_complet}</option>
+                                 ))}
+                               </select>
+                               <button 
+                                 className="btn btn-primary btn-sm" 
+                                 style={{ padding: '0.2rem 0.4rem', height: '28px' }}
+                                 disabled={actionLoading || !editLivreurId || editLivreurId === f.livreur_id}
+                                 onClick={async () => {
+                                   try {
+                                     setActionLoading(true);
+                                     await updateLivreurFeuilleRoute(f.id, editLivreurId);
+                                     showToast("Livreur mis à jour avec succès", "success");
+                                     setEditingFeuilleId(null);
+                                     fetchData();
+                                   } catch (e: any) {
+                                     showToast(`Erreur : ${e.message}`, "error");
+                                   } finally {
+                                     setActionLoading(false);
+                                   }
+                                 }}
+                               >
+                                 <Check size={14} />
+                               </button>
+                               <button 
+                                 className="btn btn-outline btn-sm" 
+                                 style={{ padding: '0.2rem 0.4rem', height: '28px' }}
+                                 onClick={() => setEditingFeuilleId(null)}
+                               >
+                                 <X size={14} />
+                               </button>
+                             </div>
+                           ) : (
+                             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{f.nom_livreur}</div>
+                           )}
                         </div>
-                        <button 
-                          className="btn btn-outline" 
-                          style={{ padding: '0.4rem', borderRadius: '8px' }}
-                          onClick={async () => {
-                            try {
-                              const cmds = await getCommandesByFeuille(f.id);
-                              generateDeliverySlipPDF(f, cmds);
-                              showToast("Réimpression lancée.", "success");
-                            } catch (e) {
-                              showToast("Erreur lors de la réimpression", "error");
-                            }
-                          }}
-                        >
-                          <Printer size={16} />
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button 
+                            className="btn btn-outline" 
+                            style={{ padding: '0.4rem', borderRadius: '8px' }}
+                            title="Modifier le livreur"
+                            onClick={() => {
+                              setEditingFeuilleId(f.id);
+                              setEditLivreurId(f.livreur_id || '');
+                            }}
+                          >
+                            <Edit3 size={16} />
+                          </button>
+                          <button 
+                            className="btn btn-outline" 
+                            style={{ padding: '0.4rem', borderRadius: '8px' }}
+                            title="Réimprimer"
+                            onClick={async () => {
+                              try {
+                                const cmds = await getCommandesByFeuille(f.id);
+                                generateDeliverySlipPDF(f, cmds);
+                                showToast("Réimpression lancée.", "success");
+                              } catch (e) {
+                                showToast("Erreur lors de la réimpression", "error");
+                              }
+                            }}
+                          >
+                            <Printer size={16} />
+                          </button>
+                          <button 
+                            className="btn btn-outline" 
+                            style={{ padding: '0.4rem', borderRadius: '8px', color: '#ef4444', borderColor: '#fee2e2' }}
+                            title="Supprimer la feuille de route"
+                            disabled={actionLoading}
+                            onClick={async () => {
+                              if (!window.confirm('Voulez-vous vraiment supprimer cette feuille de route ? Les commandes redeviendront "À affecter".')) return;
+                              try {
+                                setActionLoading(true);
+                                await supprimerFeuilleRoute(f.id);
+                                showToast("Feuille de route supprimée", "success");
+                                fetchData();
+                              } catch (e: any) {
+                                showToast(`Erreur: ${e.message}`, "error");
+                              } finally {
+                                setActionLoading(false);
+                              }
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                      </div>
                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', fontWeight: 700, color: 'var(--primary)' }}>
                         <span>{f.total_commandes} colis</span>

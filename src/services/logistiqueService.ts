@@ -174,6 +174,34 @@ export const supprimerFeuilleRoute = async (feuilleId: string): Promise<void> =>
   if (error) throw error;
 };
 
+export const updateLivreurFeuilleRoute = async (feuilleId: string, newLivreurId: string): Promise<void> => {
+  // 1. Check if the feuille exists
+  const { data: fr, error: frError } = await insforge.database
+    .from('feuilles_route')
+    .select('id, statut_feuille')
+    .eq('id', feuilleId)
+    .single();
+
+  if (frError || !fr) throw new Error("Feuille de route introuvable");
+  if (fr.statut_feuille !== 'en_cours') throw new Error("Impossible de modifier une feuille de route clôturée");
+
+  // 2. Update the feuille_route
+  const { error: updateFrError } = await insforge.database
+    .from('feuilles_route')
+    .update({ livreur_id: newLivreurId })
+    .eq('id', feuilleId);
+
+  if (updateFrError) throw updateFrError;
+
+  // 3. Update the commands attached to it
+  const { error: updateCmdError } = await insforge.database
+    .from('commandes')
+    .update({ livreur_id: newLivreurId })
+    .eq('feuille_route_id', feuilleId);
+
+  if (updateCmdError) throw updateCmdError;
+};
+
 export const reassignCommandeToFeuille = async (commandeId: string, targetFeuilleId: string | undefined, targetLivreurId: string): Promise<void> => {
   // 1. Get the command to check current state
   const { data: cmd, error: cmdError } = await insforge.database
