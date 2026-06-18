@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, RefreshCcw, AlertTriangle, Check, Search, Save } from 'lucide-react';
+import { useState } from 'react';
+import { X, AlertTriangle, Check, Search, Save } from 'lucide-react';
 import { insforge } from '../../lib/insforge';
 import { Produit } from '../../types';
 
