@@ -1222,3 +1222,35 @@ export const bulkUpdateCommandeCommune = async (ids: string[], commune: string):
   globalEventBus.emit(EVENTS.COMMANDES_UPDATED);
 };
 
+
+export const autoCancelOldCommandes = async (): Promise<{ count: number }> => {
+  try {
+    const now = new Date();
+    const fourDaysAgo = new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000);
+    const fourDaysAgoISO = fourDaysAgo.toISOString();
+
+    const { data, error } = await insforge.database
+      .from('commandes')
+      .update({ 
+        statut_commande: 'annulee',
+        commentaire: 'Annulée automatiquement car plus de 4 jours sans traitement'
+      })
+      .in('statut_commande', ['nouvelle', 'a_rappeler', 'en_attente_appel', 'validee', 'en_cours_livraison'])
+      .lt('date_creation', fourDaysAgoISO)
+      .select('id');
+
+    if (error) {
+      console.error("Erreur auto-cancel:", error);
+      return { count: 0 };
+    }
+    
+    if (data && data.length > 0) {
+      globalEventBus.emit(EVENTS.STOCK_UPDATED);
+    }
+
+    return { count: data?.length || 0 };
+  } catch (err) {
+    console.error("Erreur auto-cancel try/catch:", err);
+    return { count: 0 };
+  }
+};

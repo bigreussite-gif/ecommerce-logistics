@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, CheckCircle, Download, X, ShoppingBag, Clock, Truck, AlertCircle, Calendar, MessageCircle } from 'lucide-react';
+import { Plus, Search, Filter, Edit2, Trash2, FileText, CheckCircle, XCircle, Clock, Truck, RefreshCw, X, Download, UserPlus, PhoneCall, Check, MessageCircle, AlertCircle, ShoppingBag, MapPin, Map } from 'lucide-react';
 import { CommandeList } from '../components/commandes/CommandeList';
 import { CommandeForm } from '../components/commandes/CommandeForm';
 import { BulkImportModal } from '../components/commandes/BulkImportModal';
 import { CommandeDetails } from '../components/commandes/CommandeDetails';
-import { deleteCommande, getCommandeWithLines, bulkUpdateCommandeStatus, getCommandesByIds, bulkUpdateCommandeCommune, getCommandesPaginated } from '../services/commandeService';
+import { deleteCommande, getCommandeWithLines, bulkUpdateCommandeStatus, getCommandesByIds, bulkUpdateCommandeCommune, getCommandesPaginated, autoCancelOldCommandes } from '../services/commandeService';
 import { getCommunes } from '../services/adminService';
 import { generateInvoicePDF } from '../services/pdfService';
 import type { Commande, LigneCommande } from '../types';
@@ -169,6 +169,23 @@ export const Commandes = () => {
     }
   };
 
+  const handleBulkCancel = async () => {
+    if (selectedIds.length === 0) return;
+    if (!window.confirm(`Êtes-vous sûr de vouloir annuler ${selectedIds.length} commande(s) ?`)) return;
+    
+    try {
+      showToast(`Annulation de ${selectedIds.length} commandes...`, "info");
+      await bulkUpdateCommandeStatus(selectedIds, 'annulee', {
+        commentaire: 'Annulée via action groupée'
+      });
+      showToast(`${selectedIds.length} commandes annulées !`, "success");
+      setSelectedIds([]);
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de l'annulation groupée.", "error");
+    }
+  };
+
   const handleLogisticsExport = async () => {
     if (selectedIds.length === 0) return;
     try {
@@ -223,6 +240,13 @@ export const Commandes = () => {
   // Set up communes list
   useEffect(() => {
     getCommunes().then(setCommunesDb).catch(console.error);
+    
+    // Auto-cancel old orders once when accessing the page
+    autoCancelOldCommandes().then(res => {
+      if (res.count > 0) {
+        showToast(`${res.count} vieilles commandes annulées automatiquement (sans traitement depuis 4 jours).`, "info");
+      }
+    }).catch(console.error);
   }, []);
 
   // Compute date range
@@ -912,6 +936,9 @@ export const Commandes = () => {
 
               <button className="btn btn-primary" onClick={handleBulkValidate} style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, background: 'white', color: '#1e293b', whiteSpace: 'nowrap' }}>
                 <CheckCircle size={20} /> Valider Groupée
+              </button>
+              <button className="btn btn-outline" onClick={handleBulkCancel} style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, background: '#ef4444', color: 'white', border: 'none', whiteSpace: 'nowrap' }}>
+                <XCircle size={20} /> Annuler Groupée
               </button>
               <button className="btn btn-outline" onClick={handleLogisticsExport} style={{ height: '48px', borderRadius: '14px', padding: '0 1.5rem', fontWeight: 800, border: '1px solid rgba(255,255,255,0.2)', color: 'white', whiteSpace: 'nowrap' }}>
                 <Download size={20} /> Export Livreurs
