@@ -101,21 +101,13 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
 
   useEffect(() => {
     if (communeLocal) {
-      if (checkLivraisonIncluse()) {
-        setFraisLivraison(0);
-      } else {
-        const selected = communesDb.find(c => c.nom === communeLocal);
-        setFraisLivraison(selected?.tarif_livraison || 0);
-      }
+      const selected = communesDb.find(c => c.nom === communeLocal);
+      setFraisLivraison(selected?.tarif_livraison || 0);
     }
   }, [lignesLocal, catalogue, communeLocal, communesDb]);
 
   const handleCommuneChange = (nom: string) => {
     setCommuneLocal(nom);
-    if (checkLivraisonIncluse()) {
-      setFraisLivraison(0);
-      return;
-    }
     const selected = communesDb.find(c => c.nom === nom);
     if (selected) {
       setFraisLivraison(selected.tarif_livraison);
@@ -136,12 +128,13 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
     try {
       const subtotal = calculateSubtotal();
       const delivery = Number(fraisLivraison) || 0;
+      const incluse = checkLivraisonIncluse();
       
       const discountAmount = remiseType === 'fixe' 
         ? (Number(remiseValue) || 0) 
         : Math.round(subtotal * (Number(remiseValue) || 0) / 100);
 
-      const total = Math.max(0, subtotal + delivery - discountAmount);
+      const total = Math.max(0, subtotal + (incluse ? 0 : delivery) - discountAmount);
 
       // 1. Sync lines and stock
       await updateCommandeLignesAndStock(commande.id, commande.lignes || [], lignesLocal);
@@ -171,6 +164,7 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
         agent_appel_id: currentUser.id,
         montant_total: total,
         frais_livraison: delivery,
+        livraison_incluse: incluse,
         remise_totale: discountAmount,
         commune_livraison: communeLocal,
         adresse_livraison: adresseLocal
@@ -660,7 +654,7 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
           <div style={{ padding: '1.25rem', background: 'var(--primary)', borderRadius: '20px', color: 'white' }}>
              <div style={{ fontSize: '0.75rem', fontWeight: 700, opacity: 0.9, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Total à encaisser</div>
              <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>
-               {Math.max(0, calculateSubtotal() + (Number(fraisLivraison) || 0) - (remiseType === 'fixe' ? (Number(remiseValue) || 0) : Math.round(calculateSubtotal() * (Number(remiseValue) || 0) / 100))).toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span>
+               {Math.max(0, calculateSubtotal() + (checkLivraisonIncluse() ? 0 : (Number(fraisLivraison) || 0)) - (remiseType === 'fixe' ? (Number(remiseValue) || 0) : Math.round(calculateSubtotal() * (Number(remiseValue) || 0) / 100))).toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span>
              </div>
           </div>
 

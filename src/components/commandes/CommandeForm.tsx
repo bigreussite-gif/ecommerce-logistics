@@ -73,10 +73,6 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
   };
 
   const updateFraisLivraison = (communeNom: string) => {
-    if (checkLivraisonIncluse()) {
-      setFraisLivraison(0);
-      return;
-    }
     const commune = communesDb.find(c => c.nom === communeNom);
     setFraisLivraison(commune?.tarif_livraison || 0);
   };
@@ -202,10 +198,11 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
   };
 
   const subtotal = lignes.reduce((acc, l) => acc + Number(l.montant_ligne || 0), 0);
+  const incluse = checkLivraisonIncluse();
   const discountAmount = remiseType === 'fixe' 
     ? (Number(remiseValue) || 0) 
     : Math.round(subtotal * (Number(remiseValue) || 0) / 100);
-  const totalMontant = Math.max(0, (subtotal + fraisLivraison) - discountAmount);
+  const totalMontant = Math.max(0, (subtotal + (incluse ? 0 : fraisLivraison)) - discountAmount);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,6 +247,7 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
           source_commande: source,
           montant_total: totalMontant,
           frais_livraison: fraisLivraison,
+          livraison_incluse: incluse,
           mode_paiement: modePaiement,
           commune_livraison: clientRecherche.commune || '',
           quartier_livraison: clientRecherche.quartier || '',
@@ -278,6 +276,7 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
           source_commande: source,
           montant_total: totalMontant,
           frais_livraison: fraisLivraison,
+          livraison_incluse: incluse,
           mode_paiement: modePaiement,
           commune_livraison: clientRecherche.commune || '',
           quartier_livraison: clientRecherche.quartier || '',
@@ -463,7 +462,7 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
               <div style={{ marginTop: '2.5rem', padding: '2rem', background: 'linear-gradient(135deg, var(--primary) 0%, #4338ca 100%)', borderRadius: '24px', color: 'white', boxShadow: '0 20px 25px -5px rgba(79, 70, 229, 0.3)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', opacity: 0.9, fontWeight: 500 }}>
                   <span>Frais de livraison ({clientRecherche.commune || 'Standard'})</span>
-                  <span>{fraisLivraison.toLocaleString()} CFA</span>
+                  <span>{incluse ? 'Inclus dans le prix' : `${fraisLivraison.toLocaleString()} CFA`}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem', opacity: 0.9, fontWeight: 500, alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

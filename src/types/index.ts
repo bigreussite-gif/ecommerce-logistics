@@ -102,6 +102,7 @@ export interface Commande {
   statut_commande: StatutCommande;
   montant_total: number;
   frais_livraison: number;
+  livraison_incluse?: boolean;
   mode_paiement: string;
   commune_livraison: string;
   quartier_livraison?: string;

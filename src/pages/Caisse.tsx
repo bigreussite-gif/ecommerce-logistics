@@ -289,10 +289,11 @@ export const Caisse = () => {
 
     const shipping = Number(cmd.frais_livraison) || 0;
     const remise = Number(cmd.remise_totale) || 0;
+    const incluse = cmd.livraison_incluse === true;
     const linesSum = res.updatedLines.reduce((sum: number, l: any) => 
       sum + (Number(l.prix_unitaire) * Number(l.quantite)) + (l.choix_installation ? (Number(l.frais_installation) * Number(l.quantite)) : 0), 0
     );
-    return linesSum + shipping - remise;
+    return linesSum + (incluse ? 0 : shipping) - remise;
   }, [commandes, resolutions]);
 
   const financeDetails = useMemo(() => {
@@ -883,7 +884,12 @@ export const Caisse = () => {
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>{c.commune_livraison}</div>
                               </td>
                               <td data-label="Montant" style={{ fontWeight: 900, textAlign: 'right', fontSize: '1rem' }}>
-                                {calculateOrderTotalLocally(c.id).toLocaleString()}
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                                  <span>{calculateOrderTotalLocally(c.id).toLocaleString()}</span>
+                                  {c.livraison_incluse && (
+                                    <span style={{ fontSize: '0.65rem', background: '#e0e7ff', color: '#4338ca', padding: '0.15rem 0.3rem', borderRadius: '4px', fontWeight: 800 }}>LIVRAISON INCLUSE</span>
+                                  )}
+                                </div>
                               </td>
                               <td data-label="Statut">
                                 {/* Boutons rapides */}

@@ -183,7 +183,7 @@ export const processCaisse = async (
       // Fetch current command info to handle final calculations and montant_encaisse
       const { data: cmdRef } = await insforge.database
         .from('commandes')
-        .select('montant_total, frais_livraison, remise_totale')
+        .select('montant_total, frais_livraison, remise_totale, livraison_incluse')
         .eq('id', res.id)
         .single();
 
@@ -193,6 +193,7 @@ export const processCaisse = async (
         if (res.updatedLines) {
           const shipping = Number(cmdRef.frais_livraison) || 0;
           const remise = Number(cmdRef.remise_totale) || 0;
+          const incluse = cmdRef.livraison_incluse === true;
 
           let newTotalPrimes = 0;
           let newMontantTotal = 0;
@@ -217,7 +218,7 @@ export const processCaisse = async (
             if (lineErr) throw lineErr;
           }
 
-          finalMontant = newMontantTotal + shipping - remise;
+          finalMontant = newMontantTotal + (incluse ? 0 : shipping) - remise;
           updateData.montant_total = finalMontant;
           updateData.total_primes_installation = newTotalPrimes;
         }

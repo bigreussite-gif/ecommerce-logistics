@@ -320,15 +320,17 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
     }
   }
 
-  if (hasLivraisonIncluse) {
-    commande.frais_livraison = 0;
-  } else if ((!commande.frais_livraison || commande.frais_livraison === 0) && commande.commune_livraison) {
+  if ((!commande.frais_livraison || commande.frais_livraison === 0) && commande.commune_livraison) {
      try {
         const zone = await getCommuneByName(commande.commune_livraison);
         if (zone) {
            commande.frais_livraison = zone.tarif_livraison;
         }
      } catch (e) { console.error("Could not fetch commune fee during creation", e); }
+  }
+  
+  if (commande.livraison_incluse !== undefined) {
+    hasLivraisonIncluse = commande.livraison_incluse;
   }
 
   const totalPrimes = (lignes || []).reduce((acc, l) => acc + (!!l.choix_installation ? (Number(l.frais_installation) || 0) : 0), 0);
@@ -341,6 +343,7 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
       statut_commande: commande.statut_commande,
       montant_total: Number(commande.montant_total) || 0,
       frais_livraison: Number(commande.frais_livraison) || 0,
+      livraison_incluse: hasLivraisonIncluse,
       remise_totale: Number(commande.remise_totale) || 0,
       total_primes_installation: totalPrimes,
       mode_paiement: commande.mode_paiement || 'Cash à la livraison',
@@ -449,12 +452,11 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
           hasLivraisonIncluse = true;
         }
       }
-      if (hasLivraisonIncluse) {
-        updatePayload.frais_livraison = 0;
-      } else {
-        const zone = await getCommuneByName(additionalData.commune_livraison);
-        if (zone) updatePayload.frais_livraison = zone.tarif_livraison;
-      }
+      
+      updatePayload.livraison_incluse = hasLivraisonIncluse;
+      const zone = await getCommuneByName(additionalData.commune_livraison);
+      if (zone) updatePayload.frais_livraison = zone.tarif_livraison;
+      
     } catch (e) { console.error("Could not fetch commune fee during status update", e); }
   }
 
@@ -1183,26 +1185,33 @@ export const bulkUpdateCommandeCommune = async (ids: string[], commune: string):
 
   for (const cmd of currentCmds) {
     let finalDeliveryFee = deliveryFee;
+    let hasLivraisonIncluse = false;
     try {
       const { data: lignesCmd } = await insforge.database.from('lignes_commandes').select('produit_id').eq('commande_id', cmd.id);
       if (lignesCmd && lignesCmd.length > 0) {
         const prodIds = lignesCmd.map((l: any) => l.produit_id);
         const { data: prods } = await insforge.database.from('produits').select('livraison_incluse').in('id', prodIds);
         if (prods && prods.some((p: any) => p.livraison_incluse)) {
-          finalDeliveryFee = 0;
+          hasLivraisonIncluse = true;
         }
       }
     } catch (e) { console.error("Could not check livraison_incluse for bulk update", e); }
 
     const prevFee = Number(cmd.frais_livraison) || 0;
     const prevTotal = Number(cmd.montant_total) || 0;
-    const newTotal = prevTotal - prevFee + finalDeliveryFee;
+    
+    // We only adjust the total if delivery was not included
+    let newTotal = prevTotal;
+    if (!hasLivraisonIncluse && prevFee !== finalDeliveryFee) {
+       newTotal = prevTotal - prevFee + finalDeliveryFee;
+    }
 
     const { error: updateError } = await insforge.database
       .from('commandes')
       .update({
         commune_livraison: commune,
         frais_livraison: finalDeliveryFee,
+        livraison_incluse: hasLivraisonIncluse,
         montant_total: newTotal
       })
       .eq('id', cmd.id);
