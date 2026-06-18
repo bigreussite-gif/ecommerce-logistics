@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useState, useRef } from 'react';
 import { X, Upload, AlertCircle, CheckCircle, Download } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
