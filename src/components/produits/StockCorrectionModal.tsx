@@ -146,7 +146,7 @@ export const StockCorrectionModal = ({ onClose, produits }: Props) => {
                 <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
                   <table className="table" style={{ width: '100%' }}>
                     <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }}>
-                      <tr><th>Article</th><th style={{ textAlign: 'center' }}>Stock Affiché</th><th style={{ textAlign: 'center' }}>Stock Calculé (Historique)</th></tr>
+                      <tr><th>Article</th><th style={{ textAlign: 'center' }}>Stock Physique Actuel</th><th style={{ textAlign: 'center' }}>Stock Calculé (Historique)</th></tr>
                     </thead>
                     <tbody>
                       {autoResults.map(r => (
@@ -196,7 +196,7 @@ export const StockCorrectionModal = ({ onClose, produits }: Props) => {
                 <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 1 }}>
                   <tr>
                     <th>Article</th>
-                    <th style={{ textAlign: 'center' }}>Stock Affiché</th>
+                    <th style={{ textAlign: 'center' }}>Stock Physique Actuel</th>
                     <th style={{ textAlign: 'center' }}>Vrai Stock Physique</th>
                     <th></th>
                   </tr>
