@@ -7,9 +7,10 @@ interface ProduitListProps {
   onEdit: (produit: Produit) => void;
   onStock: (produit: Produit) => void;
   onView: (produit: Produit) => void;
+  onViewReserved?: (produit: Produit, type: 'reserve' | 'livraison') => void;
 }
 
-export const ProduitList = ({ produits, onEdit, onStock, onView }: ProduitListProps) => {
+export const ProduitList = ({ produits, onEdit, onStock, onView, onViewReserved }: ProduitListProps) => {
   const toggleActive = async (produit: Produit) => {
     try {
       await updateProduit(produit.id, { actif: !produit.actif });
@@ -113,13 +114,19 @@ export const ProduitList = ({ produits, onEdit, onStock, onView }: ProduitListPr
                     <span>Physique:</span>
                     <span style={{ fontWeight: 950, color: '#1e293b' }}>{produit.stock_actuel} u.</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', fontWeight: 700, color: '#e28743', padding: '0 4px' }}>
+                  <div 
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', fontWeight: 700, color: '#e28743', padding: '0 4px', cursor: onViewReserved ? 'pointer' : 'default' }}
+                    onClick={() => onViewReserved && onViewReserved(produit, 'reserve')}
+                  >
                     <span title="Commandes non validées">Réservé:</span>
-                    <span style={{ fontWeight: 950, color: '#d97706' }}>{produit.stock_reserve ?? 0} u.</span>
+                    <span style={{ fontWeight: 950, color: '#d97706', textDecoration: onViewReserved ? 'underline' : 'none' }}>{produit.stock_reserve ?? 0} u.</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', fontWeight: 700, color: '#3b82f6', padding: '0 4px' }}>
+                  <div 
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', fontWeight: 700, color: '#3b82f6', padding: '0 4px', cursor: onViewReserved ? 'pointer' : 'default' }}
+                    onClick={() => onViewReserved && onViewReserved(produit, 'livraison')}
+                  >
                     <span title="Commandes en cours de livraison">En livraison:</span>
-                    <span style={{ fontWeight: 950, color: '#2563eb' }}>{produit.stock_en_livraison ?? 0} u.</span>
+                    <span style={{ fontWeight: 950, color: '#2563eb', textDecoration: onViewReserved ? 'underline' : 'none' }}>{produit.stock_en_livraison ?? 0} u.</span>
                   </div>
                   <div style={{ 
                     display: 'flex', 

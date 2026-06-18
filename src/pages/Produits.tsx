@@ -6,6 +6,7 @@ import { ProduitForm } from '../components/produits/ProduitForm';
 import { StockForm } from '../components/produits/StockForm';
 import { BulkImportProduitModal } from '../components/produits/BulkImportProduitModal';
 import { StockCorrectionModal } from '../components/produits/StockCorrectionModal';
+import { ReservedOrdersModal } from '../components/produits/ReservedOrdersModal';
 import { subscribeToProduits } from '../services/produitService';
 import { getCategories } from '../services/adminService';
 import { Produit, Categorie } from '../types';
@@ -25,6 +26,7 @@ export const Produits = () => {
   const [stockProduit, setStockProduit] = useState<Produit | null>(null);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
+  const [reservedModalData, setReservedModalData] = useState<{produit: Produit, type: 'reserve' | 'livraison'} | null>(null);
   
   const [statsModalProduit, setStatsModalProduit] = useState<Produit | null>(null);
 
@@ -211,12 +213,21 @@ export const Produits = () => {
                 onEdit={handleEdit}
                 onStock={handleStock}
                 onView={(p) => setStatsModalProduit(p)}
+                onViewReserved={(produit, type) => setReservedModalData({ produit, type })}
               />
             )}
           </div>
         </section>
 
       </div>
+
+      {reservedModalData && (
+        <ReservedOrdersModal
+          produit={reservedModalData.produit}
+          type={reservedModalData.type}
+          onClose={() => setReservedModalData(null)}
+        />
+      )}
 
       {/* POPUP RÉSUMÉ ACTIVITÉ PRODUIT */}
       {statsModalProduit && (
