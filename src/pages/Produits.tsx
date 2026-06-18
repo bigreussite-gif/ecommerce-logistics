@@ -5,6 +5,7 @@ import { ProduitList } from '../components/produits/ProduitList';
 import { ProduitForm } from '../components/produits/ProduitForm';
 import { StockForm } from '../components/produits/StockForm';
 import { BulkImportProduitModal } from '../components/produits/BulkImportProduitModal';
+import { StockCorrectionModal } from '../components/produits/StockCorrectionModal';
 import { subscribeToProduits } from '../services/produitService';
 import { getCategories } from '../services/adminService';
 import { Produit, Categorie } from '../types';
@@ -23,6 +24,7 @@ export const Produits = () => {
   const [isStockFormOpen, setIsStockFormOpen] = useState(false);
   const [stockProduit, setStockProduit] = useState<Produit | null>(null);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
+  const [isCorrectionOpen, setIsCorrectionOpen] = useState(false);
   
   const [statsModalProduit, setStatsModalProduit] = useState<Produit | null>(null);
 
@@ -86,6 +88,13 @@ export const Produits = () => {
 
             <div className="actions-wrapper" style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'white', padding: '0.6rem', borderRadius: '22px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid #e2e8f0' }}>
               <div style={{ display: 'flex', gap: '0.75rem', width: '100%' }}>
+                <button
+                  onClick={() => setIsCorrectionOpen(true)}
+                  className="btn"
+                  style={{ height: '44px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 700, background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a' }}
+                >
+                  <AlertTriangle size={18} /> Corriger Stocks
+                </button>
                 <button
                   onClick={() => setIsBulkOpen(true)}
                   className="btn btn-outline"
@@ -290,6 +299,13 @@ export const Produits = () => {
         <BulkImportProduitModal
           onClose={() => setIsBulkOpen(false)}
           onSave={() => setIsBulkOpen(false)}
+        />
+      )}
+
+      {isCorrectionOpen && (
+        <StockCorrectionModal
+          produits={produits}
+          onClose={() => setIsCorrectionOpen(false)}
         />
       )}
 
