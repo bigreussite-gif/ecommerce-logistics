@@ -26,16 +26,25 @@ export const ReservedOrdersModal = ({ produit, type, onClose }: ReservedOrdersMo
 
       const { data, error } = await insforge.database
         .from('lignes_commandes')
-        .select('quantite, commande_id, commandes!inner(id, nom_client, telephone_client, statut_commande, date_creation, commune_livraison)')
+        .select('quantite, commande_id, commandes!inner(id, statut_commande, date_creation, commune_livraison, clients(nom_complet, telephone))')
         .eq('produit_id', produit.id)
         .in('commandes.statut_commande', statuses);
 
       if (error) throw error;
 
-      let validOrders = (data || []).map((l: any) => ({
-        quantite_reservee: l.quantite,
-        ...l.commandes
-      }));
+      let validOrders = (data || []).map((l: any) => {
+        const cmd = Array.isArray(l.commandes) ? l.commandes[0] : l.commandes;
+        const client = cmd?.clients ? (Array.isArray(cmd.clients) ? cmd.clients[0] : cmd.clients) : {};
+        return {
+          quantite_reservee: l.quantite,
+          id: cmd?.id,
+          nom_client: client.nom_complet || 'Client Inconnu',
+          telephone_client: client.telephone || '',
+          statut_commande: cmd?.statut_commande,
+          date_creation: cmd?.date_creation,
+          commune_livraison: cmd?.commune_livraison
+        };
+      });
 
       // Filter out > 14 days for reserved
       if (type === 'reserve') {
