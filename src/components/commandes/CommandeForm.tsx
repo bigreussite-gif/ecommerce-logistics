@@ -211,6 +211,24 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
     if (lignes.length === 0) return showToast("Ajoutez au moins un produit.", "error");
     if (!lignes.every(l => l.produit_id && l.quantite)) return showToast("Veuillez remplir correctement les produits.", "error");
 
+    // Check stock availability
+    for (const l of lignes) {
+      if (!l.produit_id || !l.quantite) continue;
+      const prod = catalogue.find(p => p.id === l.produit_id);
+      if (prod) {
+        // If editing, don't double count the stock we already reserved for this order
+        const originalQty = originalLines?.find(ol => ol.produit_id === l.produit_id)?.quantite || 0;
+        const additionalQtyNeeded = l.quantite - originalQty;
+        
+        const dispo = prod.stock_disponible ?? prod.stock_actuel;
+        
+        if (additionalQtyNeeded > dispo) {
+          showToast(`Stock insuffisant pour "${prod.nom}". Disponible : ${dispo} u. Vous demandez ${additionalQtyNeeded} u. de plus.`, "error");
+          return;
+        }
+      }
+    }
+
     setLoading(true);
     try {
       let finalClientId = clientId;

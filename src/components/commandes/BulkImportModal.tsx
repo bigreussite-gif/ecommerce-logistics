@@ -112,7 +112,30 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
 
   const handleSubmit = async () => {
     if (preview.length === 0) return;
-    setLoading(true);
+    
+    // Check stock avant de lancer l'import
+    try {
+      setLoading(true);
+      const { getProduits } = await import('../../services/produitService');
+      const catalogue = await getProduits();
+      
+      for (const order of preview) {
+        for (const l of order.lines) {
+          const prod = catalogue.find(p => p.sku?.toUpperCase() === l.produit?.toUpperCase());
+          if (prod) {
+            const dispo = prod.stock_disponible ?? prod.stock_actuel;
+            if (l.quantite > dispo) {
+              showToast(`Stock insuffisant pour "${prod.nom}" (${prod.sku}). Dispo : ${dispo}. Import annulé.`, "error");
+              setLoading(false);
+              return;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Erreur vérification stock:", e);
+    }
+
     try {
       const result = await createBulkCommandes(preview);
       if (result.count > 0) {
