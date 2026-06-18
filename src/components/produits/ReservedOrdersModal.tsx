@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, AlertCircle, Search, PackageX } from 'lucide-react';
+import { X, AlertCircle, PackageX } from 'lucide-react';
 import { insforge } from '../../lib/insforge';
 import { Produit } from '../../types';
 import { updateCommandeStatus } from '../../services/commandeService';
