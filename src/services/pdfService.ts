@@ -109,7 +109,7 @@ export const generateInvoicePDF = async (commande: Commande & { lignes: LigneCom
   // --- TOTALS ---
   const finalY = (doc as any).lastAutoTable?.finalY || 150;
   const subtotal = (commande.lignes || []).reduce((acc, l) => acc + (l.montant_ligne || 0), 0);
-  const delivery = commande.frais_livraison || 0;
+  const delivery = commande.livraison_incluse ? 0 : (commande.frais_livraison || 0);
   const total = subtotal + delivery;
 
   doc.setFontSize(10);
@@ -122,7 +122,7 @@ export const generateInvoicePDF = async (commande: Commande & { lignes: LigneCom
   doc.setFont("helvetica", "normal");
   doc.text("Frais de livraison :", pageWidth - 80, finalY + 17);
   doc.setFont("helvetica", "bold");
-  doc.text(`${fP(delivery)} CFA`, pageWidth - 20, finalY + 17, { align: 'right' });
+  doc.text(commande.livraison_incluse ? "INCLUS" : `${fP(delivery)} CFA`, pageWidth - 20, finalY + 17, { align: 'right' });
 
   doc.setDrawColor(99, 102, 255);
   doc.setLineWidth(0.5);
@@ -237,7 +237,7 @@ export const generateDeliverySlipPDF = async (feuilleRoute: any, commandes: Comm
       " ", 
       c.nom_client || "Client",
       puStr || "0",
-      `${fP(c.frais_livraison || 0)}`,
+      c.livraison_incluse ? 'INCLUS' : `${fP(c.frais_livraison || 0)}`,
       qtyStr || "0",
       `${fP(c.montant_total || 0)}`,
       c.telephone_client || "-",
