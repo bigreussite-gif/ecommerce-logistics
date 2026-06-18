@@ -25,6 +25,7 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
   const [source, setSource] = useState('Facebook');
   const [modePaiement, setModePaiement] = useState('Cash à la livraison');
   const [notes, setNotes] = useState('');
+  const [forceCreation, setForceCreation] = useState(false);
   
   const [communesDb, setCommunesDb] = useState<Commune[]>([]);
   const [fraisLivraison, setFraisLivraison] = useState(0);
@@ -222,7 +223,7 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
         
         const dispo = prod.stock_disponible ?? prod.stock_actuel;
         
-        if (additionalQtyNeeded > dispo) {
+        if (!forceCreation && additionalQtyNeeded > dispo) {
           showToast(`Stock insuffisant pour "${prod.nom}". Disponible : ${dispo} u. Vous demandez ${additionalQtyNeeded} u. de plus.`, "error");
           return;
         }
@@ -542,6 +543,15 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
           <div className="form-group">
             <label className="form-label" style={{ fontWeight: 700 }}>Observations & Instructions Spéciales</label>
             <textarea className="form-input" rows={3} style={{ background: '#f8fafc', padding: '1rem', borderRadius: '16px' }} placeholder="Ex: Livraison après 17h, appeler avant de venir..." value={notes} onChange={e => setNotes(e.target.value)} />
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginTop: '1rem', padding: '1rem', background: '#fffbeb', borderRadius: '12px', border: '1px solid #fef3c7', color: '#b45309', fontSize: '0.95rem', fontWeight: 600 }}>
+              <input 
+                type="checkbox" 
+                checked={forceCreation} 
+                onChange={(e) => setForceCreation(e.target.checked)} 
+                style={{ width: '18px', height: '18px', accentColor: '#d97706' }}
+              />
+              Forcer la création de la commande même en cas de stock insuffisant
+            </label>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1.25rem', marginTop: '1.5rem' }}>

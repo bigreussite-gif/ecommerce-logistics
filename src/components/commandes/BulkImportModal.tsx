@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { X, Upload, AlertCircle, CheckCircle, Download } from 'lucide-react';
 import { useToast } from '../../contexts/ToastContext';
 import { createBulkCommandes } from '../../services/commandeService';
@@ -9,6 +10,8 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [forceCreation, setForceCreation] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -124,7 +127,7 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
           const prod = catalogue.find(p => p.sku?.toUpperCase() === l.produit?.toUpperCase());
           if (prod) {
             const dispo = prod.stock_disponible ?? prod.stock_actuel;
-            if (l.quantite > dispo) {
+            if (!forceCreation && l.quantite > dispo) {
               showToast(`Stock insuffisant pour "${prod.nom}" (${prod.sku}). Dispo : ${dispo} (Physique: ${prod.stock_actuel}, Réservé: ${prod.stock_reserve}, En livraison: ${prod.stock_en_livraison}). Import annulé.`, "error");
               setLoading(false);
               return;
@@ -204,7 +207,7 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
             }}
             onClick={() => document.getElementById('fileInput')?.click()}
           >
-            <input type="file" id="fileInput" hidden accept=".csv,.xlsx,.xls" onChange={handleFileChange} />
+            <input type="file" id="fileInput" ref={fileInputRef} hidden accept=".csv,.xlsx,.xls" onChange={handleFileChange} />
             <div style={{ background: 'var(--primary)', color: 'white', width: '64px', height: '64px', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', boxShadow: '0 10px 15px -3px rgba(79, 70, 229, 0.4)' }}>
               <Upload size={32} />
             </div>
@@ -245,7 +248,7 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
 
             <div style={{ maxHeight: '300px', overflowY: 'auto', borderRadius: '18px', border: '1px solid #e2e8f0', marginBottom: '2rem', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)' }}>
               <div className="table-container">
-<table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                 <thead style={{ background: '#f8fafc', position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr>
                     <th style={{ padding: '1rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', color: '#64748b' }}>Client</th>
@@ -274,26 +277,44 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
                   ))}
                 </tbody>
               </table>
-</div>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-              <button 
-                className="btn btn-outline" 
-                onClick={onClose}
-                style={{ padding: '0.8rem 2rem', borderRadius: '14px', fontWeight: 700 }}
-              >
-                Annuler
-              </button>
-              <button 
-                className="btn btn-primary" 
-                onClick={handleSubmit}
-                disabled={loading || preview.length === 0}
-                style={{ padding: '0.8rem 3rem', borderRadius: '14px', fontWeight: 800, minWidth: '220px', boxShadow: '0 10px 15px -3px rgba(79, 70, 229, 0.4)' }}
-              >
-                {loading ? 'Importation en cours...' : 'Vérifier et Importer'}
-              </button>
-            </div>
+            {preview.length > 0 && (
+              <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', alignSelf: 'flex-end', fontSize: '0.9rem' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={forceCreation} 
+                    onChange={(e) => setForceCreation(e.target.checked)} 
+                  />
+                  Forcer la création même si le stock est insuffisant
+                </label>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                  <button 
+                    type="button" 
+                    className="btn btn-outline"
+                    onClick={() => {
+                      setPreview([]);
+                      setFile(null);
+                      if (fileInputRef.current) fileInputRef.current.value = '';
+                    }}
+                    style={{ padding: '0.8rem 2rem', borderRadius: '14px', fontWeight: 700 }}
+                  >
+                    Annuler
+                  </button>
+                  <button 
+                    type="button" 
+                    className="btn btn-primary"
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    style={{ padding: '0.8rem 3rem', borderRadius: '14px', fontWeight: 800, minWidth: '220px', boxShadow: '0 10px 15px -3px rgba(79, 70, 229, 0.4)' }}
+                  >
+                    {loading ? 'Importation en cours...' : `Importer ${preview.length} Commandes`}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
