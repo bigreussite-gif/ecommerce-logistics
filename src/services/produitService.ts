@@ -25,7 +25,7 @@ export const getProduits = async (): Promise<Produit[]> => {
   try {
     const { data: lines, error: linesError } = await insforge.database
       .from('lignes_commandes')
-      .select('produit_id, quantite, commandes!inner(statut_commande)')
+      .select('produit_id, quantite, commandes!inner(statut_commande, date_creation)')
       .in('commandes.statut_commande', ['nouvelle', 'a_rappeler', 'en_attente_appel', 'validee', 'en_cours_livraison']);
 
     if (linesError) {
@@ -40,10 +40,20 @@ export const getProduits = async (): Promise<Produit[]> => {
 
     const reservedMap = new Map<string, number>();
     const enLivraisonMap = new Map<string, number>();
+    const now = new Date();
 
     (lines || []).forEach((l: any) => {
       const cmd = Array.isArray(l.commandes) ? l.commandes[0] : l.commandes;
       const status = cmd?.statut_commande?.toLowerCase();
+      
+      if (cmd?.date_creation) {
+        const dateCreation = new Date(cmd.date_creation);
+        const daysOld = (now.getTime() - dateCreation.getTime()) / (1000 * 3600 * 24);
+        // Ne pas bloquer le stock pour les vieilles commandes non traitées (+14 jours)
+        if (['nouvelle', 'a_rappeler', 'en_attente_appel'].includes(status) && daysOld > 14) {
+          return;
+        }
+      }
       
       if (status === 'en_cours_livraison') {
         const current = enLivraisonMap.get(l.produit_id) || 0;
