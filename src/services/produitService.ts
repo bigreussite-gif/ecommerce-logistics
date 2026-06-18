@@ -26,7 +26,7 @@ export const getProduits = async (): Promise<Produit[]> => {
     const { data: lines, error: linesError } = await insforge.database
       .from('lignes_commandes')
       .select('produit_id, quantite, commandes!inner(statut_commande, date_creation)')
-      .in('commandes.statut_commande', ['nouvelle', 'a_rappeler', 'en_attente_appel', 'validee', 'en_cours_livraison']);
+      .in('commandes.statut_commande', ['nouvelle', 'a_rappeler', 'en_attente_appel', 'validee', 'en_cours_livraison', 'echouee', 'retour_livreur']);
 
     if (linesError) {
       console.error("Error fetching reserved stock lines:", linesError);
@@ -55,7 +55,7 @@ export const getProduits = async (): Promise<Produit[]> => {
         }
       }
       
-      if (status === 'en_cours_livraison') {
+      if (['en_cours_livraison', 'echouee', 'retour_livreur'].includes(status)) {
         const current = enLivraisonMap.get(l.produit_id) || 0;
         enLivraisonMap.set(l.produit_id, current + Number(l.quantite || 0));
       } else {
