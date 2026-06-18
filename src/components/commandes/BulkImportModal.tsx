@@ -125,7 +125,7 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
           if (prod) {
             const dispo = prod.stock_disponible ?? prod.stock_actuel;
             if (l.quantite > dispo) {
-              showToast(`Stock insuffisant pour "${prod.nom}" (${prod.sku}). Dispo : ${dispo}. Import annulé.`, "error");
+              showToast(`Stock insuffisant pour "${prod.nom}" (${prod.sku}). Dispo : ${dispo} (Physique: ${prod.stock_actuel}, Réservé: ${prod.stock_reserve}, En livraison: ${prod.stock_en_livraison}). Import annulé.`, "error");
               setLoading(false);
               return;
             }
