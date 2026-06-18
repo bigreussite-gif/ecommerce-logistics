@@ -26,18 +26,7 @@ export const ReservedOrdersModal = ({ produit, type, onClose }: ReservedOrdersMo
 
       const { data, error } = await insforge.database
         .from('lignes_commandes')
-        .select(`
-          quantite,
-          commande_id,
-          commandes!inner (
-            id,
-            nom_client,
-            telephone_client,
-            statut_commande,
-            date_creation,
-            commune_livraison
-          )
-        `)
+        .select('quantite, commande_id, commandes!inner(id, nom_client, telephone_client, statut_commande, date_creation, commune_livraison)')
         .eq('produit_id', produit.id)
         .in('commandes.statut_commande', statuses);
 
