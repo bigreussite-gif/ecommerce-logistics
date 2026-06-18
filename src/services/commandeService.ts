@@ -472,7 +472,7 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   
   if (error) throw error;
 
-  const outOfWarehouseStates = ['en_cours_livraison', 'livree', 'terminee'];
+  const outOfWarehouseStates = ['livree', 'terminee'];
   const wasOut = outOfWarehouseStates.includes(prevStatus?.toLowerCase());
   const isNowOut = outOfWarehouseStates.includes(nextStatus?.toLowerCase());
 
@@ -541,7 +541,7 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
   if (bulkErr) throw bulkErr;
 
   // 3. Handle stock movements for commands that physically leave or return to the warehouse
-  const outOfWarehouseStates = ['en_cours_livraison', 'livree', 'terminee'];
+  const outOfWarehouseStates = ['livree', 'terminee'];
   const isNextOut = outOfWarehouseStates.includes(nextStatus.toLowerCase());
 
   const idsChangingState = currentCmds

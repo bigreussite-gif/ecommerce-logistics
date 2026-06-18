@@ -61,7 +61,7 @@ export const getProduits = async (): Promise<Produit[]> => {
         ...p,
         stock_reserve,
         stock_en_livraison,
-        stock_disponible: Math.max(0, p.stock_actuel - stock_reserve),
+        stock_disponible: Math.max(0, p.stock_actuel - stock_reserve - stock_en_livraison),
         composants: bundlesMap.get(p.id) || []
       };
     });
