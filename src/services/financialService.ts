@@ -256,7 +256,7 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
 };
 
 export const calculateStockValue = (produits: any[]): number => {
-  return produits.reduce((acc, p) => acc + (Number(p.stock_actuel || 0) * Number(p.prix_achat || 0)), 0);
+  return produits.reduce((acc, p) => acc + (Math.max(0, Number(p.stock_actuel || 0)) * Number(p.prix_achat || 0)), 0);
 };
 
 // IDEA 1: Marketing ROI Analysis

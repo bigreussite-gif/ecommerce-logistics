@@ -111,9 +111,15 @@ export const ProduitList = ({ produits, onEdit, onStock, onView, onViewReserved 
               <td data-label="Stock">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxWidth: '160px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', fontWeight: 700, color: '#475569', padding: '0 4px' }}>
-                    <span>Physique:</span>
-                    <span style={{ fontWeight: 950, color: '#1e293b' }}>{produit.stock_actuel} u.</span>
+                    <span title="Stock physique réel dans l'entrepôt">Stock Réel:</span>
+                    <span style={{ fontWeight: 950, color: '#1e293b' }}>{Math.max(0, produit.stock_actuel)} u.</span>
                   </div>
+                  {produit.stock_actuel < 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#ef4444', padding: '0 4px' }}>
+                      <span title="Stock système avec forçage des commandes">En Ligne:</span>
+                      <span style={{ fontWeight: 950 }}>{produit.stock_actuel} u.</span>
+                    </div>
+                  )}
                   <div 
                     style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', fontWeight: 700, color: '#e28743', padding: '0 4px', cursor: onViewReserved ? 'pointer' : 'default' }}
                     onClick={() => onViewReserved && onViewReserved(produit, 'reserve')}

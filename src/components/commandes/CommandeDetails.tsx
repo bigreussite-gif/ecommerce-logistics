@@ -583,7 +583,7 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
               </button>
             )}
 
-            {['retour_livreur', 'echouee'].includes(commande.statut_commande?.toLowerCase()) && (
+            {['retour_livreur', 'echouee', 'retour_stock'].includes(commande.statut_commande?.toLowerCase()) && (
               <button 
                 className="btn btn-primary" 
                 onClick={handleReactivateFailed} 

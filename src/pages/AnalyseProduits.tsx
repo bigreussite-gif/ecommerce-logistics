@@ -195,7 +195,7 @@ export const AnalyseProduits = () => {
     
     products.forEach(p => {
       if (selectedProductIds.includes(p.id)) {
-        const stock = Number(p.stock_actuel || 0);
+        const stock = Math.max(0, Number(p.stock_actuel || 0));
         totalStock += stock;
         purchase += stock * Number(p.prix_achat || 0);
         sale += stock * Number(p.prix_vente || 0);
