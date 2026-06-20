@@ -163,12 +163,7 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     return ['livree', 'terminee'].includes(s);
   });
   
-  // Failed orders cost us delivery fees (perte logistique)
-  // These are orders that were attempted but not delivered.
-  const failedCmds = (commandes || []).filter(c => {
-    const s = c.statut_commande?.toLowerCase();
-    return ['echouee', 'retour_livreur', 'retour_stock', 'absent', 'retour_client'].includes(s);
-  });
+  
   
   const ca_brut = terminalCmds.reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
   const frais_livraison_reussis = terminalCmds.reduce((acc, c) => acc + (c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE), 0);
