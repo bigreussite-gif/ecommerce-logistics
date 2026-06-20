@@ -4,7 +4,7 @@ import { calculateLogisticalStats, getDepenses, calculateProfitMetrics, calculat
 import { getProduits } from '../services/produitService';
 import type { Commande } from '../types';
 import { globalEventBus, EVENTS } from '../utils/events';
-import { Activity, Percent, DollarSign, TrendingUp, Truck, AlertCircle, ShoppingBag, BarChart2, Calendar, MapPin, Tag, Clock, ArrowUp, ArrowDown, Wallet, TrendingDown } from 'lucide-react';
+import { Activity, DollarSign, TrendingUp, AlertCircle, ShoppingBag, BarChart2, Calendar, MapPin, Tag, Clock, ArrowUp, ArrowDown, Wallet, TrendingDown } from 'lucide-react';
 import { 
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   Tooltip, PieChart, Pie, Cell
