@@ -172,7 +172,9 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
   
   const ca_brut = terminalCmds.reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
   const frais_livraison_reussis = terminalCmds.reduce((acc, c) => acc + (c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE), 0);
-  const pertes_livraison = failedCmds.reduce((acc, c) => acc + (c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE), 0);
+  
+  // Les livreurs ne sont payés que si la livraison est réussie, donc 0 perte logistique
+  const pertes_livraison = 0;
   
   // Calculate COGS (Cost of Goods Sold)
   let cogs_total = 0;
@@ -251,7 +253,7 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     surplus_caisse,
     pertes_livraison,
     benefice_caisse: profit_net_reel,
-    flux_tresorerie: ca_brut - (frais_livraison_reussis + pertes_livraison) - total_sorties_cash
+    flux_tresorerie: ca_brut - frais_livraison_reussis - total_sorties_cash
   };
 };
 
