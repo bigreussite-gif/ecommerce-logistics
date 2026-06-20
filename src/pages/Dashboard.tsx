@@ -4,7 +4,7 @@ import { calculateLogisticalStats, getDepenses, calculateProfitMetrics, calculat
 import { getProduits } from '../services/produitService';
 import type { Commande } from '../types';
 import { globalEventBus, EVENTS } from '../utils/events';
-import { Activity, Percent, DollarSign, TrendingUp, Truck, AlertCircle, ShoppingBag, BarChart2, Calendar, MapPin, Tag, Clock } from 'lucide-react';
+import { Activity, Percent, DollarSign, TrendingUp, Truck, AlertCircle, ShoppingBag, BarChart2, Calendar, MapPin, Tag, Clock, ArrowUp, ArrowDown, Wallet, TrendingDown } from 'lucide-react';
 import { 
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   Tooltip, PieChart, Pie, Cell
@@ -126,6 +126,47 @@ export const Dashboard = () => {
     const metrics = calculateProfitMetrics(filteredCmds, filteredExps);
     const logStats = calculateLogisticalStats(filteredCmds);
 
+    // Calculate Previous Period for Croissance
+    let startPrev = new Date(start);
+    let endPrev = new Date(start.getTime() - 1);
+    
+    if (period === 'today') {
+      startPrev.setDate(startPrev.getDate() - 1);
+    } else if (period === '7d') {
+      startPrev.setDate(startPrev.getDate() - 7);
+    } else if (period === '30d') {
+      startPrev.setDate(startPrev.getDate() - 30);
+    } else if (period === 'custom') {
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      startPrev.setDate(startPrev.getDate() - diffDays);
+    } else {
+      startPrev = new Date(0);
+      endPrev = new Date(0);
+    }
+
+    const filteredCmdsPrev = commandes.filter(c => {
+      const d = new Date(c.date_creation);
+      const dDelivered = c.date_livraison_effective ? new Date(c.date_livraison_effective) : null;
+      const inCreated = d >= startPrev && d <= endPrev;
+      const inDelivered = dDelivered && dDelivered >= startPrev && dDelivered <= endPrev;
+      return inCreated || inDelivered;
+    });
+
+    const filteredExpsPrev = expenses.filter(exp => {
+      const d = new Date(exp.date);
+      return d >= startPrev && d <= endPrev;
+    });
+
+    const previousMetrics = calculateProfitMetrics(filteredCmdsPrev, filteredExpsPrev);
+    
+    let croissanceCA = 0;
+    if (previousMetrics.ca_net_produits > 0) {
+      croissanceCA = ((metrics.ca_net_produits - previousMetrics.ca_net_produits) / previousMetrics.ca_net_produits) * 100;
+    } else if (metrics.ca_net_produits > 0) {
+      croissanceCA = 100;
+    }
+
     // Status Distribution
     const statusCounts: Record<string, number> = {};
     filteredCmds.forEach(c => {
@@ -203,6 +244,7 @@ export const Dashboard = () => {
     return {
       metrics,
       logStats,
+      croissanceCA,
       statusData,
       heatmapData,
       bestZonesData,
@@ -211,7 +253,7 @@ export const Dashboard = () => {
     };
   }, [commandes, expenses, period, startDate, endDate]);
 
-  const { metrics, logStats, statusData, heatmapData, bestZonesData, historyData, pendingCount } = filteredData;
+  const { metrics, logStats, croissanceCA, statusData, heatmapData, bestZonesData, historyData, pendingCount } = filteredData;
 
 
   if (loading) return <div className="p-8 text-center">Chargement...</div>;
@@ -266,12 +308,76 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      {/* Global Heritage Section */}
-      <div className="res-grid-sm" style={{ marginBottom: '2.5rem' }}>
-        <div className="card glass-effect" style={{ padding: '1.25rem', background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)', color: 'white', border: 'none' }}>
-           <p style={{ opacity: 0.6, fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Chiffre d'Affaires Global</p>
-           <div style={{ fontSize: '1.4rem', fontWeight: 900 }}>{metrics?.ca_brut?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+      {/* Nouveaux KPIs Principaux Demandés */}
+      <div className="res-grid" style={{ marginBottom: '1.5rem' }}>
+        
+        {/* 1. Chiffre d'affaires (CA) */}
+        <div className="card glass-effect" style={{ padding: '1.75rem', borderLeft: '5px solid var(--primary)', position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase' }}>Chiffre d’affaires (CA)</span>
+            <div style={{ padding: '0.4rem', background: 'var(--primary-glow)', borderRadius: '8px', display: 'flex' }}>
+               <DollarSign size={20} color="var(--primary)" />
+            </div>
+          </div>
+          <div style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--text-main)' }}>{metrics.ca_net_produits.toLocaleString()} <span style={{ fontSize: '1rem' }}>CFA</span></div>
+          <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>CA Net (Ventes réussies hors livraison)</p>
+          <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 700 }}>
+            <span>CA Brut : {metrics.ca_brut.toLocaleString()} CFA</span>
+          </div>
         </div>
+
+        {/* 2. Croissance (%) */}
+        <div className="card glass-effect" style={{ padding: '1.75rem', borderLeft: `5px solid ${croissanceCA >= 0 ? '#10b981' : '#ef4444'}`, position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase' }}>Croissance (%)</span>
+            <div style={{ padding: '0.4rem', background: croissanceCA >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', display: 'flex' }}>
+               {croissanceCA >= 0 ? <TrendingUp size={20} color="#10b981" /> : <TrendingDown size={20} color="#ef4444" />}
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {croissanceCA >= 0 ? <ArrowUp size={32} color="#10b981" strokeWidth={3} /> : <ArrowDown size={32} color="#ef4444" strokeWidth={3} />}
+            <div style={{ fontSize: '2.2rem', fontWeight: 900, color: croissanceCA >= 0 ? '#10b981' : '#ef4444' }}>{Math.abs(croissanceCA).toFixed(1)}%</div>
+          </div>
+          <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+            Par rapport à la période précédente {period === 'today' ? '(Hier)' : period === '7d' ? '(7j précédents)' : period === '30d' ? '(30j précédents)' : ''}
+          </p>
+        </div>
+
+        {/* 3. Résultat (bénéfice ou perte) */}
+        <div className="card glass-effect" style={{ padding: '1.75rem', borderLeft: `5px solid ${metrics.benefice_caisse >= 0 ? '#10b981' : '#ef4444'}`, position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase' }}>Résultat</span>
+            <div style={{ padding: '0.4rem', background: metrics.benefice_caisse >= 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', borderRadius: '8px', display: 'flex' }}>
+               <Activity size={20} color={metrics.benefice_caisse >= 0 ? '#10b981' : '#ef4444'} />
+            </div>
+          </div>
+          <div style={{ fontSize: '2.2rem', fontWeight: 900, color: metrics.benefice_caisse >= 0 ? '#10b981' : '#ef4444' }}>
+            {metrics.benefice_caisse >= 0 ? '+' : ''}{metrics.benefice_caisse.toLocaleString()} <span style={{ fontSize: '1rem' }}>CFA</span>
+          </div>
+          <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+            {metrics.benefice_caisse >= 0 ? 'Bénéfice net estimé' : 'Perte nette estimée'} (après charges)
+          </p>
+        </div>
+
+        {/* 4. Cash disponible (trésorerie) */}
+        <div className="card glass-effect" style={{ padding: '1.75rem', borderLeft: `5px solid ${metrics.flux_tresorerie >= 0 ? '#6366f1' : '#ef4444'}`, position: 'relative' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+            <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.85rem', textTransform: 'uppercase' }}>Cash disponible</span>
+            <div style={{ padding: '0.4rem', background: 'rgba(99, 102, 255, 0.1)', borderRadius: '8px', display: 'flex' }}>
+               <Wallet size={20} color="#6366f1" />
+            </div>
+          </div>
+          <div style={{ fontSize: '2.2rem', fontWeight: 900, color: metrics.flux_tresorerie >= 0 ? '#6366f1' : '#ef4444' }}>
+            {metrics.flux_tresorerie.toLocaleString()} <span style={{ fontSize: '1rem' }}>CFA</span>
+          </div>
+          <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+            Trésorerie réelle (Entrées - Sorties globales)
+          </p>
+        </div>
+      </div>
+
+      {/* Secondary Metrics / Logistique */}
+      <div className="res-grid-sm" style={{ marginBottom: '2.5rem' }}>
         <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
            <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Sorties / Charges Totales</p>
            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#ef4444' }}>{metrics?.total_sorties?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
@@ -281,72 +387,29 @@ export const Dashboard = () => {
            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--primary)' }}>{metrics?.cout_achat_total?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
         </div>
         <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
-           <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Profit Net Estimé</p>
-           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#10b981' }}>{metrics?.benefice_caisse?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
-        </div>
-        <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
-           <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Flux de Trésorerie Réel</p>
-           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: (metrics?.flux_tresorerie || 0) >= 0 ? '#10b981' : '#ef4444' }}>
-             {metrics?.flux_tresorerie?.toLocaleString() || 0} <span style={{ fontSize: '0.8rem' }}>CFA</span>
-           </div>
-        </div>
-        <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
-           <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Valeur du Stock (Prix Achat)</p>
+           <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>Valeur du Stock</p>
            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#f59e0b' }}>{stockVal.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
         </div>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="res-grid" style={{ marginBottom: '2.5rem' }}>
-        <div className="card glass-effect" style={{ padding: '1.75rem', borderLeft: '5px solid var(--primary)', position: 'relative' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-            <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>CA Net Produits</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-               <DollarSign size={20} color="var(--primary)" />
-            </div>
-          </div>
-          <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)' }}>{metrics.ca_net_produits.toLocaleString()} <span style={{ fontSize: '0.9rem' }}>CFA</span></div>
-          <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Basé sur les ventes réussies</p>
-          <div style={{ marginTop: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#10b981', fontSize: '0.85rem', fontWeight: 700 }}>
-            <TrendingUp size={14} /> <span>CA Brut : {metrics.ca_brut.toLocaleString()} CFA</span>
-          </div>
+        <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
+           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+             <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Taux de Succès Logistique</p>
+           </div>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-main)' }}>{logStats.taux_succes}%</div>
         </div>
-
-        <div className="card glass-effect" style={{ padding: '1.75rem', borderLeft: '5px solid #6366f1' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-            <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Livraison Encaissé</span>
-            <Truck size={20} color="#6366f1" />
-          </div>
-          <div style={{ fontSize: '2rem', fontWeight: 900, color: '#6366f1' }}>{metrics.frais_livraison_total.toLocaleString()} <span style={{ fontSize: '0.9rem' }}>CFA</span></div>
-          <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total (Réussis + Pertes)</p>
+        <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
+           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+             <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Livraison Encaissée</p>
+           </div>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#6366f1' }}>{metrics.frais_livraison_total.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
         </div>
-
-        <div className="card glass-effect" style={{ padding: '1.75rem', borderLeft: '5px solid #f59e0b' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-            <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>Taux de Succès</span>
-            <Percent size={20} color="#f59e0b" />
-          </div>
-          <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)' }}>{logStats.taux_succes}%</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.4rem', marginTop: '0.8rem' }}>
-             <div className="badge badge-success" style={{ borderRadius: '6px', fontSize: '0.7rem' }}>{logStats.livrees} L</div>
-             <div className="badge badge-info" style={{ borderRadius: '6px', fontSize: '0.7rem' }}>{logStats.retours} R</div>
-             <div className="badge badge-warning" style={{ borderRadius: '6px', fontSize: '0.7rem' }}>{logStats.reportees} P</div>
-          </div>
-        </div>
-
-
-        <div className="card glass-effect" style={{ padding: '1.75rem', borderLeft: '5px solid #ef4444' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-            <span style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase' }}>À Traiter</span>
-            <Activity size={pendingCount > 0 ? 20 : 18} color="#ef4444" />
-          </div>
-          <div style={{ fontSize: '2rem', fontWeight: 900, color: '#ef4444' }}>{pendingCount}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.8rem', color: '#f59e0b' }}>
-             <AlertCircle size={14} />
-             <span style={{ fontSize: '0.8rem', fontWeight: 700 }}>Action requise</span>
-          </div>
+        <div className="card glass-effect" style={{ padding: '1.25rem', background: 'white' }}>
+           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+             <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase' }}>Commandes À Traiter</p>
+           </div>
+           <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#ef4444' }}>{pendingCount}</div>
         </div>
       </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', marginBottom: '2.5rem' }}>
         {/* Revenue Trend */}
         <div className="card glass-effect" style={{ padding: '2.5rem', gridColumn: '1 / -1', border: '1px solid rgba(255,255,255,0.6)' }}>
