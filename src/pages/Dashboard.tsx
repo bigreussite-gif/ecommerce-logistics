@@ -243,6 +243,7 @@ export const Dashboard = () => {
 
     return {
       metrics,
+      previousMetrics,
       logStats,
       croissanceCA,
       statusData,
@@ -253,7 +254,7 @@ export const Dashboard = () => {
     };
   }, [commandes, expenses, period, startDate, endDate]);
 
-  const { metrics, logStats, croissanceCA, statusData, heatmapData, bestZonesData, historyData, pendingCount } = filteredData;
+  const { metrics, previousMetrics, logStats, croissanceCA, statusData, heatmapData, bestZonesData, historyData, pendingCount } = filteredData;
 
 
   if (loading) return <div className="p-8 text-center">Chargement...</div>;
@@ -338,9 +339,12 @@ export const Dashboard = () => {
             {croissanceCA >= 0 ? <ArrowUp size={32} color="#10b981" strokeWidth={3} /> : <ArrowDown size={32} color="#ef4444" strokeWidth={3} />}
             <div style={{ fontSize: '2.2rem', fontWeight: 900, color: croissanceCA >= 0 ? '#10b981' : '#ef4444' }}>{Math.abs(croissanceCA).toFixed(1)}%</div>
           </div>
-          <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-            Par rapport à la période précédente {period === 'today' ? '(Hier)' : period === '7d' ? '(7j précédents)' : period === '30d' ? '(30j précédents)' : ''}
-          </p>
+          <div style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+            <span>Période préc. : <strong style={{ color: 'var(--text-main)' }}>{previousMetrics.ca_net_produits.toLocaleString()} CFA</strong></span>
+            <span style={{ display: 'block', marginTop: '0.2rem', fontSize: '0.7rem', opacity: 0.8 }}>
+              {period === 'today' ? '(Hier)' : period === '7d' ? '(7j précédents)' : period === '30d' ? '(30j précédents)' : ''}
+            </span>
+          </div>
         </div>
 
         {/* 3. Résultat (bénéfice ou perte) */}

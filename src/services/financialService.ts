@@ -251,7 +251,7 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     surplus_caisse,
     pertes_livraison,
     benefice_caisse: profit_net_reel,
-    flux_tresorerie: ca_brut - total_sorties_cash
+    flux_tresorerie: ca_brut - (frais_livraison_reussis + pertes_livraison) - total_sorties_cash
   };
 };
 
