@@ -16,6 +16,13 @@ export interface BusinessAlert {
   action?: string;
 }
 
+export interface EntityPerformance {
+  name: string;
+  total: number;
+  succes: number;
+  rate: number;
+}
+
 export interface BusinessHealth {
   score: number; // 0 to 100
   status: 'Critique' | 'Fragile' | 'Stable' | 'Excellent';
@@ -23,6 +30,10 @@ export interface BusinessHealth {
   logistics: LogisticalStats;
   topProducts: ProductROI[];
   worstProducts: ProductROI[];
+  topCommunes: EntityPerformance[];
+  worstCommunes: EntityPerformance[];
+  topLivreurs: EntityPerformance[];
+  worstLivreurs: EntityPerformance[];
   alerts: BusinessAlert[];
   advice: string[];
 }
@@ -87,9 +98,9 @@ export const analyzeBusinessHealth = (
   // Logistics Alerts
   if (logistics.taux_succes > 0 && logistics.taux_succes < 65) {
     alerts.push({
-      type: 'danger',
+      type: 'warning',
       title: 'Logistique Inefficace (Taux d\'Échec Élevé)',
-      message: `Seules ${logistics.taux_succes}% des commandes sorties sont livrées. Les retours vous coûtent cher en frais de transport perdus.`,
+      message: `Seules ${logistics.taux_succes}% des commandes sorties sont livrées. Les retours immobilisent votre stock et font perdre du temps de traitement.`,
       metric: `${logistics.taux_succes}%`,
       action: 'Renforcez la confirmation téléphonique avant expédition.'
     });
@@ -115,50 +126,61 @@ export const analyzeBusinessHealth = (
     advice.push(`Le produit "${worstProducts[0].nom}" vous fait perdre de l'argent (ROI: ${worstProducts[0].roi_percent}%). Envisagez de le retirer.`);
   }
 
-  // Livreur Alerts
+  // Livreur Alerts & Stats
   const livreurStats: Record<string, { total: number, succes: number }> = {};
   commandes.forEach(c => {
     if (!c.livreur_id) return;
-    if (!livreurStats[c.livreur_id]) livreurStats[c.livreur_id] = { total: 0, succes: 0 };
+    const name = c.livreur_id; // Using ID as name if real name not populated
+    if (!livreurStats[name]) livreurStats[name] = { total: 0, succes: 0 };
     if (['livree', 'retour_livreur', 'en_cours_livraison', 'retour_stock', 'retour_client'].includes(c.statut_commande)) {
-      livreurStats[c.livreur_id].total += 1;
-      if (c.statut_commande === 'livree') livreurStats[c.livreur_id].succes += 1;
+      livreurStats[name].total += 1;
+      if (c.statut_commande === 'livree') livreurStats[name].succes += 1;
     }
   });
-  const badLivreurs = Object.entries(livreurStats)
-    .filter(([_, stats]) => stats.total >= 5 && (stats.succes / stats.total) < 0.6)
-    .map(([id, stats]) => ({ id, rate: Math.round((stats.succes / stats.total) * 100) }));
+
+  const allLivreurs = Object.entries(livreurStats)
+    .filter(([_, stats]) => stats.total >= 3)
+    .map(([name, stats]) => ({ name, total: stats.total, succes: stats.succes, rate: Math.round((stats.succes / stats.total) * 100) }))
+    .sort((a, b) => b.rate - a.rate);
+
+  const topLivreurs = allLivreurs.filter(l => l.rate >= 70).slice(0, 3);
+  const worstLivreurs = [...allLivreurs].reverse().filter(l => l.rate < 60).slice(0, 3);
   
-  if (badLivreurs.length > 0) {
+  if (worstLivreurs.length > 0) {
     alerts.push({
       type: 'warning',
       title: 'Livreurs Inefficaces',
-      message: `${badLivreurs.length} livreur(s) ont un taux de réussite inférieur à 60%. Cela tue vos marges avec les retours.`,
-      action: 'Vérifiez leurs performances et envisagez de les remplacer.'
+      message: `Certains livreurs (ex: ${worstLivreurs[0].name}) ont un taux de réussite inférieur à 60%. Ils immobilisent les colis.`,
+      action: 'Vérifiez leurs performances et envisagez de les remplacer ou de les réaffecter.'
     });
   }
 
-  // Commune Alerts
+  // Commune Alerts & Stats
   const communeStats: Record<string, { total: number, succes: number }> = {};
   commandes.forEach(c => {
     if (!c.commune_livraison) return;
-    const loc = c.commune_livraison.toLowerCase().trim();
+    const loc = c.commune_livraison.toUpperCase().trim();
     if (!communeStats[loc]) communeStats[loc] = { total: 0, succes: 0 };
     if (['livree', 'retour_livreur', 'en_cours_livraison', 'retour_stock', 'retour_client'].includes(c.statut_commande)) {
       communeStats[loc].total += 1;
       if (c.statut_commande === 'livree') communeStats[loc].succes += 1;
     }
   });
-  const badCommunes = Object.entries(communeStats)
-    .filter(([_, stats]) => stats.total >= 5 && (stats.succes / stats.total) < 0.5)
-    .map(([name, stats]) => ({ name, rate: Math.round((stats.succes / stats.total) * 100) }));
+
+  const allCommunes = Object.entries(communeStats)
+    .filter(([_, stats]) => stats.total >= 3)
+    .map(([name, stats]) => ({ name, total: stats.total, succes: stats.succes, rate: Math.round((stats.succes / stats.total) * 100) }))
+    .sort((a, b) => b.rate - a.rate);
+
+  const topCommunes = allCommunes.slice(0, 3);
+  const worstCommunes = [...allCommunes].reverse().filter(c => c.rate < 50).slice(0, 3);
   
-  if (badCommunes.length > 0) {
+  if (worstCommunes.length > 0) {
     alerts.push({
       type: 'warning',
       title: 'Zones de Livraison à Risque',
-      message: `${badCommunes.length} commune(s) ont un taux d'échec de plus de 50% (ex: ${badCommunes[0].name}).`,
-      action: 'Exigez le paiement d\'avance pour ces zones ou arrêtez d\'y livrer.'
+      message: `La commune ${worstCommunes[0].name} a un taux d'échec critique de ${100 - worstCommunes[0].rate}% (Retours fréquents).`,
+      action: 'Exigez le paiement d\'avance pour ces zones, appelez 2 fois avant de sortir le colis, ou arrêtez d\'y livrer.'
     });
   }
 
@@ -215,6 +237,10 @@ export const analyzeBusinessHealth = (
     logistics,
     topProducts,
     worstProducts,
+    topCommunes,
+    worstCommunes,
+    topLivreurs,
+    worstLivreurs,
     alerts,
     advice
   };

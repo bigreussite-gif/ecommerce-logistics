@@ -5,7 +5,7 @@ import { getProduits } from '../services/produitService';
 import { analyzeBusinessHealth, BusinessHealth } from '../services/businessIntelligenceService';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Activity, AlertTriangle, CheckCircle, Info, Lightbulb, Target, Calendar as CalendarIcon, ArrowRight, X } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, Info, Lightbulb, Target, Calendar as CalendarIcon, ArrowRight, X, TrendingDown, TrendingUp } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subDays } from 'date-fns';
 import { Link } from 'react-router-dom';
 
@@ -268,6 +268,79 @@ export const BusinessIntelligence = () => {
               </li>
             )}
           </ul>
+        </div>
+      </div>
+
+      {/* Rankings Section: Communes & Livreurs */}
+      <div style={{ marginTop: '2.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2.5rem' }}>
+        {/* Livreurs Rankings */}
+        <div className="card" style={{ padding: '2rem' }}>
+          <h3 style={{ margin: '0 0 1.5rem 0', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Activity size={20} color="var(--primary)" /> Classement Livreurs
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <div>
+              <h4 style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', textTransform: 'uppercase' }}><TrendingUp size={16}/> Top 3</h4>
+              {healthData.topLivreurs.length === 0 ? <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Pas assez de données</p> : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {healthData.topLivreurs.map((l, i) => (
+                    <li key={i} style={{ background: '#f0fdf4', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>
+                      <strong style={{ display: 'block' }}>{l.name}</strong>
+                      <span style={{ color: '#059669' }}>{l.rate}% succès ({l.succes}/{l.total})</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <h4 style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', textTransform: 'uppercase' }}><TrendingDown size={16}/> Flop 3</h4>
+              {healthData.worstLivreurs.length === 0 ? <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Pas assez de données</p> : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {healthData.worstLivreurs.map((l, i) => (
+                    <li key={i} style={{ background: '#fef2f2', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>
+                      <strong style={{ display: 'block' }}>{l.name}</strong>
+                      <span style={{ color: '#e11d48' }}>{l.rate}% succès ({l.succes}/{l.total})</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Communes Rankings */}
+        <div className="card" style={{ padding: '2rem' }}>
+          <h3 style={{ margin: '0 0 1.5rem 0', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Target size={20} color="var(--primary)" /> Zones de Livraison (Communes)
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <div>
+              <h4 style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', textTransform: 'uppercase' }}><TrendingUp size={16}/> Top 3</h4>
+              {healthData.topCommunes.length === 0 ? <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Pas assez de données</p> : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {healthData.topCommunes.map((c, i) => (
+                    <li key={i} style={{ background: '#f0fdf4', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>
+                      <strong style={{ display: 'block' }}>{c.name}</strong>
+                      <span style={{ color: '#059669' }}>{c.rate}% succès ({c.succes}/{c.total})</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div>
+              <h4 style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', textTransform: 'uppercase' }}><TrendingDown size={16}/> Flop 3</h4>
+              {healthData.worstCommunes.length === 0 ? <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Pas assez de données</p> : (
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {healthData.worstCommunes.map((c, i) => (
+                    <li key={i} style={{ background: '#fef2f2', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>
+                      <strong style={{ display: 'block' }}>{c.name}</strong>
+                      <span style={{ color: '#e11d48' }}>{c.rate}% succès ({c.succes}/{c.total})</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
