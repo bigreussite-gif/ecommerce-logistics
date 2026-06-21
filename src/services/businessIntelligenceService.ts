@@ -120,9 +120,9 @@ export const analyzeBusinessHealth = (
   commandes.forEach(c => {
     if (!c.livreur_id) return;
     if (!livreurStats[c.livreur_id]) livreurStats[c.livreur_id] = { total: 0, succes: 0 };
-    if (['livre', 'retourne', 'en_cours'].includes(c.statut)) {
+    if (['livree', 'retour_livreur', 'en_cours_livraison', 'retour_stock', 'retour_client'].includes(c.statut_commande)) {
       livreurStats[c.livreur_id].total += 1;
-      if (c.statut === 'livre') livreurStats[c.livreur_id].succes += 1;
+      if (c.statut_commande === 'livree') livreurStats[c.livreur_id].succes += 1;
     }
   });
   const badLivreurs = Object.entries(livreurStats)
@@ -141,12 +141,12 @@ export const analyzeBusinessHealth = (
   // Commune Alerts
   const communeStats: Record<string, { total: number, succes: number }> = {};
   commandes.forEach(c => {
-    if (!c.commune) return;
-    const loc = c.commune.toLowerCase().trim();
+    if (!c.commune_livraison) return;
+    const loc = c.commune_livraison.toLowerCase().trim();
     if (!communeStats[loc]) communeStats[loc] = { total: 0, succes: 0 };
-    if (['livre', 'retourne', 'en_cours'].includes(c.statut)) {
+    if (['livree', 'retour_livreur', 'en_cours_livraison', 'retour_stock', 'retour_client'].includes(c.statut_commande)) {
       communeStats[loc].total += 1;
-      if (c.statut === 'livre') communeStats[loc].succes += 1;
+      if (c.statut_commande === 'livree') communeStats[loc].succes += 1;
     }
   });
   const badCommunes = Object.entries(communeStats)
@@ -165,16 +165,16 @@ export const analyzeBusinessHealth = (
   // Dépense Alerts
   const depenseByType: Record<string, number> = {};
   depenses.forEach(d => {
-    depenseByType[d.type] = (depenseByType[d.type] || 0) + d.montant;
+    depenseByType[d.categorie] = (depenseByType[d.categorie] || 0) + d.montant;
   });
-  const ca = financials.chiffre_affaires;
+  const ca = financials.ca_brut;
   if (ca > 0) {
-    Object.entries(depenseByType).forEach(([type, montant]) => {
+    Object.entries(depenseByType).forEach(([categorie, montant]) => {
       if (montant > ca * 0.4) {
         alerts.push({
           type: 'danger',
-          title: `Dépense Explosive: ${type}`,
-          message: `La charge "${type}" représente plus de 40% de votre chiffre d'affaires (${montant.toLocaleString()} FCFA).`,
+          title: `Dépense Explosive: ${categorie}`,
+          message: `La charge "${categorie}" représente plus de 40% de votre chiffre d'affaires (${montant.toLocaleString()} FCFA).`,
           action: 'Réduisez immédiatement cette charge pour retrouver de la rentabilité.'
         });
       }

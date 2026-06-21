@@ -235,7 +235,7 @@ export const BusinessIntelligence = () => {
                     <div>
                       <span style={{ fontWeight: 800, color: '#9f1239', fontSize: '1.1rem' }}>{product.nom}</span>
                       <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: '#be123c', fontWeight: 600 }}>
-                        {product.total_commandes} expéditions • {product.taux_succes_percent}% livrées
+                        {product.ventes_reussies + product.echecs} expéditions • {Math.round((product.ventes_reussies / (product.ventes_reussies + product.echecs || 1)) * 100)}% livrées
                       </p>
                     </div>
                     <div style={{ textAlign: 'right' }}>
