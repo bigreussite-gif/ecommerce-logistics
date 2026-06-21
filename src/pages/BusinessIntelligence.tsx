@@ -107,7 +107,7 @@ export const BusinessIntelligence = () => {
           <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
              <div style={{ height: '100%', width: `${Math.min(100, Math.max(0, healthData.financials.marge_nette_percent))}%`, background: healthData.financials.marge_nette_percent >= 20 ? '#10b981' : '#f59e0b' }}></div>
           </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontWeight: 600 }}>Cible saine : > 20%</p>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontWeight: 600 }}>Cible saine : &gt; 20%</p>
         </div>
 
         {/* Quick KPI: Logistics */}
@@ -119,7 +119,7 @@ export const BusinessIntelligence = () => {
           <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
              <div style={{ height: '100%', width: `${healthData.logistics.taux_succes}%`, background: healthData.logistics.taux_succes >= 80 ? '#10b981' : '#ef4444' }}></div>
           </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontWeight: 600 }}>Cible saine : > 80% (Livraisons réussies)</p>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontWeight: 600 }}>Cible saine : &gt; 80% (Livraisons réussies)</p>
         </div>
       </div>
 
