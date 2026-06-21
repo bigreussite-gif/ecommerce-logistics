@@ -221,8 +221,32 @@ export const BusinessIntelligence = () => {
               })}
             </div>
           )}
-        </div>
 
+          {/* Worst Products Section */}
+          {healthData.worstProducts && healthData.worstProducts.length > 0 && (
+            <div style={{ marginTop: '2rem', borderTop: '2px dashed #e2e8f0', paddingTop: '2rem' }}>
+              <h4 style={{ margin: '0 0 1rem 0', fontWeight: 800, fontSize: '1.2rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <AlertTriangle size={20} color="#ef4444" /> Articles tuant la rentabilité
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {healthData.worstProducts.map((product, idx) => (
+                  <div key={idx} style={{ background: '#fff1f2', border: '1px solid #fecaca', padding: '1.25rem', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                      <span style={{ fontWeight: 800, color: '#9f1239', fontSize: '1.1rem' }}>{product.nom}</span>
+                      <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.85rem', color: '#be123c', fontWeight: 600 }}>
+                        {product.total_commandes} expéditions • {product.taux_succes_percent}% livrées
+                      </p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <span style={{ display: 'block', fontWeight: 900, color: '#e11d48', fontSize: '1.2rem' }}>ROI : {product.roi_percent}%</span>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#f43f5e', textTransform: 'uppercase' }}>À surveiller de près</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
         {/* Advice & Recommendations */}
         <div className="card" style={{ padding: '2.5rem', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
