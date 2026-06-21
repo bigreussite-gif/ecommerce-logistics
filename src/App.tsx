@@ -55,6 +55,7 @@ const Approvisionnement = lazyWithRetry(() => import('./pages/Approvisionnement'
 const Fournisseurs = lazyWithRetry(() => import('./pages/Fournisseurs').then(m => ({ default: m.Fournisseurs })));
 const FournisseurAchats = lazyWithRetry(() => import('./pages/FournisseurAchats').then(m => ({ default: m.FournisseurAchats })));
 const RelanceWhatsApp = lazyWithRetry(() => import('./pages/RelanceWhatsApp').then(m => ({ default: m.RelanceWhatsApp })));
+const BusinessIntelligence = lazyWithRetry(() => import('./pages/BusinessIntelligence').then(m => ({ default: m.BusinessIntelligence })));
 
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '5rem' }}>
@@ -182,6 +183,11 @@ const AppRoutes = () => {
         {/* Financial Report */}
         <Route path="rapport-financier" element={
           <ProtectedRoute requiredPermission="FINANCE"><FinancialReport /></ProtectedRoute>
+        } />
+
+        {/* Business Intelligence / Lecture Business */}
+        <Route path="lecture-business" element={
+          <ProtectedRoute requiredPermission="ADMIN"><BusinessIntelligence /></ProtectedRoute>
         } />
 
         {/* Historique et Impression */}
