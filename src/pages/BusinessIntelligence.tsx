@@ -5,7 +5,7 @@ import { getProduits } from '../services/produitService';
 import { analyzeBusinessHealth, BusinessHealth } from '../services/businessIntelligenceService';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Activity, AlertTriangle, CheckCircle, Info, Lightbulb, Target, Calendar as CalendarIcon, ArrowRight } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, Info, Lightbulb, Target, Calendar as CalendarIcon, ArrowRight, X } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subDays } from 'date-fns';
 import { Link } from 'react-router-dom';
 
@@ -14,6 +14,7 @@ export const BusinessIntelligence = () => {
   
   const [loading, setLoading] = useState(true);
   const [healthData, setHealthData] = useState<BusinessHealth | null>(null);
+  const [selectedAlert, setSelectedAlert] = useState<any>(null);
 
   const [period, setPeriod] = useState<'month' | '30days' | 'custom'>('month');
   const [customRange, setCustomRange] = useState({
@@ -211,9 +212,9 @@ export const BusinessIntelligence = () => {
                       <h4 style={{ margin: '0 0 0.5rem 0', fontWeight: 800, color: '#0f172a', fontSize: '1.1rem' }}>{alert.title}</h4>
                       <p style={{ margin: '0 0 0.75rem 0', color: '#334155', lineHeight: 1.5 }}>{alert.message}</p>
                       {alert.action && (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700, color: iconColor, border: `1px solid ${border}` }}>
-                          <Lightbulb size={16} /> Action requise : {alert.action}
-                        </div>
+                        <button onClick={() => setSelectedAlert(alert)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: 700, color: iconColor, border: `1px solid ${border}`, cursor: 'pointer', transition: 'all 0.2s' }}>
+                          <Lightbulb size={16} /> Voir l'orientation détaillée
+                        </button>
                       )}
                     </div>
                   </div>
@@ -269,6 +270,31 @@ export const BusinessIntelligence = () => {
           </ul>
         </div>
       </div>
+
+      {/* Modal Popup for Alerts */}
+      {selectedAlert && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', animation: 'fadeIn 0.2s' }}>
+          <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', maxWidth: '500px', width: '100%', position: 'relative', animation: 'slideUp 0.3s' }}>
+            <button onClick={() => setSelectedAlert(null)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'transparent', border: 'none', cursor: 'pointer' }}>
+              <X size={24} color="var(--text-muted)" />
+            </button>
+            <h3 style={{ margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: selectedAlert.type === 'danger' ? '#ef4444' : (selectedAlert.type === 'warning' ? '#f59e0b' : '#10b981') }}>
+              {selectedAlert.type === 'danger' ? <AlertTriangle size={24}/> : <Info size={24} />}
+              {selectedAlert.title}
+            </h3>
+            <p style={{ lineHeight: 1.6, color: '#334155', fontSize: '1.1rem' }}>{selectedAlert.message}</p>
+            {selectedAlert.action && (
+              <div style={{ marginTop: '1.5rem', padding: '1.2rem', background: '#f8fafc', borderRadius: '12px', borderLeft: '4px solid var(--primary)', border: '1px solid #e2e8f0' }}>
+                <strong style={{ color: 'var(--primary)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>🎯 Orientation Stratégique :</strong><br/>
+                <span style={{ display: 'inline-block', marginTop: '0.5rem', fontWeight: 600, color: '#0f172a' }}>{selectedAlert.action}</span>
+              </div>
+            )}
+            <div style={{ marginTop: '2rem', textAlign: 'right' }}>
+              <button onClick={() => setSelectedAlert(null)} className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', borderRadius: '10px' }}>Compris</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

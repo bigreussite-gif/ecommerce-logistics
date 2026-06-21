@@ -115,6 +115,72 @@ export const analyzeBusinessHealth = (
     advice.push(`Le produit "${worstProducts[0].nom}" vous fait perdre de l'argent (ROI: ${worstProducts[0].roi_percent}%). Envisagez de le retirer.`);
   }
 
+  // Livreur Alerts
+  const livreurStats: Record<string, { total: number, succes: number }> = {};
+  commandes.forEach(c => {
+    if (!c.livreur_id) return;
+    if (!livreurStats[c.livreur_id]) livreurStats[c.livreur_id] = { total: 0, succes: 0 };
+    if (['livre', 'retourne', 'en_cours'].includes(c.statut)) {
+      livreurStats[c.livreur_id].total += 1;
+      if (c.statut === 'livre') livreurStats[c.livreur_id].succes += 1;
+    }
+  });
+  const badLivreurs = Object.entries(livreurStats)
+    .filter(([_, stats]) => stats.total >= 5 && (stats.succes / stats.total) < 0.6)
+    .map(([id, stats]) => ({ id, rate: Math.round((stats.succes / stats.total) * 100) }));
+  
+  if (badLivreurs.length > 0) {
+    alerts.push({
+      type: 'warning',
+      title: 'Livreurs Inefficaces',
+      message: `${badLivreurs.length} livreur(s) ont un taux de réussite inférieur à 60%. Cela tue vos marges avec les retours.`,
+      action: 'Vérifiez leurs performances et envisagez de les remplacer.'
+    });
+  }
+
+  // Commune Alerts
+  const communeStats: Record<string, { total: number, succes: number }> = {};
+  commandes.forEach(c => {
+    if (!c.commune) return;
+    const loc = c.commune.toLowerCase().trim();
+    if (!communeStats[loc]) communeStats[loc] = { total: 0, succes: 0 };
+    if (['livre', 'retourne', 'en_cours'].includes(c.statut)) {
+      communeStats[loc].total += 1;
+      if (c.statut === 'livre') communeStats[loc].succes += 1;
+    }
+  });
+  const badCommunes = Object.entries(communeStats)
+    .filter(([_, stats]) => stats.total >= 5 && (stats.succes / stats.total) < 0.5)
+    .map(([name, stats]) => ({ name, rate: Math.round((stats.succes / stats.total) * 100) }));
+  
+  if (badCommunes.length > 0) {
+    alerts.push({
+      type: 'warning',
+      title: 'Zones de Livraison à Risque',
+      message: `${badCommunes.length} commune(s) ont un taux d'échec de plus de 50% (ex: ${badCommunes[0].name}).`,
+      action: 'Exigez le paiement d\'avance pour ces zones ou arrêtez d\'y livrer.'
+    });
+  }
+
+  // Dépense Alerts
+  const depenseByType: Record<string, number> = {};
+  depenses.forEach(d => {
+    depenseByType[d.type] = (depenseByType[d.type] || 0) + d.montant;
+  });
+  const ca = financials.chiffre_affaires;
+  if (ca > 0) {
+    Object.entries(depenseByType).forEach(([type, montant]) => {
+      if (montant > ca * 0.4) {
+        alerts.push({
+          type: 'danger',
+          title: `Dépense Explosive: ${type}`,
+          message: `La charge "${type}" représente plus de 40% de votre chiffre d'affaires (${montant.toLocaleString()} FCFA).`,
+          action: 'Réduisez immédiatement cette charge pour retrouver de la rentabilité.'
+        });
+      }
+    });
+  }
+
   // 4. Calculate Global Health Score (0 - 100)
   // Weighting: 
   // - Margin (Target 30%) -> 40 points
