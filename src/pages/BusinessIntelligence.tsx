@@ -289,6 +289,7 @@ export const BusinessIntelligence = () => {
                     <li key={i} style={{ background: '#f0fdf4', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>
                       <strong style={{ display: 'block' }}>{l.name}</strong>
                       <span style={{ color: '#059669' }}>{l.rate}% succès ({l.succes}/{l.total})</span>
+                      <span style={{ display: 'block', marginTop: '0.2rem', fontWeight: 600, color: '#047857' }}>{l.cash.toLocaleString()} FCFA générés</span>
                     </li>
                   ))}
                 </ul>
@@ -302,6 +303,7 @@ export const BusinessIntelligence = () => {
                     <li key={i} style={{ background: '#fef2f2', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>
                       <strong style={{ display: 'block' }}>{l.name}</strong>
                       <span style={{ color: '#e11d48' }}>{l.rate}% succès ({l.succes}/{l.total})</span>
+                      <span style={{ display: 'block', marginTop: '0.2rem', fontWeight: 600, color: '#be123c' }}>{l.cash.toLocaleString()} FCFA générés</span>
                     </li>
                   ))}
                 </ul>
@@ -324,6 +326,7 @@ export const BusinessIntelligence = () => {
                     <li key={i} style={{ background: '#f0fdf4', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>
                       <strong style={{ display: 'block' }}>{c.name}</strong>
                       <span style={{ color: '#059669' }}>{c.rate}% succès ({c.succes}/{c.total})</span>
+                      <span style={{ display: 'block', marginTop: '0.2rem', fontWeight: 600, color: '#047857' }}>{c.cash.toLocaleString()} FCFA générés</span>
                     </li>
                   ))}
                 </ul>
@@ -337,6 +340,7 @@ export const BusinessIntelligence = () => {
                     <li key={i} style={{ background: '#fef2f2', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem' }}>
                       <strong style={{ display: 'block' }}>{c.name}</strong>
                       <span style={{ color: '#e11d48' }}>{c.rate}% succès ({c.succes}/{c.total})</span>
+                      <span style={{ display: 'block', marginTop: '0.2rem', fontWeight: 600, color: '#be123c' }}>{c.cash.toLocaleString()} FCFA générés</span>
                     </li>
                   ))}
                 </ul>

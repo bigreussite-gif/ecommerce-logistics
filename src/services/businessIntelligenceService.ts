@@ -21,6 +21,7 @@ export interface EntityPerformance {
   total: number;
   succes: number;
   rate: number;
+  cash: number;
 }
 
 export interface BusinessHealth {
@@ -128,23 +129,26 @@ export const analyzeBusinessHealth = (
   }
 
   // Livreur Alerts & Stats
-  const livreurStats: Record<string, { total: number, succes: number }> = {};
+  const livreurStats: Record<string, { total: number, succes: number, cash: number }> = {};
   commandes.forEach(c => {
     if (!c.livreur_id) return;
     const user = users.find(u => u.id === c.livreur_id);
     const name = user ? user.nom_complet : c.livreur_id;
     const status = c.statut_commande?.toLowerCase() || '';
-    if (!livreurStats[name]) livreurStats[name] = { total: 0, succes: 0 };
+    if (!livreurStats[name]) livreurStats[name] = { total: 0, succes: 0, cash: 0 };
     if (['livree', 'terminee', 'retour_livreur', 'en_cours_livraison', 'retour_stock', 'retour_client'].includes(status)) {
       livreurStats[name].total += 1;
-      if (status === 'livree' || status === 'terminee') livreurStats[name].succes += 1;
+      if (status === 'livree' || status === 'terminee') {
+        livreurStats[name].succes += 1;
+        livreurStats[name].cash += (c.prix_total || 0);
+      }
     }
   });
 
   const allLivreurs = Object.entries(livreurStats)
     .filter(([_, stats]) => stats.total >= 3)
-    .map(([name, stats]) => ({ name, total: stats.total, succes: stats.succes, rate: Math.round((stats.succes / stats.total) * 100) }))
-    .sort((a, b) => b.rate - a.rate);
+    .map(([name, stats]) => ({ name, total: stats.total, succes: stats.succes, rate: Math.round((stats.succes / stats.total) * 100), cash: stats.cash }))
+    .sort((a, b) => b.cash - a.cash);
 
   const topLivreurs = allLivreurs.filter(l => l.rate >= 70).slice(0, 3);
   const worstLivreurs = [...allLivreurs].reverse().filter(l => l.rate < 60).slice(0, 3);
@@ -159,22 +163,25 @@ export const analyzeBusinessHealth = (
   }
 
   // Commune Alerts & Stats
-  const communeStats: Record<string, { total: number, succes: number }> = {};
+  const communeStats: Record<string, { total: number, succes: number, cash: number }> = {};
   commandes.forEach(c => {
     if (!c.commune_livraison) return;
     const loc = c.commune_livraison.toUpperCase().trim();
     const status = c.statut_commande?.toLowerCase() || '';
-    if (!communeStats[loc]) communeStats[loc] = { total: 0, succes: 0 };
+    if (!communeStats[loc]) communeStats[loc] = { total: 0, succes: 0, cash: 0 };
     if (['livree', 'terminee', 'retour_livreur', 'en_cours_livraison', 'retour_stock', 'retour_client'].includes(status)) {
       communeStats[loc].total += 1;
-      if (status === 'livree' || status === 'terminee') communeStats[loc].succes += 1;
+      if (status === 'livree' || status === 'terminee') {
+        communeStats[loc].succes += 1;
+        communeStats[loc].cash += (c.prix_total || 0);
+      }
     }
   });
 
   const allCommunes = Object.entries(communeStats)
     .filter(([_, stats]) => stats.total >= 3)
-    .map(([name, stats]) => ({ name, total: stats.total, succes: stats.succes, rate: Math.round((stats.succes / stats.total) * 100) }))
-    .sort((a, b) => b.rate - a.rate);
+    .map(([name, stats]) => ({ name, total: stats.total, succes: stats.succes, rate: Math.round((stats.succes / stats.total) * 100), cash: stats.cash }))
+    .sort((a, b) => b.cash - a.cash);
 
   const topCommunes = allCommunes.slice(0, 3);
   const worstCommunes = [...allCommunes].reverse().filter(c => c.rate < 50).slice(0, 3);
