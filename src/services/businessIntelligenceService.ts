@@ -30,7 +30,7 @@ export interface BusinessHealth {
 export const analyzeBusinessHealth = (
   commandes: Commande[], 
   depenses: Depense[], 
-  produits: Produit[]
+  _produits: Produit[]
 ): BusinessHealth => {
   // 1. Calculate base metrics
   const financials = calculateProfitMetrics(commandes as any, depenses);

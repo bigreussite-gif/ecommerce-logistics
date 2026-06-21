@@ -5,7 +5,7 @@ import { getProduits } from '../services/produitService';
 import { analyzeBusinessHealth, BusinessHealth } from '../services/businessIntelligenceService';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Activity, AlertTriangle, CheckCircle, Info, Lightbulb, TrendingUp, TrendingDown, Target } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, Info, Lightbulb, Target } from 'lucide-react';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 export const BusinessIntelligence = () => {
@@ -142,7 +142,6 @@ export const BusinessIntelligence = () => {
               {healthData.alerts.map((alert, idx) => {
                 const isDanger = alert.type === 'danger';
                 const isWarning = alert.type === 'warning';
-                const isSuccess = alert.type === 'success';
                 
                 const bg = isDanger ? '#fef2f2' : (isWarning ? '#fffbeb' : '#f0fdf4');
                 const border = isDanger ? '#fecaca' : (isWarning ? '#fde68a' : '#bbf7d0');
