@@ -1,4 +1,4 @@
-import { Commande, Depense, Produit } from '../types';
+import { Commande, Depense, Produit, User } from '../types';
 import { 
   calculateProfitMetrics, 
   calculateLogisticalStats, 
@@ -41,7 +41,8 @@ export interface BusinessHealth {
 export const analyzeBusinessHealth = (
   commandes: Commande[], 
   depenses: Depense[], 
-  _produits: Produit[]
+  _produits: Produit[],
+  users: User[] = []
 ): BusinessHealth => {
   // 1. Calculate base metrics
   const financials = calculateProfitMetrics(commandes as any, depenses);
@@ -130,11 +131,13 @@ export const analyzeBusinessHealth = (
   const livreurStats: Record<string, { total: number, succes: number }> = {};
   commandes.forEach(c => {
     if (!c.livreur_id) return;
-    const name = c.livreur_id; // Using ID as name if real name not populated
+    const user = users.find(u => u.id === c.livreur_id);
+    const name = user ? user.nom_complet : c.livreur_id;
+    const status = c.statut_commande?.toLowerCase() || '';
     if (!livreurStats[name]) livreurStats[name] = { total: 0, succes: 0 };
-    if (['livree', 'retour_livreur', 'en_cours_livraison', 'retour_stock', 'retour_client'].includes(c.statut_commande)) {
+    if (['livree', 'terminee', 'retour_livreur', 'en_cours_livraison', 'retour_stock', 'retour_client'].includes(status)) {
       livreurStats[name].total += 1;
-      if (c.statut_commande === 'livree') livreurStats[name].succes += 1;
+      if (status === 'livree' || status === 'terminee') livreurStats[name].succes += 1;
     }
   });
 
@@ -160,10 +163,11 @@ export const analyzeBusinessHealth = (
   commandes.forEach(c => {
     if (!c.commune_livraison) return;
     const loc = c.commune_livraison.toUpperCase().trim();
+    const status = c.statut_commande?.toLowerCase() || '';
     if (!communeStats[loc]) communeStats[loc] = { total: 0, succes: 0 };
-    if (['livree', 'retour_livreur', 'en_cours_livraison', 'retour_stock', 'retour_client'].includes(c.statut_commande)) {
+    if (['livree', 'terminee', 'retour_livreur', 'en_cours_livraison', 'retour_stock', 'retour_client'].includes(status)) {
       communeStats[loc].total += 1;
-      if (c.statut_commande === 'livree') communeStats[loc].succes += 1;
+      if (status === 'livree' || status === 'terminee') communeStats[loc].succes += 1;
     }
   });
 

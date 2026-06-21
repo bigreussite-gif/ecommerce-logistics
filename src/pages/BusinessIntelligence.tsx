@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { getFinancialData } from '../services/commandeService';
 import { getDepenses } from '../services/financialService';
 import { getProduits } from '../services/produitService';
+import { getAdminUsers } from '../services/adminService';
 import { analyzeBusinessHealth, BusinessHealth } from '../services/businessIntelligenceService';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
@@ -37,13 +38,14 @@ export const BusinessIntelligence = () => {
     }
 
     try {
-      const [orderData, depenseData, productData] = await Promise.all([
+      const [orderData, depenseData, productData, usersData] = await Promise.all([
         getFinancialData(start, end),
         getDepenses().catch(() => []),
-        getProduits().catch(() => [])
+        getProduits().catch(() => []),
+        getAdminUsers().catch(() => [])
       ]);
       
-      const filteredExpenses = (depenseData || []).filter(d => {
+      const filteredExpenses = (depenseData || []).filter((d: any) => {
         const dDate = new Date(d.date);
         const rangeStart = new Date(start);
         rangeStart.setHours(0,0,0,0);
@@ -52,7 +54,7 @@ export const BusinessIntelligence = () => {
         return dDate >= rangeStart && dDate <= rangeEnd;
       });
 
-      const analysis = analyzeBusinessHealth(orderData || [], filteredExpenses, productData || []);
+      const analysis = analyzeBusinessHealth(orderData || [], filteredExpenses, productData || [], usersData || []);
       setHealthData(analysis);
     } catch (error) {
       console.error(error);
