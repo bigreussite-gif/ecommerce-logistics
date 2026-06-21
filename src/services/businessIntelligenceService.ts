@@ -140,7 +140,7 @@ export const analyzeBusinessHealth = (
       livreurStats[name].total += 1;
       if (status === 'livree' || status === 'terminee') {
         livreurStats[name].succes += 1;
-        livreurStats[name].cash += (c.prix_total || 0);
+        livreurStats[name].cash += (c.montant_total || 0);
       }
     }
   });
@@ -173,7 +173,7 @@ export const analyzeBusinessHealth = (
       communeStats[loc].total += 1;
       if (status === 'livree' || status === 'terminee') {
         communeStats[loc].succes += 1;
-        communeStats[loc].cash += (c.prix_total || 0);
+        communeStats[loc].cash += (c.montant_total || 0);
       }
     }
   });
