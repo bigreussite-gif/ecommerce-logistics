@@ -19,6 +19,7 @@ export default defineConfig({
             if (id.includes('recharts')) return 'charts';
             if (id.includes('lucide-react')) return 'icons';
             if (id.includes('date-fns')) return 'date-utils';
+            if (id.includes('@supabase')) return 'supabase';
             return 'vendor';
           }
         }

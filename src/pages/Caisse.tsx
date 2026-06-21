@@ -1,4 +1,4 @@
-import { useState, useEffect, Fragment, useMemo, useCallback } from 'react';
+import { useState, useEffect, Fragment, useMemo, useCallback, useDeferredValue } from 'react';
 import { getAvailableLivreurs, reassignCommandeToFeuille } from '../services/logistiqueService';
 import { getFeuillesEnCours, getFeuillesDuJour, getCommandesConcernees, processCaisse, CaisseResolution } from '../services/caisseService';
 import { insforge } from '../lib/insforge';
@@ -34,6 +34,7 @@ export const Caisse = () => {
   const [extraSearch, setExtraSearch] = useState('');
   const [selectedTab, setSelectedTab] = useState<'toutes' | 'livrees' | 'a_rappeler' | 'retours' | 'transferes'>('toutes');
   const [orderSearchTerm, setOrderSearchTerm] = useState('');
+  const deferredOrderSearchTerm = useDeferredValue(orderSearchTerm);
   const [modeCalculEcart, setModeCalculEcart] = useState<'brut' | 'sans_livraison' | 'net'>('net');
 
   // Form State
@@ -363,7 +364,7 @@ export const Caisse = () => {
 
   const filteredCommandes = useMemo(() => {
     return commandes.filter(c => {
-      const searchLower = orderSearchTerm.toLowerCase().trim();
+      const searchLower = deferredOrderSearchTerm.toLowerCase().trim();
       const matchesSearch = !searchLower ||
         c.id.toLowerCase().includes(searchLower) ||
         (c.nom_client || '').toLowerCase().includes(searchLower) ||
@@ -380,7 +381,7 @@ export const Caisse = () => {
       if (selectedTab === 'transferes') return status === 'transfere';
       return true;
     });
-  }, [commandes, resolutions, selectedTab, orderSearchTerm]);
+  }, [commandes, resolutions, selectedTab, deferredOrderSearchTerm]);
 
   const toggleInstallation = (orderId: string, lineId: string) => {
     const res = resolutions[orderId];

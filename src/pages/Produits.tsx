@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import { Plus, Search, Package, AlertTriangle, TrendingUp, Tag, Download, Activity, X, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { ProduitList } from '../components/produits/ProduitList';
@@ -16,6 +16,7 @@ export const Produits = () => {
   const [produits, setProduits] = useState<Produit[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
 
@@ -61,8 +62,8 @@ export const Produits = () => {
 
   const filteredProduits = produits.filter(p => {
     const matchesSearch =
-      p.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.id.toLowerCase().includes(searchTerm.toLowerCase());
+      p.nom.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
+      p.id.toLowerCase().includes(deferredSearchTerm.toLowerCase());
     const matchesCategory = selectedCategory ? p.categorie_id === selectedCategory : true;
     return matchesSearch && matchesCategory;
   });

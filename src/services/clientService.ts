@@ -1,3 +1,4 @@
+import { appCache } from './cacheService';
 import { Client, Commande } from '../types';
 import { insforge } from '../lib/insforge';
 
@@ -89,6 +90,7 @@ export const createClient = async (client: Omit<Client, 'id'>): Promise<string> 
 };
 
 export const updateClient = async (id: string, updates: Partial<Client>): Promise<void> => {
+  appCache.invalidatePrefix('clients_');
   const normalizedUpdates = { ...updates };
   if (updates.telephone) {
     normalizedUpdates.telephone = normalizePhone(updates.telephone);
@@ -157,7 +159,13 @@ export interface ClientFidelityStats {
   segment: 'Diamant 💎' | 'Fidèle ✅' | 'À relancer ⚠️' | 'Nouveau 🆕';
 }
 
-export const getClientsWithIntelligence = async (): Promise<(Client & ClientFidelityStats & { identities: string[], locations: string[] })[]> => {
+export const getClientsWithIntelligence = async (useCache = true): Promise<(Client & ClientFidelityStats & { identities: string[], locations: string[] })[]> => {
+  const cacheKey = 'clients_intelligence_all';
+  if (useCache) {
+    const cached = appCache.get(cacheKey);
+    if (cached) return cached as any;
+  }
+
   // 1. Fetch only essential columns for performance
   const [clientsResult, ordersResult] = await Promise.all([
     insforge.database.from('clients').select('id, nom_complet, telephone, telephone_secondaire, commune, quartier, adresse'),

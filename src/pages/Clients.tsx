@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useDeferredValue } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Users, Search, 
@@ -11,6 +11,11 @@ import type { Client, Commande } from '../types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useToast } from '../contexts/ToastContext';
+import { 
+  PieChart as RechartsPieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer
+} from 'recharts';
+import { AlertTriangle, Bell, Star, PieChart } from 'lucide-react';
+
 
 export const Clients = () => {
   const { showToast } = useToast();
@@ -18,11 +23,13 @@ export const Clients = () => {
   const [clients, setClients] = useState<(Client & ClientFidelityStats & { identities: string[], locations: string[] })[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [segmentFilter, setSegmentFilter] = useState('All');
   const [selectedClient, setSelectedClient] = useState<{ client: Client & ClientFidelityStats & { identities: string[], locations: string[] }, commandes: Commande[] } | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Client>>({});
+  const [sortConfig, setSortConfig] = useState<{key: string, direction: 'asc'|'desc'} | null>(null);
 
   useEffect(() => {
     fetchClients();
@@ -99,18 +106,93 @@ export const Clients = () => {
 
   const filteredClients = useMemo(() => {
     return clients.filter(c => {
-      const matchesSearch = c.identities.some(id => id.toLowerCase().includes(searchTerm.toLowerCase())) || 
-                           c.telephone.includes(searchTerm);
+      const matchesSearch = c.identities.some(id => id.toLowerCase().includes(deferredSearchTerm.toLowerCase())) || 
+                           c.telephone.includes(deferredSearchTerm);
       const matchesSegment = segmentFilter === 'All' || c.segment.includes(segmentFilter);
       return matchesSearch && matchesSegment;
     });
-  }, [clients, searchTerm, segmentFilter]);
+  }, [clients, deferredSearchTerm, segmentFilter]);
+
+  const sortedClients = useMemo(() => {
+    let sortable = [...filteredClients];
+    if (sortConfig !== null) {
+      sortable.sort((a, b) => {
+        let aVal: any = a[sortConfig.key as keyof typeof a];
+        let bVal: any = b[sortConfig.key as keyof typeof b];
+        
+        if (sortConfig.key === 'dernier_achat') {
+          aVal = a.derniere_commande ? new Date(a.derniere_commande).getTime() : 0;
+          bVal = b.derniere_commande ? new Date(b.derniere_commande).getTime() : 0;
+        }
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortable;
+  }, [filteredClients, sortConfig]);
+
+  const requestSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'desc';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'desc') {
+      direction = 'asc';
+    }
+    setSortConfig({ key, direction });
+  };
+
 
   const stats = useMemo(() => {
     const totalRevenue = clients.reduce((acc, c) => acc + c.total_encaisse, 0);
     const vips = clients.filter(c => c.segment === 'Diamant 💎').length;
     const loyal = clients.filter(c => c.segment === 'Fidèle ✅').length;
     return { totalRevenue, vips, loyal };
+  }, [clients]);
+
+
+  const chartData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    clients.forEach(c => {
+      counts[c.segment] = (counts[c.segment] || 0) + 1;
+    });
+    const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+    return Object.keys(counts).map((key, index) => ({
+      name: key,
+      value: counts[key],
+      color: COLORS[index % COLORS.length]
+    }));
+  }, [clients]);
+
+  const smartAlerts = useMemo(() => {
+    const alerts = [];
+    const inactiveVips = clients.filter(c => 
+      c.segment.includes('Diamant') && 
+      c.derniere_commande && 
+      (new Date().getTime() - new Date(c.derniere_commande).getTime()) > 60 * 24 * 60 * 60 * 1000
+    );
+    if (inactiveVips.length > 0) {
+      alerts.push({
+        type: 'danger',
+        title: `${inactiveVips.length} Clients VIP Inactifs`,
+        message: "Ces clients n'ont rien acheté depuis plus de 60 jours.",
+        icon: <AlertTriangle size={20} color="#ef4444" />
+      });
+    }
+
+    const recentNew = clients.filter(c => 
+      c.segment.includes('Nouveau') && 
+      c.derniere_commande &&
+      (new Date().getTime() - new Date(c.derniere_commande).getTime()) < 7 * 24 * 60 * 60 * 1000
+    );
+    if (recentNew.length > 0) {
+      alerts.push({
+        type: 'success',
+        title: `${recentNew.length} Nouveaux Clients cette semaine`,
+        message: 'Accueillez-les chaleureusement pour les fidéliser !',
+        icon: <Star size={20} color="#10b981" />
+      });
+    }
+    return alerts;
   }, [clients]);
 
   const exportToCSV = () => {
@@ -180,6 +262,70 @@ export const Clients = () => {
           </div>
         </section>
 
+        
+        {/* CRM DASHBOARD - CHARTS & ALERTS */}
+        <section style={{ marginBottom: '3rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '1.5rem' }}>
+          
+          <div className="card" style={{ padding: '1.5rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ margin: '0 0 1rem 0', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <PieChart size={20} color="var(--primary)" /> Segments Clients
+            </h3>
+            <div style={{ height: '220px', width: '100%' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsPieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip />
+                </RechartsPieChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center' }}>
+              {chartData.map((entry, index) => (
+                <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: 600 }}>
+                  <div style={{ width: '12px', height: '12px', borderRadius: '3px', background: entry.color }}></div>
+                  {entry.name} ({entry.value})
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="card" style={{ padding: '1.5rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ margin: '0 0 1rem 0', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Bell size={20} color="#f59e0b" /> Alertes Intelligentes
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {smartAlerts.length === 0 ? (
+                 <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Aucune alerte pour le moment.</div>
+              ) : smartAlerts.map((alert, i) => (
+                <div key={i} style={{ 
+                  padding: '1rem', 
+                  borderRadius: '16px', 
+                  background: alert.type === 'danger' ? '#fef2f2' : '#f0fdf4',
+                  border: `1px solid ${alert.type === 'danger' ? '#fecaca' : '#bbf7d0'}`,
+                  display: 'flex', gap: '1rem', alignItems: 'flex-start'
+                }}>
+                  <div style={{ marginTop: '0.2rem' }}>{alert.icon}</div>
+                  <div>
+                    <h4 style={{ margin: '0 0 0.25rem 0', fontWeight: 800, color: '#0f172a' }}>{alert.title}</h4>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569' }}>{alert.message}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* ZONE C: FILTRES */}
         <section style={{ marginBottom: '1.5rem' }}>
           <div className="card" style={{ padding: '1.25rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
@@ -230,11 +376,11 @@ export const Clients = () => {
               </colgroup>
               <thead className="mobile-hide" style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                 <tr style={{ background: '#f8fafc' }}>
-                  <th style={{ textAlign: 'left', padding: '1.25rem 1.5rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Client</th>
+                  <th onClick={() => requestSort('nom_complet')} style={{ cursor: 'pointer', textAlign: 'left', padding: '1.25rem 1.5rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Client {sortConfig?.key === 'nom_complet' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                   <th style={{ textAlign: 'left', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Segment</th>
-                  <th style={{ textAlign: 'center', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Achats</th>
-                  <th style={{ textAlign: 'left', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Dernière Visite</th>
-                  <th style={{ textAlign: 'right', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Total Encaissé</th>
+                  <th onClick={() => requestSort('total_commandes')} style={{ cursor: 'pointer', textAlign: 'center', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Achats {sortConfig?.key === 'total_commandes' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                  <th onClick={() => requestSort('dernier_achat')} style={{ cursor: 'pointer', textAlign: 'left', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Dernière Visite {sortConfig?.key === 'dernier_achat' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                  <th onClick={() => requestSort('total_encaisse')} style={{ cursor: 'pointer', textAlign: 'right', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Total Encaissé {sortConfig?.key === 'total_encaisse' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                   <th style={{ textAlign: 'right', padding: '1.25rem 1.5rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Action</th>
                 </tr>
               </thead>
@@ -250,7 +396,7 @@ export const Clients = () => {
                   <tr><td colSpan={6} style={{ textAlign: 'center', padding: '6rem' }}>
                     <p style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-muted)' }}>Aucun client trouvé.</p>
                   </td></tr>
-                ) : filteredClients.map((client) => (
+                ) : sortedClients.map((client) => (
                   <tr key={client.id} className="hover-row" onClick={() => openClientDetails(client)} style={{ cursor: 'pointer', transition: 'background 0.2s' }}>
                     <td data-label="Client" style={{ padding: '1.25rem 1.5rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -349,7 +495,32 @@ export const Clients = () => {
 
             {/* Modal Content */}
             <div style={{ padding: '2rem', maxHeight: '65vh', overflowY: 'auto' }}>
+              
+              {/* Jauge de Fidélité */}
+              <div style={{ marginBottom: '2.5rem', background: 'linear-gradient(90deg, #f8fafc, #f1f5f9)', padding: '1.5rem', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h4 style={{ margin: 0, fontWeight: 900, color: '#1e293b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <TrendingUp size={18} color="var(--primary)" /> Progression VIP
+                  </h4>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)' }}>{Math.min(100, Math.round((selectedClient.client.total_commandes / 10) * 100))}% vers Diamant</span>
+                </div>
+                <div style={{ height: '12px', background: '#e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
+                  <div style={{ 
+                    height: '100%', 
+                    background: 'linear-gradient(90deg, var(--primary), #8b5cf6)', 
+                    width: `${Math.min(100, (selectedClient.client.total_commandes / 10) * 100)}%`,
+                    transition: 'width 1s ease-in-out'
+                  }}></div>
+                </div>
+                <p style={{ margin: '0.75rem 0 0 0', fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
+                  {selectedClient.client.total_commandes >= 10 
+                    ? 'Ce client a atteint le statut Diamant ! 🎉'
+                    : `Encore ${10 - selectedClient.client.total_commandes} commandes pour débloquer le statut Diamant.`}
+                </p>
+              </div>
+
               {/* KPIs */}
+
               <div className="stats-grid-modal" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '3.5rem' }}>
                 <div style={{ padding: '1.5rem', borderRadius: '24px', background: '#f8fafc', border: '1px solid #f1f5f9' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>

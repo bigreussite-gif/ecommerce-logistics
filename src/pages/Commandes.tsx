@@ -23,6 +23,7 @@ export const Commandes = () => {
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [selectedCommandeId, setSelectedCommandeId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  
   const [activeTab, setActiveTab] = useState<'all' | 'to_process' | 'in_delivery' | 'done' | 'failed' | 'annulee' | 'retours'>('to_process');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [editingCommande, setEditingCommande] = useState<Commande | null>(null);
