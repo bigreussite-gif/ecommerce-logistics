@@ -5,8 +5,9 @@ import { getProduits } from '../services/produitService';
 import { analyzeBusinessHealth, BusinessHealth } from '../services/businessIntelligenceService';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Activity, AlertTriangle, CheckCircle, Info, Lightbulb, Target } from 'lucide-react';
-import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { Activity, AlertTriangle, CheckCircle, Info, Lightbulb, Target, Calendar as CalendarIcon, ArrowRight } from 'lucide-react';
+import { format, startOfMonth, endOfMonth, subDays } from 'date-fns';
+import { Link } from 'react-router-dom';
 
 export const BusinessIntelligence = () => {
   const { hasPermission } = useAuth();
@@ -14,11 +15,25 @@ export const BusinessIntelligence = () => {
   const [loading, setLoading] = useState(true);
   const [healthData, setHealthData] = useState<BusinessHealth | null>(null);
 
+  const [period, setPeriod] = useState<'month' | '30days' | 'custom'>('month');
+  const [customRange, setCustomRange] = useState({
+    start: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
+    end: format(new Date(), 'yyyy-MM-dd')
+  });
+
   const fetchData = async () => {
     setLoading(true);
-    // Focus on current month for active monitoring
-    const start = format(startOfMonth(new Date()), 'yyyy-MM-dd');
-    const end = format(endOfMonth(new Date()), 'yyyy-MM-dd');
+    let start, end;
+    if (period === 'month') {
+      start = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+      end = format(endOfMonth(new Date()), 'yyyy-MM-dd');
+    } else if (period === '30days') {
+      start = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+      end = format(new Date(), 'yyyy-MM-dd');
+    } else {
+      start = customRange.start;
+      end = customRange.end;
+    }
 
     try {
       const [orderData, depenseData, productData] = await Promise.all([
@@ -47,7 +62,7 @@ export const BusinessIntelligence = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [period, customRange]);
 
   if (!hasPermission('ADMIN')) {
     return <Navigate to="/" replace />;
@@ -74,13 +89,43 @@ export const BusinessIntelligence = () => {
 
   return (
     <div style={{ animation: 'pageEnter 0.6s ease' }}>
-      <div style={{ marginBottom: '2.5rem' }}>
-        <h1 className="text-premium" style={{ fontSize: '2.4rem', fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <Activity size={36} color="var(--primary)" strokeWidth={3} />
-          Lecture du Business
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginTop: '0.4rem', fontWeight: 600 }}>Diagnostic IA et état de santé réel de votre entreprise (Mois en cours).</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', flexWrap: 'wrap', gap: '1.5rem' }}>
+        <div>
+          <h1 className="text-premium" style={{ fontSize: '2.4rem', fontWeight: 900, margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <Activity size={36} color="var(--primary)" strokeWidth={3} />
+            Lecture du Business
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginTop: '0.4rem', fontWeight: 600 }}>Diagnostic IA et état de santé réel de votre entreprise.</p>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <div style={{ display: 'flex', background: 'white', padding: '0.4rem', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+            <button 
+              onClick={() => setPeriod('month')}
+              style={{ padding: '0.6rem 1.2rem', borderRadius: '10px', border: 'none', background: period === 'month' ? 'var(--primary)' : 'transparent', color: period === 'month' ? 'white' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+            >Ce Mois</button>
+            <button 
+              onClick={() => setPeriod('30days')}
+              style={{ padding: '0.6rem 1.2rem', borderRadius: '10px', border: 'none', background: period === '30days' ? 'var(--primary)' : 'transparent', color: period === '30days' ? 'white' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+            >30 Jours</button>
+            <button 
+              onClick={() => setPeriod('custom')}
+              style={{ padding: '0.6rem 1.2rem', borderRadius: '10px', border: 'none', background: period === 'custom' ? 'var(--primary)' : 'transparent', color: period === 'custom' ? 'white' : 'var(--text-muted)', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+            >Custom</button>
+          </div>
+        </div>
       </div>
+
+      {period === 'custom' && (
+         <div style={{ marginBottom: '2rem', display: 'flex', gap: '1rem', background: 'white', padding: '1.5rem', borderRadius: '20px', border: '1px solid #e2e8f0', width: 'fit-content', animation: 'slideDown 0.3s ease' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <CalendarIcon size={18} color="var(--primary)" />
+              <input type="date" className="filter-input" value={customRange.start} onChange={e => setCustomRange({...customRange, start: e.target.value})} />
+              <span style={{ fontWeight: 800, color: 'var(--text-muted)' }}>→</span>
+              <input type="date" className="filter-input" value={customRange.end} onChange={e => setCustomRange({...customRange, end: e.target.value})} />
+            </div>
+         </div>
+      )}
 
       <div className="stats-grid" style={{ marginBottom: '2.5rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
         {/* Health Score Card */}
@@ -107,7 +152,12 @@ export const BusinessIntelligence = () => {
           <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
              <div style={{ height: '100%', width: `${Math.min(100, Math.max(0, healthData.financials.marge_nette_percent))}%`, background: healthData.financials.marge_nette_percent >= 20 ? '#10b981' : '#f59e0b' }}></div>
           </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontWeight: 600 }}>Cible saine : &gt; 20%</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '1rem' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>Cible saine : &gt; 20%</p>
+            <Link to="/net-profit" className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+              Détails financiers <ArrowRight size={14} />
+            </Link>
+          </div>
         </div>
 
         {/* Quick KPI: Logistics */}
@@ -119,7 +169,12 @@ export const BusinessIntelligence = () => {
           <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '4px', overflow: 'hidden' }}>
              <div style={{ height: '100%', width: `${healthData.logistics.taux_succes}%`, background: healthData.logistics.taux_succes >= 80 ? '#10b981' : '#ef4444' }}></div>
           </div>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem', fontWeight: 600 }}>Cible saine : &gt; 80% (Livraisons réussies)</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '1rem' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, fontWeight: 600 }}>Cible : &gt; 80% (Livraisons)</p>
+            <Link to="/logistique" className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+              Suivi logistique <ArrowRight size={14} />
+            </Link>
+          </div>
         </div>
       </div>
 
