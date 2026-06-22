@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { subscribeToCommandes, getTopSellingProducts, getCategoryPerformance } from '../services/commandeService';
+import { subscribeToCommandes, getTopSellingProducts, getCategoryPerformance, getFinancialData } from '../services/commandeService';
 import { calculateLogisticalStats, getDepenses, calculateProfitMetrics, calculateStockValue } from '../services/financialService';
 import { getProduits } from '../services/produitService';
-import { getEffectiveCommandDate, isCommandInPeriod } from '../utils/date-utils';
+import { getEffectiveCommandDate } from '../utils/date-utils';
 import type { Commande } from '../types';
 import { globalEventBus, EVENTS } from '../utils/events';
 import { Activity, DollarSign, TrendingUp, AlertCircle, ShoppingBag, BarChart2, Calendar, MapPin, Tag, Clock, ArrowUp, ArrowDown, Wallet, TrendingDown } from 'lucide-react';
@@ -23,6 +23,8 @@ export const Dashboard = () => {
   const [categoryStats, setCategoryStats] = useState<any[]>([]);
   const [stockVal, setStockVal] = useState(0);
   const [expenses, setExpenses] = useState<any[]>([]);
+  const [filteredCmds, setFilteredCmds] = useState<Commande[]>([]);
+  const [filteredCmdsPrev, setFilteredCmdsPrev] = useState<Commande[]>([]);
 
   const fetchTop = useCallback(async (p: Period, start?: string, end?: string) => {
     try {
@@ -84,6 +86,63 @@ export const Dashboard = () => {
     return () => clearInterval(interval);
   }, [period, fetchTop, startDate, endDate]);
 
+  const fetchPeriodData = useCallback(async () => {
+    const now = new Date();
+    let start = new Date();
+    let end = new Date();
+    end.setHours(23, 59, 59, 999);
+
+    if (period === 'today') {
+      start.setHours(0, 0, 0, 0);
+    } else if (period === '7d') {
+      start.setDate(now.getDate() - 7);
+      start.setHours(0, 0, 0, 0);
+    } else if (period === '30d') {
+      start.setDate(now.getDate() - 30);
+      start.setHours(0, 0, 0, 0);
+    } else if (period === 'custom') {
+      start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+    } else {
+      start = new Date(0);
+    }
+
+    let startPrev = new Date(start);
+    let endPrev = new Date(start.getTime() - 1);
+    
+    if (period === 'today') {
+      startPrev.setDate(startPrev.getDate() - 1);
+    } else if (period === '7d') {
+      startPrev.setDate(startPrev.getDate() - 7);
+    } else if (period === '30d') {
+      startPrev.setDate(startPrev.getDate() - 30);
+    } else if (period === 'custom') {
+      const diffTime = Math.abs(end.getTime() - start.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      startPrev.setDate(startPrev.getDate() - diffDays);
+    } else {
+      startPrev = new Date(0);
+      endPrev = new Date(0);
+    }
+
+    try {
+      const [currData, prevData] = await Promise.all([
+        getFinancialData(start.toISOString(), end.toISOString()),
+        getFinancialData(startPrev.toISOString(), endPrev.toISOString())
+      ]);
+      setFilteredCmds(currData);
+      setFilteredCmdsPrev(prevData);
+    } catch (e) {
+      console.error(e);
+    }
+  }, [period, startDate, endDate]);
+
+  useEffect(() => {
+    fetchPeriodData();
+  }, [fetchPeriodData, commandes]); // Refetch when real-time commandes updates
+
   const filteredData = useMemo(() => {
     const now = new Date();
     let start = new Date();
@@ -104,22 +163,9 @@ export const Dashboard = () => {
       end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
     } else {
-      // 'all'
       start = new Date(0);
     }
 
-    const filteredCmds = commandes.filter(c => isCommandInPeriod(c, start, end));
-
-    const filteredExps = expenses.filter(exp => {
-      const d = new Date(exp.date);
-      return d >= start && d <= end;
-    });
-
-    // Centralized metrics from financialService
-    const metrics = calculateProfitMetrics(filteredCmds, filteredExps);
-    const logStats = calculateLogisticalStats(filteredCmds);
-
-    // Calculate Previous Period for Croissance
     let startPrev = new Date(start);
     let endPrev = new Date(start.getTime() - 1);
     
@@ -138,7 +184,14 @@ export const Dashboard = () => {
       endPrev = new Date(0);
     }
 
-    const filteredCmdsPrev = commandes.filter(c => isCommandInPeriod(c, startPrev, endPrev));
+    const filteredExps = expenses.filter(exp => {
+      const d = new Date(exp.date);
+      return d >= start && d <= end;
+    });
+
+    // Centralized metrics from financialService
+    const metrics = calculateProfitMetrics(filteredCmds, filteredExps);
+    const logStats = calculateLogisticalStats(filteredCmds);
 
     const filteredExpsPrev = expenses.filter(exp => {
       const d = new Date(exp.date);
@@ -239,7 +292,7 @@ export const Dashboard = () => {
       historyData,
       pendingCount: filteredCmds.filter(c => ['en_attente_appel', 'a_rappeler', 'nouvelle'].includes(c.statut_commande)).length
     };
-  }, [commandes, expenses, period, startDate, endDate]);
+  }, [filteredCmds, filteredCmdsPrev, expenses, period, startDate, endDate]);
 
   const { metrics, previousMetrics, logStats, croissanceCA, statusData, heatmapData, bestZonesData, historyData, pendingCount } = filteredData;
 

@@ -320,48 +320,8 @@ export const AdminTresorerie = () => {
 
       {/* Stats Grid - PRIVATE DASHBOARD (DEDUCTION FLOW) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
-          <span style={{ color: '#059669', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CA NET PRODUITS</span>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem' }}>
-            {netRevenue.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
-          </div>
-        </div>
-
-        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #f97316' }}>
-          <span style={{ color: '#ea580c', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>EXTRACTIONS (COMM/ADM)</span>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#ea580c' }}>
-            {(livreesCount * (EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN)).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: '1.5rem', background: '#fcfaff', borderLeft: '4px solid #8b5cf6', boxShadow: '0 10px 15px -3px rgba(139, 92, 246, 0.1)' }}>
-          <span style={{ color: '#6d28d9', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ARGENT ENVELOPPE</span>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#4c1d95' }}>
-            {(netRevenue - (livreesCount * (EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN))).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
-          </div>
-        </div>
-
-        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #ef4444' }}>
-          <span style={{ color: '#ef4444', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>RETENUE (-5%)</span>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#ef4444' }}>
-            {Math.round(netRevenue * RETENUE_PERCENT).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
-          </div>
-        </div>
-
-        <div className="card" style={{ padding: '1.5rem', background: '#ecfdf5', borderLeft: '4px solid #059669' }}>
-          <span style={{ color: '#047857', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>BALANCE RÉELLE</span>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#065f46' }}>
-            {(netRevenue - (livreesCount * (EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN)) - Math.round(netRevenue * RETENUE_PERCENT)).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
-          </div>
-        </div>
-
-        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #64748b' }}>
-          <span style={{ color: '#475569', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>COÛT ACHAT (COGS)</span>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#475569' }}>
-            {metrics.cogs_total.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
-          </div>
-        </div>
-
+        
+        {/* 1. BÉNÉFICE RÉEL (Most Important) */}
         <div className="card" style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', color: 'white', border: 'none', boxShadow: '0 10px 20px rgba(16, 185, 129, 0.2)' }}>
           <span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>BÉNÉFICE RÉEL</span>
           <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem' }}>
@@ -369,6 +329,15 @@ export const AdminTresorerie = () => {
           </div>
         </div>
 
+        {/* 2. CA NET PRODUITS */}
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
+          <span style={{ color: '#059669', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>CA NET PRODUITS</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem' }}>
+            {netRevenue.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
+        {/* 3. TAUX DE SUCCÈS */}
         <div className="card" style={{ padding: '1.5rem', background: '#0f172a', color: 'white', border: 'none' }}>
           <span style={{ color: 'rgba(255,255,255,0.6)', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TAUX DE SUCCÈS</span>
           <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#10b981' }}>
@@ -376,6 +345,47 @@ export const AdminTresorerie = () => {
           </div>
           <div style={{ fontSize: '0.7rem', marginTop: '0.5rem', opacity: 0.8 }}>{livreesCount} livraisons réussies</div>
         </div>
+
+        {/* 4. BALANCE RÉELLE */}
+        <div className="card" style={{ padding: '1.5rem', background: '#ecfdf5', borderLeft: '4px solid #059669' }}>
+          <span style={{ color: '#047857', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>BALANCE RÉELLE</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#065f46' }}>
+            {(netRevenue - (livreesCount * (EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN)) - Math.round(netRevenue * RETENUE_PERCENT)).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
+        {/* 5. COÛT ACHAT (COGS) */}
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #64748b' }}>
+          <span style={{ color: '#475569', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>COÛT ACHAT (COGS)</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#475569' }}>
+            {metrics.cogs_total.toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
+        {/* 6. EXTRACTIONS (COMM/ADM) */}
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #f97316' }}>
+          <span style={{ color: '#ea580c', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>EXTRACTIONS (COMM/ADM)</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#ea580c' }}>
+            {(livreesCount * (EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN)).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
+        {/* 7. RETENUE (-5%) */}
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #ef4444' }}>
+          <span style={{ color: '#ef4444', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>RETENUE (-5%)</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#ef4444' }}>
+            {Math.round(netRevenue * RETENUE_PERCENT).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
+        {/* 8. ARGENT ENVELOPPE */}
+        <div className="card" style={{ padding: '1.5rem', background: '#fcfaff', borderLeft: '4px solid #8b5cf6', boxShadow: '0 10px 15px -3px rgba(139, 92, 246, 0.1)' }}>
+          <span style={{ color: '#6d28d9', fontWeight: 800, fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>ARGENT ENVELOPPE</span>
+          <div style={{ fontSize: '1.8rem', fontWeight: 900, marginTop: '0.5rem', color: '#4c1d95' }}>
+            {(netRevenue - (livreesCount * (EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN))).toLocaleString()} <span style={{ fontSize: '0.9rem', opacity: 0.6 }}>F</span>
+          </div>
+        </div>
+
       </div>
 
       {/* Main Content Sections */}
