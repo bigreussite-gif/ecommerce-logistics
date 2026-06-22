@@ -337,39 +337,16 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
 
   if (retoursError) throw retoursError;
 
-  // 2. Get orders delivered in range
-  const { data: deliveredOrders, error: err1 } = await insforge.database
+  const successStats = '(livree,terminee)';
+  const filterString = `and(statut_commande.in.${successStats},date_livraison_effective.gte."${startStr}",date_livraison_effective.lte."${endStr}"),and(statut_commande.not.in.${successStats},date_creation.gte."${startStr}",date_creation.lte."${endStr}")`;
+
+  // 2. Get all orders in range using unified logic
+  const { data: commandes, error: err1 } = await insforge.database
     .from('commandes')
     .select(selectCols)
-    .gte('date_livraison_effective', startStr)
-    .lte('date_livraison_effective', endStr);
+    .or(filterString);
 
   if (err1) throw err1;
-
-  // 3. Get all sheets treated in range and find their orders
-  const { data: sheets } = await insforge.database
-    .from('feuilles_route')
-    .select('id')
-    .gte('date_traitement', startStr)
-    .lte('date_traitement', endStr);
-
-  const sheetIds = sheets?.map((s: any) => s.id) || [];
-  let sheetOrders: any[] = [];
-
-  if (sheetIds.length > 0) {
-    const { data: so, error: err2 } = await insforge.database
-      .from('commandes')
-      .select(selectCols)
-      .in('feuille_route_id', sheetIds);
-    if (!err2 && so) sheetOrders = so;
-  }
-
-  // 4. Merge and deduplicate orders by id
-  const allOrdersMap = new Map<string, any>();
-  [...(deliveredOrders || []), ...sheetOrders].forEach(o => {
-    if (o?.id) allOrdersMap.set(o.id, o);
-  });
-  const commandes = Array.from(allOrdersMap.values());
 
   // 5. Get Depenses in range
   const { data: depenses } = await insforge.database

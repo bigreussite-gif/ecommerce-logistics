@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Package, TrendingUp, DollarSign, ShoppingBag, Info, Percent } from 'lucide-react';
 import { getProduits } from '../services/produitService';
+import { getEffectiveCommandDate } from '../utils/date-utils';
 import { insforge } from '../lib/insforge';
 import type { Produit } from '../types';
 import { useToast } from '../contexts/ToastContext';
@@ -104,7 +105,7 @@ export const AnalyseProduits = () => {
     // Filter raw sales by the selected number of days
     const filteredSales = rawSales.filter(sale => {
       if (activeDaysLimit === null) return true;
-      const cmdDate = new Date(sale.commandes?.date_creation);
+      const cmdDate = getEffectiveCommandDate(sale.commandes || {});
       const diffTime = Math.abs(now.getTime() - cmdDate.getTime());
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       return diffDays <= activeDaysLimit;
@@ -163,7 +164,7 @@ export const AnalyseProduits = () => {
     const recent = deliveredSales
       .map(sale => ({
         commandeId: sale.commande_id,
-        date: new Date(sale.commandes?.date_creation).toLocaleDateString('fr-FR'),
+        date: getEffectiveCommandDate(sale.commandes || {}).toLocaleDateString('fr-FR'),
         quantite: Number(sale.quantite || 0),
         total: Number(sale.montant_ligne || 0),
         commune: sale.commandes?.commune_livraison || 'Non spécifiée'
@@ -216,7 +217,7 @@ export const AnalyseProduits = () => {
     // Group sales by day
     const dailyMap: Record<string, number> = {};
     deliveredSales.forEach(sale => {
-      const dateKey = new Date(sale.commandes?.date_creation).toISOString().split('T')[0];
+      const dateKey = getEffectiveCommandDate(sale.commandes || {}).toISOString().split('T')[0];
       dailyMap[dateKey] = (dailyMap[dateKey] || 0) + Number(sale.quantite || 0);
     });
 

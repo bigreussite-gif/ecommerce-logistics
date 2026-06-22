@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { subscribeToCommandes, getTopSellingProducts, getCategoryPerformance } from '../services/commandeService';
 import { calculateLogisticalStats, getDepenses, calculateProfitMetrics, calculateStockValue } from '../services/financialService';
 import { getProduits } from '../services/produitService';
+import { getEffectiveCommandDate, isCommandInPeriod } from '../utils/date-utils';
 import type { Commande } from '../types';
 import { globalEventBus, EVENTS } from '../utils/events';
 import { Activity, DollarSign, TrendingUp, AlertCircle, ShoppingBag, BarChart2, Calendar, MapPin, Tag, Clock, ArrowUp, ArrowDown, Wallet, TrendingDown } from 'lucide-react';
@@ -107,15 +108,7 @@ export const Dashboard = () => {
       start = new Date(0);
     }
 
-    const filteredCmds = commandes.filter(c => {
-      const d = new Date(c.date_creation);
-      const dDelivered = c.date_livraison_effective ? new Date(c.date_livraison_effective) : null;
-      
-      // We count it if either created or delivered in range
-      const inCreated = d >= start && d <= end;
-      const inDelivered = dDelivered && dDelivered >= start && dDelivered <= end;
-      return inCreated || inDelivered;
-    });
+    const filteredCmds = commandes.filter(c => isCommandInPeriod(c, start, end));
 
     const filteredExps = expenses.filter(exp => {
       const d = new Date(exp.date);
@@ -145,13 +138,7 @@ export const Dashboard = () => {
       endPrev = new Date(0);
     }
 
-    const filteredCmdsPrev = commandes.filter(c => {
-      const d = new Date(c.date_creation);
-      const dDelivered = c.date_livraison_effective ? new Date(c.date_livraison_effective) : null;
-      const inCreated = d >= startPrev && d <= endPrev;
-      const inDelivered = dDelivered && dDelivered >= startPrev && dDelivered <= endPrev;
-      return inCreated || inDelivered;
-    });
+    const filteredCmdsPrev = commandes.filter(c => isCommandInPeriod(c, startPrev, endPrev));
 
     const filteredExpsPrev = expenses.filter(exp => {
       const d = new Date(exp.date);
@@ -222,7 +209,7 @@ export const Dashboard = () => {
     filteredCmds.forEach(c => {
       const s = c.statut_commande?.toLowerCase();
       const isSuccess = ['livree', 'terminee'].includes(s);
-      const dString = new Date(isSuccess && c.date_livraison_effective ? c.date_livraison_effective : c.date_creation).toISOString().split('T')[0];
+      const dString = getEffectiveCommandDate(c).toISOString().split('T')[0];
       const match = historyPoints.find(d => d.date === dString);
       if (match) {
         match.count++;
