@@ -473,7 +473,7 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   
   if (error) throw error;
 
-  const outOfWarehouseStates = ['livree', 'terminee'];
+  const outOfWarehouseStates = ['en_cours_livraison', 'livree', 'terminee', 'echouee', 'retour_livreur'];
   const wasOut = outOfWarehouseStates.includes(prevStatus?.toLowerCase());
   const isNowOut = outOfWarehouseStates.includes(nextStatus?.toLowerCase());
 
@@ -488,6 +488,7 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
         for (const l of lines) {
           await addMouvementStock({
             produit_id: l.produit_id,
+            commande_id: id,
             type_mouvement: isNowOut ? 'sortie' : 'entree',
             quantite: l.quantite,
             reference: `${isNowOut ? 'Sortie' : 'Retour'} Stock (${nextStatus}) Cmd #${id.substring(0, 8)}`
@@ -542,7 +543,7 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
   if (bulkErr) throw bulkErr;
 
   // 3. Handle stock movements for commands that physically leave or return to the warehouse
-  const outOfWarehouseStates = ['livree', 'terminee'];
+  const outOfWarehouseStates = ['en_cours_livraison', 'livree', 'terminee', 'echouee', 'retour_livreur'];
   const isNextOut = outOfWarehouseStates.includes(nextStatus.toLowerCase());
 
   const idsChangingState = currentCmds
@@ -563,9 +564,10 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
         if (wasCmdOut !== isNextOut) {
           await addMouvementStock({
             produit_id: l.produit_id,
+            commande_id: l.commande_id,
             type_mouvement: isNextOut ? 'sortie' : 'entree',
             quantite: l.quantite,
-            reference: `Bulk ${isNextOut ? 'Sortie' : 'Retour'} (${nextStatus})`
+            reference: `Bulk ${isNextOut ? 'Sortie' : 'Retour'} (${nextStatus}) Cmd #${l.commande_id.substring(0, 8)}`
           } as any);
         }
       }
@@ -600,6 +602,7 @@ export const confirmRMAMovement = async (id: string, choice: 'REUTILISABLE' | 'D
         // Mark as exit in stock history
         await addMouvementStock({
           produit_id: l.produit_id,
+          commande_id: id,
           type_mouvement: 'sortie',
           quantite: l.quantite,
           reference: `Article Défaillant (Cmd #${id.slice(0,8)})`,
@@ -690,6 +693,7 @@ export const registerReturn = async (id: string, motif: string, solution: string
       if (etat_produit === 'REUTILISABLE') {
         await addMouvementStock({
           produit_id: l.produit_id,
+          commande_id: id,
           type_mouvement: 'entree',
           quantite: l.quantite,
           reference: `Retour au Stock Client (Cmd #${id.slice(0,8)})`
@@ -697,6 +701,7 @@ export const registerReturn = async (id: string, motif: string, solution: string
       } else {
         await addMouvementStock({
           produit_id: l.produit_id,
+          commande_id: id,
           type_mouvement: 'sortie',
           quantite: 0,
           reference: `Article ${etat_produit} (Cmd #${id.slice(0,8)})`
@@ -892,7 +897,7 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
     .eq('id', commandeId)
     .single();
 
-  const outOfWarehouseStates = ['en_cours_livraison', 'livree', 'terminee'];
+  const outOfWarehouseStates = ['en_cours_livraison', 'livree', 'terminee', 'echouee', 'retour_livreur'];
   const isOut = outOfWarehouseStates.includes(cmd?.statut_commande?.toLowerCase() || '');
   const oldMap = new Map(oldLines.map(l => [l.id, l]));
   
@@ -901,6 +906,7 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
       if (isOut) {
         await addMouvementStock({
           produit_id: oldLine.produit_id,
+          commande_id: commandeId,
           type_mouvement: 'entree',
           quantite: oldLine.quantite,
           reference: `RETOUR Suppr Ligne Cmd #${commandeId.substring(0, 8)}`
@@ -930,6 +936,7 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
       if (isOut) {
         await addMouvementStock({
           produit_id: newLine.produit_id,
+          commande_id: commandeId,
           type_mouvement: 'sortie',
           quantite: newLine.quantite,
           reference: `Sortie Nouvel Article Cmd #${commandeId.substring(0, 8)}`
@@ -954,6 +961,7 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
           if (isOut) {
             await addMouvementStock({
               produit_id: newLine.produit_id,
+              commande_id: commandeId,
               type_mouvement: diff > 0 ? 'sortie' : 'entree',
               quantite: Math.abs(diff),
               reference: `Modif Qté Ligne Cmd #${commandeId.substring(0, 8)}`

@@ -134,6 +134,12 @@ export const ProduitList = ({ produits, onEdit, onStock, onView, onViewReserved 
                     <span title="Commandes en cours de livraison">En livraison:</span>
                     <span style={{ fontWeight: 950, color: '#2563eb', textDecoration: onViewReserved ? 'underline' : 'none' }}>{produit.stock_en_livraison ?? 0} u.</span>
                   </div>
+                  <div 
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', fontWeight: 700, color: '#8b5cf6', padding: '0 4px' }}
+                  >
+                    <span title="Commandes échouées ou retour livreur">Retour attendu:</span>
+                    <span style={{ fontWeight: 950, color: '#7c3aed' }}>{produit.stock_retour_attendu ?? 0} u.</span>
+                  </div>
                   <div style={{ 
                     display: 'flex', 
                     justifyContent: 'space-between',

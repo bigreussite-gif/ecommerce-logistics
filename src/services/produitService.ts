@@ -26,7 +26,11 @@ export const getProduits = async (): Promise<Produit[]> => {
     const { data: lines, error: linesError } = await insforge.database
       .from('lignes_commandes')
       .select('produit_id, quantite, commandes!inner(statut_commande, date_creation)')
-      .in('commandes.statut_commande', ['nouvelle', 'a_rappeler', 'en_attente_appel', 'validee', 'en_cours_livraison', 'echouee', 'retour_livreur']);
+      .in('commandes.statut_commande', [
+        'nouvelle', 'a_rappeler', 'en_attente_appel', 'validee', // Réservé
+        'en_cours_livraison', // En livraison
+        'echouee', 'retour_livreur' // Retour attendu
+      ]);
 
     if (linesError) {
       console.error("Error fetching reserved stock lines:", linesError);
@@ -40,6 +44,7 @@ export const getProduits = async (): Promise<Produit[]> => {
 
     const reservedMap = new Map<string, number>();
     const enLivraisonMap = new Map<string, number>();
+    const retourAttenduMap = new Map<string, number>();
     const now = new Date();
 
     (lines || []).forEach((l: any) => {
@@ -55,10 +60,13 @@ export const getProduits = async (): Promise<Produit[]> => {
         }
       }
       
-      if (['en_cours_livraison', 'echouee', 'retour_livreur'].includes(status)) {
+      if (status === 'en_cours_livraison') {
         const current = enLivraisonMap.get(l.produit_id) || 0;
         enLivraisonMap.set(l.produit_id, current + Number(l.quantite || 0));
-      } else {
+      } else if (['echouee', 'retour_livreur'].includes(status)) {
+        const current = retourAttenduMap.get(l.produit_id) || 0;
+        retourAttenduMap.set(l.produit_id, current + Number(l.quantite || 0));
+      } else if (['nouvelle', 'a_rappeler', 'en_attente_appel', 'validee'].includes(status)) {
         const current = reservedMap.get(l.produit_id) || 0;
         reservedMap.set(l.produit_id, current + Number(l.quantite || 0));
       }
@@ -67,11 +75,13 @@ export const getProduits = async (): Promise<Produit[]> => {
     return products.map(p => {
       const stock_reserve = reservedMap.get(p.id) || 0;
       const stock_en_livraison = enLivraisonMap.get(p.id) || 0;
+      const stock_retour_attendu = retourAttenduMap.get(p.id) || 0;
       return {
         ...p,
         stock_reserve,
         stock_en_livraison,
-        stock_disponible: Math.max(0, p.stock_actuel - stock_reserve - stock_en_livraison),
+        stock_retour_attendu,
+        stock_disponible: Math.max(0, p.stock_actuel - stock_reserve), // Le dispo est Actuel - Réservé (En livraison est DÉJÀ déduit de l'actuel)
         composants: bundlesMap.get(p.id) || []
       };
     });
@@ -81,6 +91,7 @@ export const getProduits = async (): Promise<Produit[]> => {
       ...p,
       stock_reserve: 0,
       stock_en_livraison: 0,
+      stock_retour_attendu: 0,
       stock_disponible: p.stock_actuel,
       composants: bundlesMap.get(p.id) || []
     }));
@@ -156,7 +167,7 @@ export const updateProduit = async (id: string, data: Partial<Produit>): Promise
   globalEventBus.emit(EVENTS.STOCK_UPDATED);
 };
 
-export const addMouvementStock = async (mouvement: Omit<MouvementStock, 'id'>): Promise<void> => {
+export const addMouvementStock = async (mouvement: Omit<MouvementStock, 'id'> & { commande_id?: string }): Promise<void> => {
   // 1. Fetch current product - strictly select only what is needed
   const { data: prod, error: fetchError } = await insforge.database
     .from('produits')
@@ -174,11 +185,30 @@ export const addMouvementStock = async (mouvement: Omit<MouvementStock, 'id'>): 
   const modifier = (mouvement.type_mouvement === 'sortie') ? -qty : qty;
   const newStock = currentStock + modifier;
 
+  // Anti-double comptabilisation: Check if a similar movement already exists for this commande_id
+  if (mouvement.commande_id) {
+    const { data: existingMvt } = await insforge.database
+      .from('mouvements_stock')
+      .select('id')
+      .eq('commande_id', mouvement.commande_id)
+      .eq('produit_id', mouvement.produit_id)
+      .eq('type_mouvement', mouvement.type_mouvement)
+      .limit(1);
+    
+    if (existingMvt && existingMvt.length > 0) {
+      console.warn(`Mouvement de ${mouvement.type_mouvement} déjà existant pour la commande ${mouvement.commande_id}`);
+      return; // Skip adding duplicate movement
+    }
+  }
+
   // 2. Prepare CLEAN movement data
   const moveData = {
     produit_id: mouvement.produit_id,
+    commande_id: mouvement.commande_id || null,
     type_mouvement: mouvement.type_mouvement,
     quantite: qty,
+    ancien_stock: currentStock,
+    nouveau_stock: newStock,
     reference: mouvement.reference || '',
     commentaire: mouvement.commentaire || '',
     date: new Date().toISOString()

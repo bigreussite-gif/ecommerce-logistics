@@ -140,8 +140,11 @@ CREATE POLICY "Staff access order lines" ON lignes_commandes FOR ALL TO authenti
 CREATE TABLE mouvements_stock (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
   produit_id UUID REFERENCES produits(id),
+  commande_id UUID REFERENCES commandes(id),
   type_mouvement TEXT NOT NULL CHECK (type_mouvement IN ('entree', 'sortie', 'retour')),
   quantite INTEGER NOT NULL,
+  ancien_stock INTEGER,
+  nouveau_stock INTEGER,
   date TIMESTAMPTZ DEFAULT now(),
   reference TEXT,
   commentaire TEXT,

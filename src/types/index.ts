@@ -45,6 +45,7 @@ export interface Produit {
   stock_minimum: number;
   stock_reserve?: number;
   stock_en_livraison?: number;
+  stock_retour_attendu?: number;
   stock_disponible?: number;
   actif: boolean;
   image_url?: string;
