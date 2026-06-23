@@ -95,10 +95,26 @@ export const Logistique = () => {
 
       // Auto-generate PDF
       const selectedFullCommandes = commandes.filter(c => selectedCommands.has(c.id));
+      
+      // Update the local objects for the PDF so the VTC overrides are shown immediately
+      const updatedCommandesForPdf = selectedFullCommandes.map(cmd => {
+        const overrideFrais = vtcFraisNumbers[cmd.id];
+        if (overrideFrais !== undefined) {
+           const oldFrais = cmd.frais_livraison || 0;
+           const diff = overrideFrais - oldFrais;
+           return {
+             ...cmd,
+             frais_livraison: overrideFrais,
+             montant_total: (Number(cmd.montant_total) || 0) + diff
+           };
+        }
+        return cmd;
+      });
+
       const livreurName = livreurs.find(l => l.id === selectedLivreur)?.nom_complet || "Livreur";
       
       try {
-        generateDeliverySlipPDF({ id: feuilleId, nom_livreur: livreurName }, selectedFullCommandes);
+        generateDeliverySlipPDF({ id: feuilleId, nom_livreur: livreurName }, updatedCommandesForPdf);
       } catch (pdfErr) {
         console.error("Erreur PDF:", pdfErr);
         showToast("Feuille créée, mais erreur lors de la génération du PDF. Vous pouvez le réimprimer depuis l'historique.", "info");
