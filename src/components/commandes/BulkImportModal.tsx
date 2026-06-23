@@ -125,9 +125,9 @@ export const BulkImportModal = ({ onClose, onSave }: { onClose: () => void, onSa
         for (const l of order.lines) {
           const prod = catalogue.find(p => p.sku?.toUpperCase() === l.produit?.toUpperCase());
           if (prod) {
-            const limit = prod.stock_actuel;
+            const limit = prod.stock_disponible ?? prod.stock_actuel;
             if (!forceCreation && l.quantite > limit) {
-              showToast(`Stock insuffisant pour "${prod.nom}" (${prod.sku}). Physique : ${limit} (Réservé: ${prod.stock_reserve}). Import annulé.`, "error");
+              showToast(`Stock insuffisant pour "${prod.nom}" (${prod.sku}). Disponible : ${limit} (Réservé: ${prod.stock_reserve}). Import annulé.`, "error");
               setLoading(false);
               return;
             }

@@ -221,10 +221,10 @@ export const CommandeForm = ({ onClose, onSave, editingCommande, originalLines }
         const originalQty = originalLines?.find(ol => ol.produit_id === l.produit_id)?.quantite || 0;
         const additionalQtyNeeded = l.quantite - originalQty;
         
-        const limit = prod.stock_actuel;
+        const limit = prod.stock_disponible ?? prod.stock_actuel;
         
         if (!forceCreation && additionalQtyNeeded > limit) {
-          showToast(`Stock insuffisant pour "${prod.nom}". Stock physique : ${limit} u. Vous demandez ${additionalQtyNeeded} u.`, "error");
+          showToast(`Stock insuffisant pour "${prod.nom}". Stock disponible : ${limit} u. Vous demandez ${additionalQtyNeeded} u.`, "error");
           return;
         }
       }
