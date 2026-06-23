@@ -106,7 +106,7 @@ export const getCommandesPaginated = async (
 }> => {
   let query = insforge.database
     .from('commandes')
-    .select('*, clients!inner(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*, produits(*))', { count: 'exact' });
+    .select('*, clients!inner(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*, produits(*))', { count: 'estimated' });
 
   // 1. Status Filter
   if (activeTab === 'to_process') {
@@ -183,7 +183,7 @@ export const getCommandesPaginated = async (
   const getCountForStatuses = async (statuses: string[] | null) => {
     let q = insforge.database
       .from('commandes')
-      .select('*', { count: 'exact', head: true });
+      .select('*', { count: 'estimated', head: true });
     
     if (statuses) {
       q = q.in('statut_commande', statuses);
@@ -205,7 +205,7 @@ export const getCommandesPaginated = async (
   const getCountSansCommune = async () => {
     let q = insforge.database
       .from('commandes')
-      .select('*', { count: 'exact', head: true })
+      .select('*', { count: 'estimated', head: true })
       .eq('commune_non_attribuee', true);
     
     if (startDateISO) {
