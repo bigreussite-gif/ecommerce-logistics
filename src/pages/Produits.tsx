@@ -7,7 +7,7 @@ import { StockForm } from '../components/produits/StockForm';
 import { BulkImportProduitModal } from '../components/produits/BulkImportProduitModal';
 import { StockCorrectionModal } from '../components/produits/StockCorrectionModal';
 import { ReservedOrdersModal } from '../components/produits/ReservedOrdersModal';
-import { subscribeToProduits } from '../services/produitService';
+import { subscribeToProduits, getHistoriqueStock } from '../services/produitService';
 import { getCategories } from '../services/adminService';
 import { Produit, Categorie } from '../types';
 
@@ -30,6 +30,19 @@ export const Produits = () => {
   const [reservedModalData, setReservedModalData] = useState<{produit: Produit, type: 'reserve' | 'livraison'} | null>(null);
   
   const [statsModalProduit, setStatsModalProduit] = useState<Produit | null>(null);
+  const [stockStats, setStockStats] = useState<{ entrees: number, sorties: number } | null>(null);
+
+  useEffect(() => {
+    if (statsModalProduit) {
+      getHistoriqueStock(statsModalProduit.id).then(mouvements => {
+        const entrees = mouvements.filter(m => m.type_mouvement === 'entree').reduce((sum, m) => sum + Number(m.quantite), 0);
+        const sorties = mouvements.filter(m => m.type_mouvement === 'sortie').reduce((sum, m) => sum + Number(m.quantite), 0);
+        setStockStats({ entrees, sorties });
+      }).catch(console.error);
+    } else {
+      setStockStats(null);
+    }
+  }, [statsModalProduit]);
 
   useEffect(() => {
     setLoading(true);
@@ -257,18 +270,22 @@ export const Produits = () => {
                   <p style={{ margin: 0, opacity: 0.9, fontSize: '0.9rem', fontWeight: 600 }}>{statsModalProduit.nom}</p>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '1.5rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
-                <div>
-                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8, fontWeight: 700 }}>Stock Physique</div>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+                <div style={{ background: 'rgba(255,255,255,0.1)', padding: '0.75rem 1rem', borderRadius: '12px', flex: '1 1 min-content' }}>
+                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8, fontWeight: 700 }}>Entrés en stock</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{stockStats ? stockStats.entrees : '...'} u.</div>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.1)', padding: '0.75rem 1rem', borderRadius: '12px', flex: '1 1 min-content' }}>
+                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8, fontWeight: 700 }}>Livrés (Sorties)</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{stockStats ? stockStats.sorties : '...'} u.</div>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.1)', padding: '0.75rem 1rem', borderRadius: '12px', flex: '1 1 min-content' }}>
+                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8, fontWeight: 700 }}>Restant</div>
                   <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{statsModalProduit.stock_actuel} u.</div>
                 </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8, fontWeight: 700 }}>Stock Dispo</div>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#10b981' }}>{statsModalProduit.stock_disponible ?? statsModalProduit.stock_actuel} u.</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8, fontWeight: 700 }}>Prix Unitaire</div>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 900 }}>{statsModalProduit.prix_vente?.toLocaleString()} F</div>
+                <div style={{ background: 'rgba(255,255,255,0.1)', padding: '0.75rem 1rem', borderRadius: '12px', flex: '1 1 min-content' }}>
+                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', opacity: 0.8, fontWeight: 700 }}>Dispo</div>
+                  <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#a7f3d0' }}>{statsModalProduit.stock_disponible ?? statsModalProduit.stock_actuel} u.</div>
                 </div>
               </div>
             </div>
