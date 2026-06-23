@@ -131,7 +131,7 @@ export const generateInvoicePDF = async (commande: Commande & { lignes: LigneCom
   doc.setFontSize(14);
   doc.setTextColor(30, 41, 59);
   doc.setFont("helvetica", "bold");
-  doc.text("TOTAL À PAYER :", pageWidth - 85, finalY + 32);
+  doc.text("TOTAL À PAYER :", pageWidth - 105, finalY + 32);
   doc.text(`${fP(total)} CFA`, pageWidth - 20, finalY + 32, { align: 'right' });
 
   // --- FOOTER ---
