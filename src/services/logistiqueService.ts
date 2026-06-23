@@ -13,7 +13,7 @@ export const getAvailableLivreurs = async (): Promise<User[]> => {
   return data || [];
 };
 
-export const creerFeuilleRoute = async (livreurId: string, commandeIds: string[]): Promise<string> => {
+export const creerFeuilleRoute = async (livreurId: string, commandeIds: string[], vtcFraisMap?: Record<string, number>): Promise<string> => {
   // 1. Fetch commands to verify they exist and get totals
   const { data: cmdData, error: cmdFetchError } = await insforge.database
     .from('commandes')
@@ -61,6 +61,32 @@ export const creerFeuilleRoute = async (livreurId: string, commandeIds: string[]
     .in('id', commandeIds);
   
   if (batchUpdateError) throw new Error(`Erreur lors de l'affectation des commandes : ${batchUpdateError.message}`);
+
+  // 3.5. Update frais_livraison and montant_total for each VTC command
+  if (vtcFraisMap && Object.keys(vtcFraisMap).length > 0) {
+    for (const cmdId of Object.keys(vtcFraisMap)) {
+      const newFrais = vtcFraisMap[cmdId];
+      if (newFrais !== undefined && newFrais >= 0) {
+        const cmd = cmdData.find((c: any) => c.id === cmdId);
+        if (cmd) {
+          const oldFrais = cmd.frais_livraison || 0;
+          const diff = newFrais - oldFrais;
+          const newMontantTotal = (Number(cmd.montant_total) || 0) + diff;
+          
+          const { error: vtcError } = await insforge.database
+            .from('commandes')
+            .update({ 
+              frais_livraison: newFrais,
+              montant_total: newMontantTotal,
+              cout_vtc: newFrais // also save it in cout_vtc for traceability if needed
+            })
+            .eq('id', cmdId);
+            
+          if (vtcError) console.error("Erreur lors de la mise à jour des frais VTC:", vtcError);
+        }
+      }
+    }
+  }
 
   // 4. Handle stock movements for commands that were inactive (e.g., reportée/annulée) and are now active/out for delivery again
   try {

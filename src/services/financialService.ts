@@ -92,6 +92,7 @@ export interface ProfitStats {
   ca_net_produits: number;
   cogs_total: number;
   frais_livraison_total: number;
+  frais_vtc_total: number;
   depenses_fixes_total: number;
   total_extractions: number;
   retenue_charges: number;
@@ -213,6 +214,8 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
   // Retenue based on percentage of net revenue
   const retenue_charges = ca_net_produits > 0 ? Math.round(ca_net_produits * RETENUE_PERCENT) : 0;
 
+  const frais_vtc_total = terminalCmds.reduce((acc, c) => acc + (Number(c.cout_vtc) || 0), 0);
+
   // Profit Net Brut = CA Net - COGS - Dépenses Fixes - Pertes Logistiques - Primes Installation - Manquant + Surplus
   const profit_net_brut = ca_net_produits - cogs_total - depenses_fixes_total - pertes_livraison - installation_primes_total - manquant_caisse + surplus_caisse;
   
@@ -231,6 +234,7 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     ca_net_produits,
     cogs_total,
     frais_livraison_total: frais_livraison_reussis + pertes_livraison,
+    frais_vtc_total,
     depenses_fixes_total,
     total_extractions,
     retenue_charges,

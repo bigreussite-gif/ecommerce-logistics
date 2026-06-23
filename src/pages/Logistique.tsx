@@ -23,6 +23,7 @@ export const Logistique = () => {
   const [editingFeuilleId, setEditingFeuilleId] = useState<string | null>(null);
   const [editLivreurId, setEditLivreurId] = useState<string>('');
   const [actionLoading, setActionLoading] = useState(false);
+  const [vtcFrais, setVtcFrais] = useState<Record<string, string>>({});
 
   const availableZones = Array.from(new Set(commandes.map(c => c.commune_livraison).filter(Boolean))).sort();
   const filteredCommandes = selectedZone 
@@ -78,7 +79,15 @@ export const Logistique = () => {
 
     try {
       setLoading(true);
-      const feuilleId = await creerFeuilleRoute(selectedLivreur, Array.from(selectedCommands));
+      
+      const vtcFraisNumbers: Record<string, number> = {};
+      Object.keys(vtcFrais).forEach(cmdId => {
+        if (vtcFrais[cmdId] !== '') {
+          vtcFraisNumbers[cmdId] = Number(vtcFrais[cmdId]);
+        }
+      });
+      
+      const feuilleId = await creerFeuilleRoute(selectedLivreur, Array.from(selectedCommands), vtcFraisNumbers);
       
       if (!feuilleId) {
         throw new Error("L'identifiant de la feuille de route est manquant après la création.");
@@ -98,6 +107,7 @@ export const Logistique = () => {
       showToast("Feuille de route générée avec succès !", "success");
       setSelectedCommands(new Set());
       setSelectedLivreur('');
+      setVtcFrais({});
       fetchData();
     } catch (error: any) {
       console.error("Détails de l'erreur Logistique:", error);
@@ -293,10 +303,34 @@ export const Logistique = () => {
             <select className="form-select" style={{ height: '48px', fontWeight: 600 }} value={selectedLivreur} onChange={e => setSelectedLivreur(e.target.value)}>
               <option value="">Sélectionner un livreur...</option>
               {livreurs.map(l => (
-                <option key={l.id} value={l.id}>{l.nom_complet} (Actif)</option>
+                <option key={l.id} value={l.id}>{l.nom_complet} {l.type_livreur === 'VTC' ? '(VTC)' : '(Interne)'}</option>
               ))}
             </select>
           </div>
+
+          {livreurs.find(l => l.id === selectedLivreur)?.type_livreur === 'VTC' && selectedCommands.size > 0 && (
+            <div style={{ marginTop: '1rem', background: '#fffbeb', padding: '1rem', borderRadius: '12px', border: '1px solid #fcd34d' }}>
+              <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: '#b45309', marginBottom: '1rem' }}>Frais VTC par commande</h4>
+              <p style={{ fontSize: '0.8rem', color: '#b45309', marginBottom: '1rem' }}>Saisissez le coût du livreur VTC pour chaque colis. Ce montant remplacera les frais de livraison payés par le client.</p>
+              {Array.from(selectedCommands).map(cmdId => {
+                const cmd = commandes.find(c => c.id === cmdId);
+                if (!cmd) return null;
+                return (
+                  <div key={cmdId} className="form-group" style={{ marginBottom: '0.75rem' }}>
+                    <label className="form-label" style={{ fontSize: '0.8rem' }}>Client: {cmd.nom_client} ({cmd.commune_livraison})</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      placeholder={`Anciens frais: ${cmd.frais_livraison || 0} F`}
+                      value={vtcFrais[cmdId] !== undefined ? vtcFrais[cmdId] : ''}
+                      onChange={(e) => setVtcFrais({ ...vtcFrais, [cmdId]: e.target.value })}
+                      style={{ borderColor: '#fcd34d', height: '36px' }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           <div style={{ marginTop: '2rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '18px', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem' }}>

@@ -186,6 +186,7 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
           email: email as string,
           role: form.role as any,
           telephone: sanitizedTel,
+          type_livreur: form.role === 'LIVREUR' ? (form.type_livreur || 'INTERNE') : undefined,
           permissions: form.permissions || [],
           actif: true
         }, authData?.user?.id || '');
@@ -263,6 +264,15 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
                         )}
                       </select>
                     </div>
+                    {form.role === 'LIVREUR' && (
+                      <div className="form-group">
+                        <label className="form-label">Type de Livreur</label>
+                        <select className="form-select" value={form.type_livreur || 'INTERNE'} onChange={e => setForm({...form, type_livreur: e.target.value as any})}>
+                          <option value="INTERNE">Interne (Salarié / Indépendant fixe)</option>
+                          <option value="VTC">VTC (Prix variable par course)</option>
+                        </select>
+                      </div>
+                    )}
                     {form.role !== 'LIVREUR' && (
                       <div className="form-group">
                         <label className="form-label">Email</label>
@@ -316,6 +326,9 @@ const UsersManager = ({ showToast }: { showToast: any }) => {
                 </td>
                 <td data-label="Rôle / Email">
                   <span className={`badge ${u.role === 'ADMIN' ? 'badge-danger' : 'badge-info'}`} style={{ marginBottom: '0.25rem', display: 'inline-block' }}>{u.role}</span>
+                  {u.role === 'LIVREUR' && u.type_livreur === 'VTC' && (
+                    <span className="badge" style={{ background: '#f59e0b', color: 'white', marginLeft: '4px', marginBottom: '0.25rem', display: 'inline-block' }}>VTC</span>
+                  )}
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{u.email}</p>
                 </td>
                 <td data-label="Permissions">

@@ -23,6 +23,7 @@ export interface User {
   role: Role;
   nom_complet: string;
   telephone?: string;
+  type_livreur?: 'INTERNE' | 'VTC';
   password?: string;
   communes_servies?: string[]; 
   permissions?: string[]; // Dynamic permissions
@@ -105,6 +106,7 @@ export interface Commande {
   frais_livraison: number;
   livraison_incluse?: boolean;
   mode_paiement: string;
+  cout_vtc?: number;
   commune_livraison: string;
   quartier_livraison?: string;
   adresse_livraison: string;
