@@ -114,7 +114,14 @@ export const subscribeToProduits = (callback: (produits: Produit[]) => void) => 
 };
 
 export const createProduit = async (produit: Omit<Produit, 'id'>): Promise<string> => {
-  const { composants, ...prodData } = produit;
+  const { 
+    composants, 
+    stock_reserve, 
+    stock_en_livraison, 
+    stock_retour_attendu, 
+    stock_disponible, 
+    ...prodData 
+  } = produit;
   const { data, error } = await insforge.database
     .from('produits')
     .insert([{
@@ -140,7 +147,14 @@ export const createProduit = async (produit: Omit<Produit, 'id'>): Promise<strin
 };
 
 export const updateProduit = async (id: string, data: Partial<Produit>): Promise<void> => {
-  const { composants, ...prodData } = data;
+  const { 
+    composants, 
+    stock_reserve, 
+    stock_en_livraison, 
+    stock_retour_attendu, 
+    stock_disponible, 
+    ...prodData 
+  } = data;
   const { error } = await insforge.database
     .from('produits')
     .update({ ...prodData })
