@@ -45,7 +45,8 @@ export const Logistique = () => {
         .filter((f: any) => f.statut_feuille === 'en_cours')
         .map((f: any) => ({
           ...f,
-          nom_livreur: f.users?.nom_complet || f.nom_livreur
+          nom_livreur: f.users?.nom_complet || f.nom_livreur,
+          telephone_livreur: f.users?.telephone || f.telephone_livreur
         }));
       setActiveFeuilles(enCours);
     } catch (error) {
@@ -111,10 +112,12 @@ export const Logistique = () => {
         return cmd;
       });
 
-      const livreurName = livreurs.find(l => l.id === selectedLivreur)?.nom_complet || "Livreur";
+      const selectedLivreurObj = livreurs.find(l => l.id === selectedLivreur);
+      const livreurName = selectedLivreurObj?.nom_complet || "Livreur";
+      const livreurPhone = selectedLivreurObj?.telephone || "";
       
       try {
-        generateDeliverySlipPDF({ id: feuilleId, nom_livreur: livreurName }, updatedCommandesForPdf);
+        generateDeliverySlipPDF({ id: feuilleId, nom_livreur: livreurName, telephone_livreur: livreurPhone }, updatedCommandesForPdf);
       } catch (pdfErr) {
         console.error("Erreur PDF:", pdfErr);
         showToast("Feuille créée, mais erreur lors de la génération du PDF. Vous pouvez le réimprimer depuis l'historique.", "info");

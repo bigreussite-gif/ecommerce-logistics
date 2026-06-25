@@ -17,7 +17,7 @@ export const creerFeuilleRoute = async (livreurId: string, commandeIds: string[]
   // 1. Fetch commands to verify they exist and get totals
   const { data: cmdData, error: cmdFetchError } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone)')
+    .select('*, clients(nom_complet, telephone, telephone_secondaire)')
     .in('id', commandeIds);
 
   if (cmdFetchError) throw new Error(`Erreur lors de la récupération des commandes : ${cmdFetchError.message}`);
@@ -26,7 +26,8 @@ export const creerFeuilleRoute = async (livreurId: string, commandeIds: string[]
   const mappedCmds = cmdData.map((c: any) => ({
     ...c,
     nom_client: c.clients?.nom_complet,
-    telephone_client: c.clients?.telephone
+    telephone_client: c.clients?.telephone,
+    telephone_secondaire: c.clients?.telephone_secondaire
   }));
   
   const total_montant = mappedCmds.reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
@@ -131,7 +132,7 @@ export const getFeuillesRoute = async () => {
 export const getCommandesByFeuille = async (feuilleId: string): Promise<Commande[]> => {
   const { data: orders, error: orderError } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone)')
+    .select('*, clients(nom_complet, telephone, telephone_secondaire)')
     .eq('feuille_route_id', feuilleId);
 
   if (orderError) throw orderError;
@@ -151,6 +152,7 @@ export const getCommandesByFeuille = async (feuilleId: string): Promise<Commande
     ...o,
     nom_client: o.clients?.nom_complet,
     telephone_client: o.clients?.telephone,
+    telephone_secondaire: o.clients?.telephone_secondaire,
     lignes: (lines || []).filter((l: any) => l.commande_id === o.id)
   }));
 };
@@ -158,7 +160,7 @@ export const getCommandesByFeuille = async (feuilleId: string): Promise<Commande
 export const getCommandeByReference = async (id: string): Promise<Commande | null> => {
   const { data, error } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone)')
+    .select('*, clients(nom_complet, telephone, telephone_secondaire)')
     .eq('id', id)
     .single();
 
@@ -167,7 +169,8 @@ export const getCommandeByReference = async (id: string): Promise<Commande | nul
   return {
     ...data,
     nom_client: data.clients?.nom_complet,
-    telephone_client: data.clients?.telephone
+    telephone_client: data.clients?.telephone,
+    telephone_secondaire: data.clients?.telephone_secondaire
   };
 };
 

@@ -167,6 +167,7 @@ export interface FeuilleRoute {
   date_traitement?: string | Date;
   // Extras
   nom_livreur?: string;
+  telephone_livreur?: string;
   total_encaisse?: number;
   ecart_caisse?: number;
   montant_encaisse?: number; // legacy alias

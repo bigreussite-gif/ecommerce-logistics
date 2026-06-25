@@ -183,7 +183,7 @@ export const generateDeliverySlipPDF = async (feuilleRoute: any, commandes: Comm
     head: [['Nom & Prénoms du Livreur', 'Téléphone', 'Nombre de colis', 'Somme Totale à Encaisser']],
     body: [[
       (feuilleRoute.nom_livreur || "Personnel GomboSwift").toUpperCase(),
-      "-", 
+      feuilleRoute.telephone_livreur || "-", 
       commandes.length.toString(),
       `${fP(totalObjectif)}`
     ]],
@@ -231,6 +231,10 @@ export const generateDeliverySlipPDF = async (feuilleRoute: any, commandes: Comm
        `${l.quantite}`
     ).join('\n');
     
+    const telephones = c.telephone_secondaire 
+      ? `${c.telephone_client} / ${c.telephone_secondaire}` 
+      : (c.telephone_client || "-");
+
     return [
       `#${(c.id || "").substring(0, 8).toUpperCase()}`,
       itemsStr || "SANS ARTICLES",
@@ -240,7 +244,7 @@ export const generateDeliverySlipPDF = async (feuilleRoute: any, commandes: Comm
       c.livraison_incluse ? 'INCLUS' : `${fP(c.frais_livraison || 0)}`,
       qtyStr || "0",
       `${fP(c.montant_total || 0)}`,
-      c.telephone_client || "-",
+      telephones,
       `${c.commune_livraison || ""} - ${c.quartier_livraison || ""} - ${c.adresse_livraison || ""}`.trim().replace(/ - $/g, '') || "-",
       " " 
     ];

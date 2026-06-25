@@ -3,9 +3,9 @@ import { insforge } from '../lib/insforge';
 import { addMouvementStock } from './produitService';
 
 /**
- * Helper to fetch and map livreur names to avoid duplication
+ * Helper to fetch and map livreur info to avoid duplication
  */
-const fetchLivreurNames = async (data: any[]): Promise<Map<string, string>> => {
+const fetchLivreurInfos = async (data: any[]): Promise<Map<string, { nom_complet: string, telephone: string }>> => {
   if (!data || data.length === 0) return new Map();
   
   const userIds = Array.from(new Set(data.map(f => f.livreur_id).filter(Boolean)));
@@ -13,10 +13,10 @@ const fetchLivreurNames = async (data: any[]): Promise<Map<string, string>> => {
 
   const { data: userData } = await insforge.database
     .from('users')
-    .select('id, nom_complet')
+    .select('id, nom_complet, telephone')
     .in('id', userIds);
 
-  return new Map(userData?.map(u => [u.id, u.nom_complet]) || []);
+  return new Map(userData?.map(u => [u.id, { nom_complet: u.nom_complet, telephone: u.telephone || '' }]) || []);
 };
 
 export const getFeuillesEnCours = async (livreurId?: string): Promise<FeuilleRoute[]> => {
@@ -34,12 +34,16 @@ export const getFeuillesEnCours = async (livreurId?: string): Promise<FeuilleRou
   
   if (!data || data.length === 0) return [];
 
-  const nameMap = await fetchLivreurNames(data);
+  const infoMap = await fetchLivreurInfos(data);
 
-  return data.map((f: any) => ({
-    ...f,
-    nom_livreur: nameMap.get(f.livreur_id) || `Livreur #${f.livreur_id?.slice(0,5)}`
-  }));
+  return data.map((f: any) => {
+    const info = infoMap.get(f.livreur_id);
+    return {
+      ...f,
+      nom_livreur: info?.nom_complet || `Livreur #${f.livreur_id?.slice(0,5)}`,
+      telephone_livreur: info?.telephone || ''
+    };
+  });
 };
 
 export const getFeuillesDuJour = async (): Promise<FeuilleRoute[]> => {
@@ -59,11 +63,15 @@ export const getFeuillesDuJour = async (): Promise<FeuilleRoute[]> => {
   if (error) throw error;
   if (!data || data.length === 0) return [];
 
-  const nameMap = await fetchLivreurNames(data);
-  return data.map((f: any) => ({
-    ...f,
-    nom_livreur: nameMap.get(f.livreur_id) || `Livreur #${f.livreur_id?.slice(0,5)}`
-  }));
+  const infoMap = await fetchLivreurInfos(data);
+  return data.map((f: any) => {
+    const info = infoMap.get(f.livreur_id);
+    return {
+      ...f,
+      nom_livreur: info?.nom_complet || `Livreur #${f.livreur_id?.slice(0,5)}`,
+      telephone_livreur: info?.telephone || ''
+    };
+  });
 };
 
 export const getCloturedFeuilles = async (): Promise<FeuilleRoute[]> => {
@@ -77,12 +85,16 @@ export const getCloturedFeuilles = async (): Promise<FeuilleRoute[]> => {
   
   if (!data || data.length === 0) return [];
 
-  const nameMap = await fetchLivreurNames(data);
+  const infoMap = await fetchLivreurInfos(data);
 
-  return data.map((f: any) => ({
-    ...f,
-    nom_livreur: nameMap.get(f.livreur_id) || `Livreur #${f.livreur_id?.slice(0,5)}`
-  }));
+  return data.map((f: any) => {
+    const info = infoMap.get(f.livreur_id);
+    return {
+      ...f,
+      nom_livreur: info?.nom_complet || `Livreur #${f.livreur_id?.slice(0,5)}`,
+      telephone_livreur: info?.telephone || ''
+    };
+  });
 };
 
 export const getCommandesConcernees = async (feuilleRouteId: string): Promise<Commande[]> => {
