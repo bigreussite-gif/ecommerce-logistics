@@ -10,7 +10,12 @@ export const Landing = () => {
           <div style={{ background: 'linear-gradient(135deg, #2b9f9a 0%, #f48024 100%)', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', boxShadow: '0 0 20px rgba(43, 159, 154, 0.4)' }}>
             <Package size={24} />
           </div>
-          <span style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.04em' }}>JACHETECI CRM</span>
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+            <span style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.04em' }}>
+              <span style={{ color: '#f48024' }}>J'</span><span style={{ color: '#2b9f9a' }}>achète</span><span style={{ color: '#f48024' }}>.ci</span>
+            </span>
+            <span style={{ fontSize: '0.9rem', fontWeight: 800, color: '#94a3b8', letterSpacing: '0.1em' }}>CRM</span>
+          </div>
         </div>
         <nav style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
            <Link to="/login" className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', borderRadius: '12px', background: 'linear-gradient(135deg, #2b9f9a 0%, #f48024 100%)', border: 'none', fontWeight: 800, textDecoration: 'none', color: 'white', boxShadow: '0 10px 25px -5px rgba(43, 159, 154, 0.4)' }}>

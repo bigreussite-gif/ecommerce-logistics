@@ -9,7 +9,7 @@ export const Header = ({ onMenuClick }: { onMenuClick: () => void }) => {
   
   const getPageTitle = () => {
     switch (location.pathname) {
-      case '/': return 'Portail JACHETECI CRM';
+      case '/': return <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', flexWrap: 'wrap' }}><span>Portail</span><span style={{ fontWeight: 900 }}><span style={{ color: '#f48024' }}>J'</span><span style={{ color: '#2b9f9a' }}>achète</span><span style={{ color: '#f48024' }}>.ci</span></span> <span style={{ fontSize: '0.9em', color: 'var(--text-muted)' }}>CRM</span></div>;
       case '/dashboard': return 'Business 360°';
       case '/produits': return 'Produits & Stock';
       case '/commandes': return 'Gestion des Commandes';

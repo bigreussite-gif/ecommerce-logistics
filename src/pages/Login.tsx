@@ -146,14 +146,12 @@ export const Login = () => {
             <LogIn size={38} color="white" strokeWidth={2.5} />
           </div>
           
-          <h1 className="text-neon" style={{ 
-            fontSize: '2.6rem', 
-            fontWeight: 900, 
-            margin: 0, 
-            letterSpacing: '-0.04em',
-            lineHeight: 1.1,
-            textTransform: 'uppercase'
-          }}>JACHETECI CRM</h1>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.1 }}>
+            <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 950, letterSpacing: '-0.04em' }}>
+              <span style={{ color: '#f48024' }}>J'</span><span style={{ color: '#2b9f9a' }}>achète</span><span style={{ color: '#f48024' }}>.ci</span>
+            </h1>
+            <span style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>CRM</span>
+          </div>
           
           <div style={{ 
             marginTop: '1.2rem', 

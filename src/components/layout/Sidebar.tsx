@@ -65,7 +65,12 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
           <div style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <img src="/logo.png" alt="JACHETECI CRM" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
           </div>
-          <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.04em', marginLeft: '8px' }}>JACHETECI CRM</span>
+          <div style={{ display: 'flex', flexDirection: 'column', marginLeft: '8px', lineHeight: 1.1 }}>
+            <span style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '-0.04em' }}>
+              <span style={{ color: '#f48024' }}>J'</span><span style={{ color: '#2b9f9a' }}>achète</span><span style={{ color: '#f48024' }}>.ci</span>
+            </span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.1em' }}>CRM</span>
+          </div>
         </div>
 
         <nav style={{ flex: 1, padding: '1rem 0', overflowY: 'auto' }}>
