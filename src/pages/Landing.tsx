@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Package, Truck, Activity, ShieldCheck, Zap, ArrowRight, TrendingUp } from 'lucide-react';
+import { Truck, Activity, ShieldCheck, Zap, ArrowRight, TrendingUp } from 'lucide-react';
 
 export const Landing = () => {
   return (
