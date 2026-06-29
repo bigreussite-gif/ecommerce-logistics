@@ -7,13 +7,13 @@ export const Landing = () => {
       {/* Header */}
       <header style={{ padding: '1.5rem 5%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(10px)', position: 'fixed', top: 0, width: '100%', zIndex: 50, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', boxShadow: '0 0 20px rgba(99, 102, 255, 0.4)' }}>
+          <div style={{ background: 'linear-gradient(135deg, #2b9f9a 0%, #f48024 100%)', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', boxShadow: '0 0 20px rgba(43, 159, 154, 0.4)' }}>
             <Package size={24} />
           </div>
           <span style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.04em' }}>JACHETECI CRM</span>
         </div>
         <nav style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-           <Link to="/login" className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', borderRadius: '12px', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', border: 'none', fontWeight: 800, textDecoration: 'none', color: 'white', boxShadow: '0 10px 25px -5px rgba(99, 102, 255, 0.4)' }}>
+           <Link to="/login" className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', borderRadius: '12px', background: 'linear-gradient(135deg, #2b9f9a 0%, #f48024 100%)', border: 'none', fontWeight: 800, textDecoration: 'none', color: 'white', boxShadow: '0 10px 25px -5px rgba(43, 159, 154, 0.4)' }}>
              SE CONNECTER
            </Link>
         </nav>
@@ -33,7 +33,7 @@ export const Landing = () => {
             </div>
             <h1 style={{ fontSize: 'clamp(3rem, 6vw, 4.5rem)', fontWeight: 950, lineHeight: 1.1, marginBottom: '1.5rem', letterSpacing: '-0.02em' }}>
               L'écosystème <br />
-              <span style={{ background: 'linear-gradient(to right, #818cf8, #c084fc)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>complet de</span><br />
+              <span style={{ background: 'linear-gradient(to right, #2b9f9a, #f48024)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>complet de</span><br />
               votre e-commerce.
             </h1>
             <p style={{ fontSize: '1.1rem', color: '#94a3b8', lineHeight: 1.6, marginBottom: '2.5rem', maxWidth: '500px' }}>
@@ -49,7 +49,7 @@ export const Landing = () => {
           {/* Hero Visual */}
           <div style={{ position: 'relative' }}>
              <div style={{ background: 'linear-gradient(145deg, rgba(30,41,59,0.7) 0%, rgba(15,23,42,0.8) 100%)', border: '1px solid rgba(255,255,255,0.1)', padding: '2rem', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(90deg, #6366f1, #a855f7)' }}></div>
+                <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '4px', background: 'linear-gradient(90deg, #2b9f9a, #f48024)' }}></div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                    <div>
                       <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Profit Réel Net</h4>

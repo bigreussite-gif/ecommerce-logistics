@@ -1,8 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap');
 
 :root {
-  /* Sophisticated Palette (HSL) */
-  --p-h: 243; --p-s: 75%; --p-l: 59%; /* Indigo-ish */
+  /* Teal from logo */
+  --p-h: 177; --p-s: 60%; --p-l: 45%; 
   --primary: hsl(var(--p-h), var(--p-s), var(--p-l));
   --primary-glow: hsla(var(--p-h), var(--p-s), var(--p-l), 0.2);
   

@@ -134,7 +134,7 @@ export const Login = () => {
           <div style={{ 
             width: '80px', 
             height: '80px', 
-            background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', 
+            background: 'linear-gradient(135deg, #2b9f9a 0%, #f48024 100%)', 
             borderRadius: '22px', 
             margin: '0 auto 1.5rem', 
             display: 'flex', 
@@ -195,7 +195,7 @@ export const Login = () => {
               type="submit"
               disabled={loading}
               className="btn btn-primary"
-              style={{ height: '64px', borderRadius: '18px', fontWeight: 900, fontSize: '1.1rem', background: 'linear-gradient(90deg, #6366f1, #a855f7)', border: 'none', boxShadow: '0 20px 30px -10px rgba(99, 102, 255, 0.6)', width: '100%' }}
+              style={{ height: '64px', borderRadius: '18px', fontWeight: 900, fontSize: '1.1rem', background: 'linear-gradient(90deg, #2b9f9a, #f48024)', border: 'none', boxShadow: '0 20px 30px -10px rgba(43, 159, 154, 0.6)', width: '100%' }}
             >
               {loading ? <Loader2 className="animate-spin" /> : "VÉRIFIER L'IDENTITÉ"}
             </button>
@@ -242,7 +242,7 @@ export const Login = () => {
               type="submit"
               disabled={loading}
               className="btn btn-primary"
-              style={{ height: '64px', borderRadius: '18px', fontWeight: 900, fontSize: '1.2rem', background: 'linear-gradient(90deg, #6366f1, #a855f7)', border: 'none', boxShadow: '0 20px 30px -10px rgba(99, 102, 255, 0.6)', marginTop: '0.5rem', width: '100%' }}
+              style={{ height: '64px', borderRadius: '18px', fontWeight: 900, fontSize: '1.2rem', background: 'linear-gradient(90deg, #2b9f9a, #f48024)', border: 'none', boxShadow: '0 20px 30px -10px rgba(43, 159, 154, 0.6)', marginTop: '0.5rem', width: '100%' }}
             >
               {loading ? <Loader2 className="animate-spin" size={24} /> : (isSignUp ? "INITIALISER" : "SE CONNECTER")}
             </button>
