@@ -132,18 +132,14 @@ export const Login = () => {
         {/* LOGO & TITRE FUTURISTE */}
         <div style={{ textAlign: 'center', marginBottom: '3.5rem', position: 'relative', zIndex: 2 }}>
           <div style={{ 
-            width: '80px', 
-            height: '80px', 
-            background: 'linear-gradient(135deg, #2b9f9a 0%, #f48024 100%)', 
-            borderRadius: '22px', 
+            width: '100px', 
+            height: '100px', 
             margin: '0 auto 1.5rem', 
             display: 'flex', 
             alignItems: 'center', 
-            justifyContent: 'center',
-            boxShadow: '0 0 40px rgba(99, 102, 255, 0.5), inset 0 0 15px rgba(255,255,255,0.4)',
-            border: '1px solid rgba(255,255,255,0.3)'
+            justifyContent: 'center'
           }}>
-            <LogIn size={38} color="white" strokeWidth={2.5} />
+            <img src="/logo.png" alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.1 }}>
