@@ -92,7 +92,7 @@ export const exportToWord = (content: {
     <body>
       <div class="header">
         <div class="title">BILAN DE TRÉSORERIE PROFESSIONNEL</div>
-        <div class="period">GomboSwift Application Logiciel - Période: ${content.period}</div>
+        <div class="period">JACHETECI CRM Application Logiciel - Période: ${content.period}</div>
       </div>
       
       <div class="section-title">RÉSUMÉ ANALYTIQUE</div>
@@ -127,7 +127,7 @@ export const exportToWord = (content: {
       
       <div class="footer">
         Document généré automatiquement le ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: fr })}<br/>
-        Logiciel de Gestion GomboSwift - Identifiant Audit: ${Math.random().toString(36).substring(2, 10).toUpperCase()}
+        Logiciel de Gestion JACHETECI CRM - Identifiant Audit: ${Math.random().toString(36).substring(2, 10).toUpperCase()}
       </div>
     </body>
     </html>

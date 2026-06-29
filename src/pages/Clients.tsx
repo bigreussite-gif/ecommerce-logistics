@@ -87,7 +87,7 @@ export const Clients = () => {
   const sendWhatsApp = (client: Client, templateName: 'friendly' | 'promo' | 'reminder') => {
     let message = '';
     const nom = client.nom_complet.split(' ')[0] || 'Cher client';
-    const signature = "\n\n*L'équipe GomboSwift*\nwww.gomboswift.ci\n+225 01 72 57 13 52";
+    const signature = "\n\n*L'équipe JACHETECI CRM*\nwww.jachete.ci\n+225 01 72 57 13 52";
 
     if (templateName === 'friendly') {
       message = `Bonjour ${nom} ! 🌟\nComment allez-vous ? J'espère que vous êtes satisfait de nos services. Si vous avez besoin de quoi que ce soit, nous sommes à votre disposition !\n${signature}`;

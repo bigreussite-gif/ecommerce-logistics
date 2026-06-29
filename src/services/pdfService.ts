@@ -26,8 +26,8 @@ export const generateInvoicePDF = async (commande: Commande & { lignes: LigneCom
   // --- HEADER & BRANDING ---
   doc.setFont("helvetica", "bold");
   doc.setFontSize(24);
-  doc.setTextColor(99, 102, 255); // GomboSwift Primary
-  doc.text("GomboSwift", 20, 25);
+  doc.setTextColor(99, 102, 255); // JACHETECI CRM Primary
+  doc.text("JACHETECI CRM", 20, 25);
   
   doc.setFontSize(9);
   doc.setTextColor(100, 116, 139);
@@ -138,15 +138,15 @@ export const generateInvoicePDF = async (commande: Commande & { lignes: LigneCom
   doc.setFontSize(9);
   doc.setTextColor(148, 163, 184);
   doc.setFont("helvetica", "italic");
-  const footerText = "Merci d'avoir choisi GomboSwift pour votre livraison !";
+  const footerText = "Merci d'avoir choisi JACHETECI CRM pour votre livraison !";
   doc.text(footerText, pageWidth / 2, 280, { align: 'center' });
   
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.text("GomboSwift S.A.S - RCCM: CI-ABJ-03-2024-B-00000", pageWidth / 2, 285, { align: 'center' });
+  doc.text("JACHETECI CRM - RCCM: CI-ABJ-03-2024-B-00000", pageWidth / 2, 285, { align: 'center' });
 
   // Save the PDF
-  doc.save(`Facture_GomboSwift_${(commande.id || "0000").substring(0, 8).toUpperCase()}.pdf`);
+  doc.save(`Facture_JACHETECI_CRM_${(commande.id || "0000").substring(0, 8).toUpperCase()}.pdf`);
 };
 
 export const generateDeliverySlipPDF = async (feuilleRoute: any, commandes: Commande[]) => {
@@ -167,7 +167,7 @@ export const generateDeliverySlipPDF = async (feuilleRoute: any, commandes: Comm
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(148, 163, 184);
-  doc.text("LOGICIEL GOMBOSWIFT - GESTION LOGISTIQUE", 15, 10);
+  doc.text("LOGICIEL JACHETECI CRM - GESTION LOGISTIQUE", 15, 10);
   
   doc.setFontSize(14);
   doc.setTextColor(darkText[0], darkText[1], darkText[2]);
@@ -182,7 +182,7 @@ export const generateDeliverySlipPDF = async (feuilleRoute: any, commandes: Comm
     margin: { left: 15, right: 15 },
     head: [['Nom & Prénoms du Livreur', 'Téléphone', 'Nombre de colis', 'Somme Totale à Encaisser']],
     body: [[
-      (feuilleRoute.nom_livreur || "Personnel GomboSwift").toUpperCase(),
+      (feuilleRoute.nom_livreur || "Personnel JACHETECI CRM").toUpperCase(),
       feuilleRoute.telephone_livreur || "-", 
       commandes.length.toString(),
       `${fP(totalObjectif)}`
@@ -304,7 +304,7 @@ export const generateDeliverySlipPDF = async (feuilleRoute: any, commandes: Comm
   doc.setFont("helvetica", "normal");
   doc.text("Adresse : Yop Toit rouge, Non loin de la grande Mosquée, stade BAE", pageWidth / 2, footerY + 7, { align: 'center' });
 
-  doc.save(`FeuilleRoute_GomboSwift_${format(displayDate, 'dd_MM_yyyy')}.pdf`);
+  doc.save(`FeuilleRoute_JACHETECI_CRM_${format(displayDate, 'dd_MM_yyyy')}.pdf`);
 };
 
 export const generateAnalyticalReportPDF = async (data: any, dateString: string) => {
@@ -322,7 +322,7 @@ export const generateAnalyticalReportPDF = async (data: any, dateString: string)
     doc.setFont("helvetica", "bold");
     doc.setFontSize(22);
     doc.setTextColor(99, 102, 255);
-    doc.text("GomboSwift Analysis", 20, 25);
+    doc.text("JACHETECI CRM Analysis", 20, 25);
     
     doc.setFontSize(12);
     doc.setTextColor(100, 116, 139);
@@ -392,7 +392,7 @@ export const generateAnalyticalReportPDF = async (data: any, dateString: string)
     });
 
     // Save
-    doc.save(`Rapport_Analytique_${dateString || 'journee'}_GomboSwift.pdf`);
+    doc.save(`Rapport_Analytique_${dateString || 'journee'}_JACHETECI_CRM.pdf`);
   } catch (err) {
     console.error("Critical error inside generateAnalyticalReportPDF:", err);
     throw err;
@@ -416,7 +416,7 @@ export const generateAuditReportPDF = async (
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
   doc.setTextColor(255, 255, 255);
-  doc.text("GomboSwift Finance", 20, 25);
+  doc.text("JACHETECI CRM Finance", 20, 25);
   
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
@@ -477,7 +477,7 @@ export const generateAuditReportPDF = async (
   doc.setFontSize(8);
   doc.setTextColor(150, 150, 150);
   doc.setFont("helvetica", "normal");
-  doc.text("Ce document est certifié conforme aux écritures comptables enregistrées dans le système GomboSwift.", pageWidth / 2, 285, { align: 'center' });
+  doc.text("Ce document est certifié conforme aux écritures comptables enregistrées dans le système JACHETECI CRM.", pageWidth / 2, 285, { align: 'center' });
 
   doc.save(`Bilan_Expertise_${dateRange.start}_${dateRange.end}.pdf`);
 };

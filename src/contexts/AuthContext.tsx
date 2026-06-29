@@ -50,7 +50,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const processedUser = {
           ...data,
           email: data.email || email,
-          nom_complet: data.nom_complet || 'Utilisateur GomboSwift',
+          nom_complet: data.nom_complet || 'Utilisateur JACHETECI CRM',
           role: data.role || 'ADMIN',
           permissions: data.permissions && data.permissions.length > 0 
             ? data.permissions 
@@ -78,7 +78,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           ...emailData,
           id: userId,
           email: emailData.email || email,
-          nom_complet: emailData.nom_complet || 'Utilisateur GomboSwift',
+          nom_complet: emailData.nom_complet || 'Utilisateur JACHETECI CRM',
           role: emailData.role || 'AGENT_APPEL',
           permissions: emailData.permissions && emailData.permissions.length > 0
             ? emailData.permissions

@@ -153,7 +153,7 @@ export const Login = () => {
             letterSpacing: '-0.04em',
             lineHeight: 1.1,
             textTransform: 'uppercase'
-          }}>GomboSwift</h1>
+          }}>JACHETECI CRM</h1>
           
           <div style={{ 
             marginTop: '1.2rem', 

@@ -10,7 +10,7 @@ export const Landing = () => {
           <div style={{ background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', width: '40px', height: '40px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', boxShadow: '0 0 20px rgba(99, 102, 255, 0.4)' }}>
             <Package size={24} />
           </div>
-          <span style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.04em' }}>GomboSwift</span>
+          <span style={{ fontSize: '1.5rem', fontWeight: 900, letterSpacing: '-0.04em' }}>JACHETECI CRM</span>
         </div>
         <nav style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
            <Link to="/login" className="btn btn-primary" style={{ padding: '0.6rem 1.5rem', borderRadius: '12px', background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)', border: 'none', fontWeight: 800, textDecoration: 'none', color: 'white', boxShadow: '0 10px 25px -5px rgba(99, 102, 255, 0.4)' }}>
@@ -37,7 +37,7 @@ export const Landing = () => {
               votre e-commerce.
             </h1>
             <p style={{ fontSize: '1.1rem', color: '#94a3b8', lineHeight: 1.6, marginBottom: '2.5rem', maxWidth: '500px' }}>
-              Gérez votre stock, pilotez vos coursiers, suivez votre chiffre d'affaires et optimisez votre rentabilité avec GomboSwift. Le centre de contrôle ultime.
+              Gérez votre stock, pilotez vos coursiers, suivez votre chiffre d'affaires et optimisez votre rentabilité avec JACHETECI CRM. Le centre de contrôle ultime.
             </p>
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
               <Link to="/login" className="btn" style={{ padding: '1rem 2rem', borderRadius: '16px', background: 'white', color: '#0f172a', fontWeight: 900, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.1rem' }}>
@@ -104,7 +104,7 @@ export const Landing = () => {
 
       {/* Footer */}
       <footer style={{ padding: '3rem 5%', borderTop: '1px solid rgba(255,255,255,0.05)', textAlign: 'center', color: '#64748b' }}>
-         <p style={{ margin: 0, fontWeight: 600 }}>© {new Date().getFullYear()} GomboSwift. Tous droits réservés.</p>
+         <p style={{ margin: 0, fontWeight: 600 }}>© {new Date().getFullYear()} JACHETECI CRM. Tous droits réservés.</p>
          <p style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>Conçu pour l'excellence logistique et la rentabilité.</p>
       </footer>
     </div>

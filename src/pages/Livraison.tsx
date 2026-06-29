@@ -455,7 +455,7 @@ export const Livraison = () => {
                       <Phone size={20} /> Appeler
                     </a>
                     <a 
-                      href={`https://wa.me/${c.telephone_client?.replace(/\s/g, '')}?text=${encodeURIComponent(`Bonjour ${c.nom_client}, c'est votre livreur GomboSwift 🛵. Je suis en route pour votre livraison de ${c.montant_total} CFA. Serez-vous disponible d'ici 15 minutes ?\n\n*L'équipe Jachete Côte d'Ivoire*\nwww.jachete.ci\n+225 01 72 57 13 52 ,`)}`}
+                      href={`https://wa.me/${c.telephone_client?.replace(/\s/g, '')}?text=${encodeURIComponent(`Bonjour ${c.nom_client}, c'est votre livreur JACHETECI 🛵. Je suis en route pour votre livraison de ${c.montant_total} CFA. Serez-vous disponible d'ici 15 minutes ?\n\n*L'équipe Jachete Côte d'Ivoire*\nwww.jachete.ci\n+225 01 72 57 13 52 `)}`}
                       target="_blank" 
                       rel="noopener noreferrer" 
                       className="btn" 

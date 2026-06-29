@@ -80,7 +80,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
       return (
         <div style={{ padding: '2rem', textAlign: 'center', background: '#fef2f2', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <h1 style={{ color: '#991b1b' }}>{isChunkError ? 'Mise à jour disponible' : 'Une erreur critique est survenue'}</h1>
-          <p>{isChunkError ? 'Une nouvelle version de GomboSwift est prête. Veuillez recharger la page.' : 'L\'application a rencontré un problème inattendu.'}</p>
+          <p>{isChunkError ? 'Une nouvelle version de JACHETECI CRM est prête. Veuillez recharger la page.' : 'L\'application a rencontré un problème inattendu.'}</p>
           <button onClick={() => window.location.reload()} className="btn btn-primary" style={{ marginTop: '1rem', padding: '0.75rem 2rem', borderRadius: '14px' }}>
             {isChunkError ? 'Mettre à jour maintenant' : 'Recharger l\'application'}
           </button>

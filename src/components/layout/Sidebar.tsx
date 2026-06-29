@@ -62,10 +62,10 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
       <div className={`sidebar-overlay ${isOpen ? 'open' : ''}`} onClick={onClose} />
       <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
         <div className="brand-logo">
-          <div style={{ background: 'var(--primary)', width: '38px', height: '38px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-            <Package size={22} />
+          <div style={{ width: '48px', height: '48px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <img src="/logo.png" alt="JACHETECI CRM" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
           </div>
-          <span style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.04em' }}>GomboSwift</span>
+          <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '-0.04em', marginLeft: '8px' }}>JACHETECI CRM</span>
         </div>
 
         <nav style={{ flex: 1, padding: '1rem 0', overflowY: 'auto' }}>
