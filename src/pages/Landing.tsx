@@ -3,7 +3,7 @@ import { Package, Truck, Activity, ShieldCheck, Zap, ArrowRight, TrendingUp } fr
 
 export const Landing = () => {
   return (
-    <div style={{ minHeight: '100vh', backgroundColor: '#0f172a', color: 'white', fontFamily: 'Inter, sans-serif', overflowX: 'hidden' }}>
+    <div style={{ height: '100vh', overflowY: 'auto', backgroundColor: '#0f172a', color: 'white', fontFamily: 'Inter, sans-serif', overflowX: 'hidden' }}>
       {/* Header */}
       <header style={{ padding: '1.5rem 5%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(10px)', position: 'fixed', top: 0, width: '100%', zIndex: 50, borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

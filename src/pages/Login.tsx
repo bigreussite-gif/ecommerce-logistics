@@ -108,7 +108,8 @@ export const Login = () => {
   return (
     <div className="login-v2" style={{ 
       position: 'relative', 
-      overflow: 'hidden',
+      overflowY: 'auto',
+      overflowX: 'hidden',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
