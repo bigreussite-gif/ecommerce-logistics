@@ -78,7 +78,7 @@ export const BulkImportProduitModal = ({ onClose, onSave }: { onClose: () => voi
       // Charger les catégories existantes
       const { data: existingCategories } = await insforge.database
         .from('categories')
-        .select('*').limit(100000);
+        .select('*');
       
       const catMap = new Map<string, string>();
       existingCategories?.forEach(c => catMap.set(c.nom.toLowerCase(), c.id));
@@ -89,7 +89,7 @@ export const BulkImportProduitModal = ({ onClose, onSave }: { onClose: () => voi
         const { data: newCats, error: catErr } = await insforge.database
           .from('categories')
           .insert(missingCats.map(name => ({ nom: name })))
-          .select().limit(100000);
+          .select();
         
         if (catErr) throw catErr;
         newCats?.forEach(c => catMap.set(c.nom.toLowerCase(), c.id));

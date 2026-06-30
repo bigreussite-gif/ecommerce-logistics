@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // 1. Try direct lookup by auth UID
       const { data, error } = await insforge.database
         .from('users')
-        .select('*').limit(100000)
+        .select('*')
         .eq('id', userId)
         .single();
 
@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       // 2. Fallback: chercher par email et synchroniser l'ID
       const { data: emailData, error: emailError } = await insforge.database
         .from('users')
-        .select('*').limit(100000)
+        .select('*')
         .eq('email', email)
         .single();
 

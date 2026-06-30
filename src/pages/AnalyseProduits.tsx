@@ -73,7 +73,7 @@ export const AnalyseProduits = () => {
       try {
         const { data, error } = await insforge.database
           .from('lignes_commandes')
-          .select('id, quantite, prix_unitaire, montant_ligne, prix_achat_unitaire, commande_id, produit_id, commandes!inner(statut_commande, date_creation, commune_livraison).limit(100000)')
+          .select('id, quantite, prix_unitaire, montant_ligne, prix_achat_unitaire, commande_id, produit_id, commandes!inner(statut_commande, date_creation, commune_livraison)')
           .in('produit_id', selectedProductIds);
 
         if (error) throw error;

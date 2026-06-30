@@ -21,7 +21,7 @@ export const Defaillants = () => {
     try {
       const { data, error } = await insforge.database
         .from('retours')
-        .select('*, produits(nom).limit(100000), commandes(id, nom_client)')
+        .select('*, produits(nom), commandes(id, nom_client)')
         .neq('etat_produit', 'REUTILISABLE')
         .order('created_at', { ascending: false });
 

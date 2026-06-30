@@ -42,7 +42,7 @@ export const RelanceWhatsApp = () => {
       // 2. Fetch Orders with date filter and status filter
       let query = insforge.database
         .from('commandes')
-        .select('*, clients(nom_complet, telephone).limit(100000), lignes:lignes_commandes(*)');
+        .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*)');
 
       // Apply Status filter
       if (selectedStatus === 'AllActive') {

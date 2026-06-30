@@ -14,7 +14,7 @@ export const getProduits = async (): Promise<Produit[]> => {
   // Fetch composants for bundles
   const { data: composantsData } = await insforge.database
     .from('produits_composants')
-    .select('*, produit:produits!produits_composants_composant_id_fkey(*).limit(100000)').limit(100000);
+    .select('*, produit:produits!produits_composants_composant_id_fkey(*)').limit(100000);
     
   const bundlesMap = new Map<string, any[]>();
   (composantsData || []).forEach(comp => {
@@ -25,7 +25,7 @@ export const getProduits = async (): Promise<Produit[]> => {
   try {
     const { data: lines, error: linesError } = await insforge.database
       .from('lignes_commandes')
-      .select('produit_id, quantite, commandes!inner(statut_commande, date_creation).limit(100000)').limit(100000)
+      .select('produit_id, quantite, commandes!inner(statut_commande, date_creation)').limit(100000)
       .in('commandes.statut_commande', [
         'nouvelle', 'a_rappeler', 'en_attente_appel', 'validee', // Réservé
         'en_cours_livraison', // En livraison

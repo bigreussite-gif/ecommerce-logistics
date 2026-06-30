@@ -55,7 +55,7 @@ export const Caisse = () => {
       // Search clients by name or phone
       const { data: clientData } = await insforge.database
         .from('clients')
-        .select('id').limit(100000)
+        .select('id')
         .or(`nom_complet.ilike.%${term}%,telephone.ilike.%${term}%`);
 
       const clientIds = (clientData || []).map((c: any) => c.id);
@@ -64,7 +64,7 @@ export const Caisse = () => {
       // Search commandes by client name or phone
       const { data: cmdData } = await (insforge as any).database
         .from('commandes')
-        .select('feuille_route_id').limit(100000)
+        .select('feuille_route_id')
         .not('feuille_route_id', 'is', null)
         .in('client_id', clientIds)
         .limit(20);
@@ -74,7 +74,7 @@ export const Caisse = () => {
 
       const { data: frData } = await (insforge as any).database
         .from('feuilles_route')
-        .select('*').limit(100000)
+        .select('*')
         .in('id', ids)
         .in('statut_feuille', ['en_cours', 'cloturee']);
 
@@ -85,7 +85,7 @@ export const Caisse = () => {
       let nameMap = new Map<string, string>();
       if (userIds.length > 0) {
         const { data: uData } = await (insforge as any).database
-          .from('users').select('id, nom_complet').limit(100000).in('id', userIds);
+          .from('users').select('id, nom_complet').in('id', userIds);
         nameMap = new Map((uData || []).map((u: any) => [u.id, u.nom_complet]));
       }
       setFeuilleSearchResults(frData.map((f: any) => ({ ...f, nom_livreur: nameMap.get(f.livreur_id) || `Livreur #${f.livreur_id?.slice(0,5)}` })));
@@ -181,7 +181,7 @@ export const Caisse = () => {
 
       const { data: matchedClients } = await insforge.database
         .from('clients')
-        .select('id').limit(100000)
+        .select('id')
         .or(`nom_complet.ilike.%${term}%,telephone.ilike.%${term}%,telephone.ilike.%${cleanTerm}%,telephone.ilike.%${spacedTerm}%`);
       
       if (matchedClients) {
@@ -195,7 +195,7 @@ export const Caisse = () => {
       // 2. Query commandes by ref_text or client_ids
       let query = insforge.database
         .from('commandes')
-        .select('*, clients(nom_complet, telephone).limit(100000), lignes:lignes_commandes(*)');
+        .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*)');
       
       if (clientIds.length > 0) {
         query = query.or(`ref_text.ilike.%${cleanId}%,client_id.in.(${clientIds.map(id => `"${id}"`).join(',')})`);

@@ -17,7 +17,7 @@ export const creerFeuilleRoute = async (livreurId: string, commandeIds: string[]
   // 1. Fetch commands to verify they exist and get totals
   const { data: cmdData, error: cmdFetchError } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone, telephone_secondaire).limit(100000)').limit(100000)
+    .select('*, clients(nom_complet, telephone, telephone_secondaire)').limit(100000)
     .in('id', commandeIds);
 
   if (cmdFetchError) throw new Error(`Erreur lors de la récupération des commandes : ${cmdFetchError.message}`);
@@ -122,7 +122,7 @@ export const creerFeuilleRoute = async (livreurId: string, commandeIds: string[]
 export const getFeuillesRoute = async () => {
   const { data, error } = await insforge.database
     .from('feuilles_route')
-    .select('*, users(*).limit(100000)').limit(100000)
+    .select('*, users(*)').limit(100000)
     .order('date', { ascending: false });
 
   if (error) throw error;
@@ -132,7 +132,7 @@ export const getFeuillesRoute = async () => {
 export const getCommandesByFeuille = async (feuilleId: string): Promise<Commande[]> => {
   const { data: orders, error: orderError } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone, telephone_secondaire).limit(100000)').limit(100000)
+    .select('*, clients(nom_complet, telephone, telephone_secondaire)').limit(100000)
     .eq('feuille_route_id', feuilleId);
 
   if (orderError) throw orderError;
@@ -160,7 +160,7 @@ export const getCommandesByFeuille = async (feuilleId: string): Promise<Commande
 export const getCommandeByReference = async (id: string): Promise<Commande | null> => {
   const { data, error } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone, telephone_secondaire).limit(100000)').limit(100000)
+    .select('*, clients(nom_complet, telephone, telephone_secondaire)').limit(100000)
     .eq('id', id)
     .single();
 

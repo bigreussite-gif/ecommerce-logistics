@@ -30,10 +30,6 @@ export const Clients = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<Client>>({});
   const [sortConfig, setSortConfig] = useState<{key: string, direction: 'asc'|'desc'} | null>(null);
-  
-  const [period, setPeriod] = useState<'all' | 'today' | '7d' | '30d' | 'custom'>('all');
-  const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     fetchClients();
@@ -109,40 +105,13 @@ export const Clients = () => {
   };
 
   const filteredClients = useMemo(() => {
-    const now = new Date();
-    let start = new Date(0);
-    let end = new Date();
-    end.setHours(23, 59, 59, 999);
-
-    if (period === 'today') {
-      start.setHours(0, 0, 0, 0);
-    } else if (period === '7d') {
-      start.setDate(now.getDate() - 7);
-      start.setHours(0, 0, 0, 0);
-    } else if (period === '30d') {
-      start.setDate(now.getDate() - 30);
-      start.setHours(0, 0, 0, 0);
-    } else if (period === 'custom') {
-      start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-    }
-
     return clients.filter(c => {
       const matchesSearch = c.identities.some(id => id.toLowerCase().includes(deferredSearchTerm.toLowerCase())) || 
                            c.telephone.includes(deferredSearchTerm);
       const matchesSegment = segmentFilter === 'All' || c.segment.includes(segmentFilter);
-      
-      let matchesPeriod = true;
-      if (period !== 'all') {
-        const d = c.derniere_commande_brute ? new Date(c.derniere_commande_brute) : new Date(0);
-        matchesPeriod = d >= start && d <= end;
-      }
-      
-      return matchesSearch && matchesSegment && matchesPeriod;
+      return matchesSearch && matchesSegment;
     });
-  }, [clients, deferredSearchTerm, segmentFilter, period, startDate, endDate]);
+  }, [clients, deferredSearchTerm, segmentFilter]);
 
   const sortedClients = useMemo(() => {
     let sortable = [...filteredClients];
@@ -263,51 +232,10 @@ export const Clients = () => {
               </div>
               <p style={{ color: '#64748b', fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>Analyse comportementale et fidélisation client.</p>
             </div>
-            <div className="actions-wrapper" style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', background: 'white', padding: '0.4rem', borderRadius: '16px', border: '1px solid #e2e8f0', gap: '0.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-                {(['all', 'today', '7d', '30d', 'custom'] as const).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => setPeriod(p)}
-                    className={`btn btn-sm ${period === p ? 'btn-primary' : ''}`}
-                    style={{ 
-                      borderRadius: '12px', 
-                      border: 'none',
-                      background: period === p ? 'var(--primary)' : 'transparent',
-                      color: period === p ? 'white' : 'var(--text-muted)',
-                      padding: '0.5rem 1rem',
-                      fontWeight: 800,
-                      fontSize: '0.75rem',
-                      textTransform: 'uppercase'
-                    }}
-                  >
-                    {p === 'all' ? 'Tout' : p === 'today' ? "Aujourd'hui" : p === '7d' ? '7 Jours' : p === '30d' ? '30 Jours' : 'Personnalisé'}
-                  </button>
-                ))}
-                
-                {period === 'custom' && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '0.5rem', borderLeft: '1px solid #e2e8f0', paddingLeft: '0.8rem' }}>
-                    <input 
-                      type="date" 
-                      value={startDate} 
-                      onChange={(e) => setStartDate(e.target.value)}
-                      style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '0.2rem 0.5rem', fontSize: '0.75rem', fontWeight: 700 }}
-                    />
-                    <span style={{ fontSize: '0.75rem', fontWeight: 800 }}>à</span>
-                    <input 
-                      type="date" 
-                      value={endDate} 
-                      onChange={(e) => setEndDate(e.target.value)}
-                      style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '0.2rem 0.5rem', fontSize: '0.75rem', fontWeight: 700 }}
-                    />
-                  </div>
-                )}
-              </div>
-              <div style={{ background: 'white', padding: '0.4rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 15px rgba(0,0,0,0.03)' }}>
-                <button className="btn btn-primary" onClick={exportToCSV} style={{ height: '38px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 800, padding: '0 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
-                  <Download size={18} /> Exporter
-                </button>
-              </div>
+            <div className="actions-wrapper" style={{ display: 'flex', gap: '1rem', alignItems: 'center', background: 'white', padding: '0.6rem', borderRadius: '22px', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid #e2e8f0' }}>
+              <button className="btn btn-primary" onClick={exportToCSV} style={{ height: '44px', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 800, padding: '0 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%' }}>
+                <Download size={18} /> Exporter la base
+              </button>
             </div>
           </div>
         </section>

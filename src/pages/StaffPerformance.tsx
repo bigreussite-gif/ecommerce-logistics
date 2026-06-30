@@ -73,7 +73,7 @@ export const StaffPerformance = () => {
           getUtilisateurs(),
           getCommandes(null),
           getProduits(),
-          insforge.database.from('audit_logins').select('*').limit(100000)
+          insforge.database.from('audit_logins').select('*')
         ]);
         const allLogins = loginsRes.status === 'fulfilled' ? (loginsRes.value.data || []) : [];
         const users_data = users.status === 'fulfilled' ? users.value : [];

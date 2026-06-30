@@ -63,7 +63,7 @@ export const AuditTresorerie = () => {
       try {
         const { data: globalOrdersData, error: globalError } = await insforge.database
           .from('commandes')
-          .select('montant_total, statut_commande, frais_livraison, lignes:lignes_commandes(quantite, prix_unitaire, produits(prix_achat).limit(100000))')
+          .select('montant_total, statut_commande, frais_livraison, lignes:lignes_commandes(quantite, prix_unitaire, produits(prix_achat))')
           .in('statut_commande', ['livree', 'terminee', 'echouee', 'retour_livreur', 'retour_stock', 'absent', 'retour_client']);
 
         if (!globalError && globalOrdersData) {
