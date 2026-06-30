@@ -4,7 +4,7 @@ import { insforge } from '../lib/insforge';
 export const getUtilisateurs = async (): Promise<User[]> => {
   const { data, error } = await insforge.database
     .from('users')
-    .select('*')
+    .select('*').limit(100000)
     .order('nom_complet', { ascending: true });
   
   if (error) throw error;

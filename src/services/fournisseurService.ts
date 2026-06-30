@@ -14,7 +14,7 @@ export interface Fournisseur {
 export const getFournisseurs = async (): Promise<Fournisseur[]> => {
   const { data, error } = await insforge.database
     .from('fournisseurs')
-    .select('*')
+    .select('*').limit(100000)
     .order('nom', { ascending: true });
   
   if (error) throw error;
@@ -28,7 +28,7 @@ export const createFournisseur = async (fournisseur: Omit<Fournisseur, 'id' | 's
       ...fournisseur,
       solde_dette: 0
     }])
-    .select();
+    .select().limit(100000);
   
   if (error) throw error;
   globalEventBus.emit(EVENTS.FOURNISSEURS_UPDATED);
@@ -59,7 +59,7 @@ export const payDebt = async (id: string, amount: number): Promise<void> => {
   // 1. Fetch current debt
   const { data: f } = await insforge.database
     .from('fournisseurs')
-    .select('solde_dette')
+    .select('solde_dette').limit(100000)
     .eq('id', id)
     .single();
 
@@ -77,7 +77,7 @@ export const payDebt = async (id: string, amount: number): Promise<void> => {
   // Re-fetch all "En attente" purchases for this supplier to reconcile
   const { data: pendingAchats } = await insforge.database
     .from('achats_stock')
-    .select('id, montant_total')
+    .select('id, montant_total').limit(100000)
     .eq('fournisseur_id', id)
     .eq('statut_paiement', 'En attente')
     .order('date_achat', { ascending: true });

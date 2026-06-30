@@ -6,7 +6,7 @@ import { insforge } from '../lib/insforge';
 export const getCategories = async (): Promise<Categorie[]> => {
   const { data, error } = await insforge.database
     .from('categories')
-    .select('*')
+    .select('*').limit(100000)
     .order('nom', { ascending: true });
 
   if (error) throw error;
@@ -17,7 +17,7 @@ export const createCategorie = async (categorie: Omit<Categorie, 'id'>): Promise
   const { data, error } = await insforge.database
     .from('categories')
     .insert([categorie])
-    .select();
+    .select().limit(100000);
 
   if (error) throw error;
   return data?.[0]?.id;
@@ -46,7 +46,7 @@ export const deleteCategorie = async (id: string): Promise<void> => {
 export const getAdminUsers = async (): Promise<User[]> => {
   const { data, error } = await insforge.database
     .from('users')
-    .select('*')
+    .select('*').limit(100000)
     .order('nom_complet', { ascending: true });
   
   if (error) throw error;
@@ -85,7 +85,7 @@ export const deleteAdminUser = async (id: string): Promise<void> => {
 export const getCommunes = async (): Promise<Commune[]> => {
   const { data, error } = await insforge.database
     .from('communes')
-    .select('*')
+    .select('*').limit(100000)
     .order('nom', { ascending: true });
 
   if (error) throw error;
@@ -95,7 +95,7 @@ export const getCommunes = async (): Promise<Commune[]> => {
 export const getCommuneByName = async (nom: string): Promise<Commune | undefined> => {
   const { data, error } = await insforge.database
     .from('communes')
-    .select('*')
+    .select('*').limit(100000)
     .ilike('nom', nom)
     .single();
 
@@ -107,7 +107,7 @@ export const createCommune = async (commune: Omit<Commune, 'id'>): Promise<strin
   const { data, error } = await insforge.database
     .from('communes')
     .insert([commune])
-    .select();
+    .select().limit(100000);
 
   if (error) throw error;
   return data?.[0]?.id;

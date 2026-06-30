@@ -13,7 +13,7 @@ const fetchLivreurInfos = async (data: any[]): Promise<Map<string, { nom_complet
 
   const { data: userData } = await insforge.database
     .from('users')
-    .select('id, nom_complet, telephone')
+    .select('id, nom_complet, telephone').limit(100000)
     .in('id', userIds);
 
   return new Map(userData?.map(u => [u.id, { nom_complet: u.nom_complet, telephone: u.telephone || '' }]) || []);
@@ -22,7 +22,7 @@ const fetchLivreurInfos = async (data: any[]): Promise<Map<string, { nom_complet
 export const getFeuillesEnCours = async (livreurId?: string): Promise<FeuilleRoute[]> => {
   let query = insforge.database
     .from('feuilles_route')
-    .select('*')
+    .select('*').limit(100000)
     .in('statut_feuille', ['en_cours', 'cloturee']);
 
   if (livreurId) {
@@ -54,7 +54,7 @@ export const getFeuillesDuJour = async (): Promise<FeuilleRoute[]> => {
 
   const { data, error } = await insforge.database
     .from('feuilles_route')
-    .select('*')
+    .select('*').limit(100000)
     .in('statut_feuille', ['en_cours', 'cloturee'])
     .gte('date', todayStart.toISOString())
     .lte('date', todayEnd.toISOString())
@@ -77,7 +77,7 @@ export const getFeuillesDuJour = async (): Promise<FeuilleRoute[]> => {
 export const getCloturedFeuilles = async (): Promise<FeuilleRoute[]> => {
   const { data, error } = await insforge.database
     .from('feuilles_route')
-    .select('*')
+    .select('*').limit(100000)
     .eq('statut_feuille', 'terminee')
     .order('date', { ascending: false });
 
@@ -100,7 +100,7 @@ export const getCloturedFeuilles = async (): Promise<FeuilleRoute[]> => {
 export const getCommandesConcernees = async (feuilleRouteId: string): Promise<Commande[]> => {
   const { data, error } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*)')
+    .select('*, clients(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*)').limit(100000)
     .eq('feuille_route_id', feuilleRouteId);
 
   if (error) throw error;
@@ -135,7 +135,7 @@ export const processCaisse = async (
   if (primeLivreur > 0) {
     const { data: livreur } = await insforge.database
       .from('users')
-      .select('nom_complet')
+      .select('nom_complet').limit(100000)
       .eq('id', livreurId)
       .single();
     
@@ -166,7 +166,7 @@ export const processCaisse = async (
   const orderIds = resolutions.map(r => r.id);
   const { data: lignesCommandes, error: linesError } = await insforge.database
     .from('lignes_commandes')
-    .select('*')
+    .select('*').limit(100000)
     .in('commande_id', orderIds);
 
   if (linesError) throw linesError;
@@ -195,7 +195,7 @@ export const processCaisse = async (
       // Fetch current command info to handle final calculations and montant_encaisse
       const { data: cmdRef } = await insforge.database
         .from('commandes')
-        .select('montant_total, frais_livraison, remise_totale, livraison_incluse')
+        .select('montant_total, frais_livraison, remise_totale, livraison_incluse').limit(100000)
         .eq('id', res.id)
         .single();
 
@@ -343,7 +343,7 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
   // 1. Get Caisse Retours for the range
   const { data: retours, error: retoursError } = await insforge.database
     .from('caisse_retours')
-    .select('*')
+    .select('*').limit(100000)
     .gte('date', startStr)
     .lte('date', endStr);
 
@@ -355,7 +355,7 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
   // 2. Get all orders in range using unified logic
   const { data: commandes, error: err1 } = await insforge.database
     .from('commandes')
-    .select(selectCols)
+    .select(selectCols).limit(100000)
     .or(filterString);
 
   if (err1) throw err1;
@@ -363,7 +363,7 @@ export const getRangeFinancials = async (startDateStr: string, endDateStr?: stri
   // 5. Get Depenses in range
   const { data: depenses } = await insforge.database
     .from('depenses')
-    .select('*')
+    .select('*').limit(100000)
     .gte('date', startStr)
     .lte('date', endStr);
 

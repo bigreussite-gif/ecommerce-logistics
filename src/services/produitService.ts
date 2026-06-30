@@ -5,7 +5,7 @@ import { globalEventBus, EVENTS } from '../utils/events';
 export const getProduits = async (): Promise<Produit[]> => {
   const { data: products, error } = await insforge.database
     .from('produits')
-    .select('*')
+    .select('*').limit(100000)
     .order('nom', { ascending: true });
   
   if (error) throw error;
@@ -14,7 +14,7 @@ export const getProduits = async (): Promise<Produit[]> => {
   // Fetch composants for bundles
   const { data: composantsData } = await insforge.database
     .from('produits_composants')
-    .select('*, produit:produits!produits_composants_composant_id_fkey(*)');
+    .select('*, produit:produits!produits_composants_composant_id_fkey(*)').limit(100000);
     
   const bundlesMap = new Map<string, any[]>();
   (composantsData || []).forEach(comp => {
@@ -25,7 +25,7 @@ export const getProduits = async (): Promise<Produit[]> => {
   try {
     const { data: lines, error: linesError } = await insforge.database
       .from('lignes_commandes')
-      .select('produit_id, quantite, commandes!inner(statut_commande, date_creation)')
+      .select('produit_id, quantite, commandes!inner(statut_commande, date_creation)').limit(100000)
       .in('commandes.statut_commande', [
         'nouvelle', 'a_rappeler', 'en_attente_appel', 'validee', // Réservé
         'en_cours_livraison', // En livraison
@@ -128,7 +128,7 @@ export const createProduit = async (produit: Omit<Produit, 'id'>): Promise<strin
       ...prodData,
       created_at: new Date().toISOString()
     }])
-    .select();
+    .select().limit(100000);
   
   if (error) throw error;
   const newId = data?.[0]?.id;
@@ -185,7 +185,7 @@ export const addMouvementStock = async (mouvement: Omit<MouvementStock, 'id'> & 
   // 1. Fetch current product - strictly select only what is needed
   const { data: prod, error: fetchError } = await insforge.database
     .from('produits')
-    .select('stock_actuel')
+    .select('stock_actuel').limit(100000)
     .eq('id', mouvement.produit_id)
     .single();
 
@@ -203,7 +203,7 @@ export const addMouvementStock = async (mouvement: Omit<MouvementStock, 'id'> & 
   if (mouvement.commande_id) {
     const { data: existingMvt } = await insforge.database
       .from('mouvements_stock')
-      .select('id')
+      .select('id').limit(100000)
       .eq('commande_id', mouvement.commande_id)
       .eq('produit_id', mouvement.produit_id)
       .eq('type_mouvement', mouvement.type_mouvement)
@@ -256,7 +256,7 @@ export const addMouvementStock = async (mouvement: Omit<MouvementStock, 'id'> & 
 export const getHistoriqueStock = async (produit_id: string): Promise<MouvementStock[]> => {
   const { data, error } = await insforge.database
     .from('mouvements_stock')
-    .select('*')
+    .select('*').limit(100000)
     .eq('produit_id', produit_id)
     .order('date', { ascending: false });
 

@@ -19,7 +19,7 @@ export const getActiveAlerts = async (): Promise<BusinessAlert[]> => {
     // 1. Alertes Stock (Stock < Stock Minimum)
     const { data: allActiveProducts } = await insforge.database
       .from('produits')
-      .select('id, nom, stock_actuel, stock_minimum')
+      .select('id, nom, stock_actuel, stock_minimum').limit(100000)
       .eq('actif', true);
 
     const lowStock = (allActiveProducts || []).filter(p => (p.stock_actuel || 0) < (p.stock_minimum || 0));
@@ -40,7 +40,7 @@ export const getActiveAlerts = async (): Promise<BusinessAlert[]> => {
     // 2. Alertes Retard (Commandes en validation > 24h)
     const { data: delayedOrders } = await insforge.database
       .from('commandes')
-      .select('*')
+      .select('*').limit(100000)
       .eq('statut_commande', 'validation_appel');
 
     if (delayedOrders) {

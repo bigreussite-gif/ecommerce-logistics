@@ -20,7 +20,7 @@ export interface AchatStock {
 export const getAchatsStock = async (): Promise<AchatStock[]> => {
   const { data, error } = await insforge.database
     .from('achats_stock')
-    .select('*, produits(nom), fournisseurs(nom)')
+    .select('*, produits(nom), fournisseurs(nom)').limit(100000)
     .order('date_achat', { ascending: false });
   
   if (error) throw error;
@@ -37,7 +37,7 @@ export const registerAchatStock = async (achat: Omit<AchatStock, 'id' | 'date_ac
       ...achat,
       date_achat
     }])
-    .select();
+    .select().limit(100000);
 
   if (achatError) throw achatError;
   const shortId = achatData[0].id.substring(0, 8);
@@ -99,7 +99,7 @@ export const updateAchatStock = async (id: string, updates: Partial<AchatStock>)
   // 1. Get old record
   const { data: oldAchat, error: getError } = await insforge.database
     .from('achats_stock')
-    .select('*')
+    .select('*').limit(100000)
     .eq('id', id)
     .single();
   
@@ -123,7 +123,7 @@ export const updateAchatStock = async (id: string, updates: Partial<AchatStock>)
     // Delete expense (search by description)
     const { data: deps } = await insforge.database
       .from('depenses')
-      .select('id')
+      .select('id').limit(100000)
       .ilike('description', `%Achat Stock #${shortId}%`);
     
     if (deps) {
@@ -194,7 +194,7 @@ export const deleteAchatStock = async (id: string): Promise<void> => {
   // 1. Get record to reverse effects
   const { data: achat, error: getError } = await insforge.database
     .from('achats_stock')
-    .select('*')
+    .select('*').limit(100000)
     .eq('id', id)
     .single();
   
@@ -215,7 +215,7 @@ export const deleteAchatStock = async (id: string): Promise<void> => {
   if (achat.mode_paiement === 'Cash') {
     const { data: deps } = await insforge.database
       .from('depenses')
-      .select('id')
+      .select('id').limit(100000)
       .ilike('description', `%Achat Stock #${shortId}%`);
     
     if (deps) {

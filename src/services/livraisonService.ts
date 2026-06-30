@@ -5,7 +5,7 @@ import { insforge } from '../lib/insforge';
 export const getCurrentFeuilleRoute = async (livreurId: string): Promise<FeuilleRoute | null> => {
   const { data, error } = await insforge.database
     .from('feuilles_route')
-    .select('*')
+    .select('*').limit(100000)
     .eq('livreur_id', livreurId)
     .eq('statut_feuille', 'en_cours')
     .limit(1)
@@ -18,7 +18,7 @@ export const getCurrentFeuilleRoute = async (livreurId: string): Promise<Feuille
 export const getCommandesForFeuille = async (feuilleRouteId: string): Promise<Commande[]> => {
   const { data, error } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone, telephone_secondaire), lignes_commandes(*)')
+    .select('*, clients(nom_complet, telephone, telephone_secondaire), lignes_commandes(*)').limit(100000)
     .eq('feuille_route_id', feuilleRouteId);
 
   if (error) throw error;

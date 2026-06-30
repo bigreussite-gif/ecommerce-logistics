@@ -7,7 +7,7 @@ import { addMouvementStock, updateProduit } from './produitService';
 export const getDepenses = async (): Promise<Depense[]> => {
   const { data, error } = await insforge.database
     .from('depenses')
-    .select('*, lignes:lignes_depenses(*)')
+    .select('*, lignes:lignes_depenses(*)').limit(100000)
     .order('date', { ascending: false });
   
   if (error) throw error;
@@ -27,7 +27,7 @@ export const addDepense = async (depense: Omit<Depense, 'id'>): Promise<void> =>
       mode_paiement: depense.mode_paiement,
       created_at: new Date().toISOString()
     }])
-    .select();
+    .select().limit(100000);
   
   if (depError) throw depError;
 

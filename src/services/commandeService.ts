@@ -8,7 +8,7 @@ import { globalEventBus, EVENTS } from '../utils/events';
 export const getCommandeWithLines = async (id: string): Promise<Commande & { lignes: LigneCommande[] }> => {
   const { data: cmd, error: cmdError } = await insforge.database
     .from('commandes')
-    .select('*, clients(*), livreur:users!commandes_livreur_id_fkey(nom_complet)')
+    .select('*, clients(*), livreur:users!commandes_livreur_id_fkey(nom_complet)').limit(100000)
     .eq('id', id)
     .single();
 
@@ -16,7 +16,7 @@ export const getCommandeWithLines = async (id: string): Promise<Commande & { lig
 
   const { data: lines, error: linesError } = await insforge.database
     .from('lignes_commandes')
-    .select('*')
+    .select('*').limit(100000)
     .eq('commande_id', id);
 
   if (linesError) throw linesError;
@@ -38,14 +38,14 @@ export const getCommandesByIds = async (ids: string[]): Promise<(Commande & { li
 
   const { data: cmds, error: cmdError } = await insforge.database
     .from('commandes')
-    .select('*, clients(*), livreur:users!commandes_livreur_id_fkey(nom_complet)')
+    .select('*, clients(*), livreur:users!commandes_livreur_id_fkey(nom_complet)').limit(100000)
     .in('id', ids);
 
   if (cmdError) throw cmdError;
 
   const { data: allLines, error: linesError } = await insforge.database
     .from('lignes_commandes')
-    .select('*')
+    .select('*').limit(100000)
     .in('commande_id', ids);
 
   if (linesError) throw linesError;
@@ -62,7 +62,7 @@ export const getCommandesByIds = async (ids: string[]): Promise<(Commande & { li
 export const getCommandes = async (limit: number | null = null, offset = 0): Promise<Commande[]> => {
   let query = insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*, produits(*))')
+    .select('*, clients(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*, produits(*))').limit(100000)
     .order('date_creation', { ascending: false });
   
   if (limit !== null) {
@@ -106,7 +106,7 @@ export const getCommandesPaginated = async (
 }> => {
   let query = insforge.database
     .from('commandes')
-    .select('*, clients!inner(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*, produits(*))', { count: 'estimated' });
+    .select('*, clients!inner(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*, produits(*))', { count: 'estimated' }).limit(100000);
 
   // 1. Status Filter
   if (activeTab === 'to_process') {
@@ -142,7 +142,7 @@ export const getCommandesPaginated = async (
     try {
       const { data: matchedClients } = await insforge.database
         .from('clients')
-        .select('id')
+        .select('id').limit(100000)
         .or(`nom_complet.ilike.%${term}%,telephone.ilike.%${term}%`);
       
       const clientIds = (matchedClients || []).map(c => c.id);
@@ -183,7 +183,7 @@ export const getCommandesPaginated = async (
   const getCountForStatuses = async (statuses: string[] | null) => {
     let q = insforge.database
       .from('commandes')
-      .select('*', { count: 'estimated', head: true });
+      .select('*', { count: 'estimated', head: true }).limit(100000);
     
     if (statuses) {
       q = q.in('statut_commande', statuses);
@@ -205,7 +205,7 @@ export const getCommandesPaginated = async (
   const getCountSansCommune = async () => {
     let q = insforge.database
       .from('commandes')
-      .select('*', { count: 'estimated', head: true })
+      .select('*', { count: 'estimated', head: true }).limit(100000)
       .eq('commune_non_attribuee', true);
     
     if (startDateISO) {
@@ -274,7 +274,7 @@ export const subscribeToCommandes = (callback: (commandes: Commande[]) => void) 
 export const getCommandesByStatus = async (statusList: string[]): Promise<(Commande & { lignes: LigneCommande[] })[]> => {
   const { data: orders, error: orderError } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*)')
+    .select('*, clients(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*)').limit(100000)
     .in('statut_commande', statusList)
     .order('date_creation', { ascending: false });
 
@@ -312,7 +312,7 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
   if (lignes && lignes.length > 0) {
     const prodIds = lignes.map(l => l.produit_id);
     try {
-      const { data: prods } = await insforge.database.from('produits').select('livraison_incluse').in('id', prodIds);
+      const { data: prods } = await insforge.database.from('produits').select('livraison_incluse').limit(100000).in('id', prodIds);
       if (prods && prods.some(p => p.livraison_incluse)) {
         hasLivraisonIncluse = true;
       }
@@ -354,7 +354,7 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
       notes_client: commande.notes_client || '',
       date_creation: (commande.date_creation instanceof Date ? commande.date_creation.toISOString() : commande.date_creation)
     }])
-    .select();
+    .select().limit(100000);
 
   if (cmdError) {
     console.error("Erreur création commande:", cmdError);
@@ -395,7 +395,7 @@ export const createCommandeBase = async (commande: Omit<Commande, 'id'>, lignes:
 export const updateCommandeStatus = async (id: string, status: string, additionalData: any = {}): Promise<void> => {
   const { data: currentCmd } = await insforge.database
     .from('commandes')
-    .select('statut_commande')
+    .select('statut_commande').limit(100000)
     .eq('id', id)
     .single();
 
@@ -427,7 +427,7 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
     try {
       const { data: cmdTotalData } = await insforge.database
         .from('commandes')
-        .select('montant_total')
+        .select('montant_total').limit(100000)
         .eq('id', id)
         .single();
       if (cmdTotalData) {
@@ -445,10 +445,10 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
   } else if (additionalData.commune_livraison) {
     try {
       let hasLivraisonIncluse = false;
-      const { data: lignesCmd } = await insforge.database.from('lignes_commandes').select('produit_id').eq('commande_id', id);
+      const { data: lignesCmd } = await insforge.database.from('lignes_commandes').select('produit_id').limit(100000).eq('commande_id', id);
       if (lignesCmd && lignesCmd.length > 0) {
         const prodIds = lignesCmd.map((l: any) => l.produit_id);
-        const { data: prods } = await insforge.database.from('produits').select('livraison_incluse').in('id', prodIds);
+        const { data: prods } = await insforge.database.from('produits').select('livraison_incluse').limit(100000).in('id', prodIds);
         if (prods && prods.some((p: any) => p.livraison_incluse)) {
           hasLivraisonIncluse = true;
         }
@@ -481,7 +481,7 @@ export const updateCommandeStatus = async (id: string, status: string, additiona
     try {
       const { data: lines } = await insforge.database
         .from('lignes_commandes')
-        .select('*')
+        .select('*').limit(100000)
         .eq('commande_id', id);
 
       if (lines && lines.length > 0) {
@@ -515,7 +515,7 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
   // 1. Get current statuses to determine stock movements
   const { data: currentCmds } = await insforge.database
     .from('commandes')
-    .select('id, statut_commande')
+    .select('id, statut_commande').limit(100000)
     .in('id', ids);
 
   if (!currentCmds) return;
@@ -553,7 +553,7 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
   if (idsChangingState.length > 0) {
     const { data: lines } = await insforge.database
       .from('lignes_commandes')
-      .select('*')
+      .select('*').limit(100000)
       .in('commande_id', idsChangingState);
 
     if (lines && lines.length > 0) {
@@ -580,7 +580,7 @@ export const bulkUpdateCommandeStatus = async (ids: string[], status: string, ad
 export const confirmRMAMovement = async (id: string, choice: 'REUTILISABLE' | 'DEFAILLANT', notes: string = ''): Promise<void> => {
   const { data: cmd, error: fetchErr } = await insforge.database
     .from('commandes')
-    .select('*, lignes:lignes_commandes(*, produits(*))')
+    .select('*, lignes:lignes_commandes(*, produits(*))').limit(100000)
     .eq('id', id)
     .single();
 
@@ -657,7 +657,7 @@ export const reactivateFailedCommande = async (id: string, notes?: string): Prom
 export const registerReturn = async (id: string, motif: string, solution: string, notes: string, etat_produit: string): Promise<void> => {
   const { data: cmd, error: fetchErr } = await insforge.database
     .from('commandes')
-    .select('*, lignes:lignes_commandes(*)')
+    .select('*, lignes:lignes_commandes(*)').limit(100000)
     .eq('id', id)
     .single();
 
@@ -716,7 +716,7 @@ export const registerReturn = async (id: string, motif: string, solution: string
 export const getTopSellingProducts = async (limit: number | null = null, days?: number, start?: string, end?: string): Promise<{ nom: string, nb_ventes: number, total_ca: number, total_sorties: number, taux_succes: number }[]> => {
   let query = insforge.database
     .from('lignes_commandes')
-    .select('*, commandes!inner(statut_commande, date_creation, date_livraison_effective)');
+    .select('*, commandes!inner(statut_commande, date_creation, date_livraison_effective)').limit(100000);
 
   if (days && days > 0) {
     const startDate = new Date();
@@ -790,7 +790,7 @@ export const getTopSellingProducts = async (limit: number | null = null, days?: 
 export const getCategoryPerformance = async (days?: number, start?: string, end?: string): Promise<{ nom: string, nb_articles: number, ca: number }[]> => {
   let query = insforge.database
     .from('lignes_commandes')
-    .select('*, commandes!inner(statut_commande, date_creation, date_livraison_effective), produits(categorie_id, categories(nom))');
+    .select('*, commandes!inner(statut_commande, date_creation, date_livraison_effective), produits(categorie_id, categories(nom))').limit(100000);
 
   if (days && days > 0) {
     const startDate = new Date();
@@ -859,7 +859,7 @@ export const getFinancialData = async (startDate?: string, endDate?: string): Pr
   
   const { data: orders, error: orderError } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*, produits(prix_achat))')
+    .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*, produits(prix_achat))').limit(100000)
     .or(filterString)
     .order('date_creation', { ascending: false });
 
@@ -893,7 +893,7 @@ export const updateCommandeBase = async (id: string, updates: Partial<Commande>,
 export const updateCommandeLignesAndStock = async (commandeId: string, oldLines: LigneCommande[], newLines: any[]): Promise<void> => {
   const { data: cmd } = await insforge.database
     .from('commandes')
-    .select('statut_commande')
+    .select('statut_commande').limit(100000)
     .eq('id', commandeId)
     .single();
 
@@ -930,7 +930,7 @@ export const updateCommandeLignesAndStock = async (commandeId: string, oldLines:
           frais_installation: newLine.frais_installation || 0,
           commande_id: commandeId
         }])
-        .select()
+        .select().limit(100000)
         .single();
 
       if (isOut) {
@@ -996,7 +996,7 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
 
     const { data: products } = await insforge.database
       .from('produits')
-      .select('id, nom, sku, prix_vente, stock_actuel');
+      .select('id, nom, sku, prix_vente, stock_actuel').limit(100000);
     
     const productMap = new Map<string, any>();
     const productById = new Map<string, any>();
@@ -1021,7 +1021,7 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
         const formattedPhones = batch.map(p => `"${p}"`).join(',');
         const { data: ec, error: searchErr } = await insforge.database
           .from('clients')
-          .select('id, telephone, telephone_secondaire')
+          .select('id, telephone, telephone_secondaire').limit(100000)
           .or(`telephone.in.(${formattedPhones}),telephone_secondaire.in.(${formattedPhones})`);
         if (searchErr) throw searchErr;
         if (ec) {
@@ -1060,7 +1060,7 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
       const { data: createdClients, error: clientErr } = await insforge.database
         .from('clients')
         .insert(newClientsToCreate)
-        .select();
+        .select().limit(100000);
       
       if (clientErr) throw new Error(`Erreur création clients groupée: ${clientErr.message}`);
       
@@ -1133,7 +1133,7 @@ export const createBulkCommandes = async (data: any[]): Promise<{ count: number,
     const { data: createdCmds, error: cmdErr } = await insforge.database
       .from('commandes')
       .insert(commandesToInsert)
-      .select();
+      .select().limit(100000);
 
     if (cmdErr) throw new Error(`Erreur insertion commandes groupée: ${cmdErr.message}`);
 
@@ -1195,7 +1195,7 @@ export const bulkUpdateCommandeCommune = async (ids: string[], commune: string):
 
   const { data: currentCmds, error: fetchError } = await insforge.database
     .from('commandes')
-    .select('id, montant_total, frais_livraison')
+    .select('id, montant_total, frais_livraison').limit(100000)
     .in('id', ids);
 
   if (fetchError || !currentCmds) throw fetchError || new Error("Erreur de récupération des commandes");
@@ -1204,10 +1204,10 @@ export const bulkUpdateCommandeCommune = async (ids: string[], commune: string):
     let finalDeliveryFee = deliveryFee;
     let hasLivraisonIncluse = false;
     try {
-      const { data: lignesCmd } = await insforge.database.from('lignes_commandes').select('produit_id').eq('commande_id', cmd.id);
+      const { data: lignesCmd } = await insforge.database.from('lignes_commandes').select('produit_id').limit(100000).eq('commande_id', cmd.id);
       if (lignesCmd && lignesCmd.length > 0) {
         const prodIds = lignesCmd.map((l: any) => l.produit_id);
-        const { data: prods } = await insforge.database.from('produits').select('livraison_incluse').in('id', prodIds);
+        const { data: prods } = await insforge.database.from('produits').select('livraison_incluse').limit(100000).in('id', prodIds);
         if (prods && prods.some((p: any) => p.livraison_incluse)) {
           hasLivraisonIncluse = true;
         }
@@ -1254,7 +1254,7 @@ export const autoCancelOldCommandes = async (): Promise<{ count: number }> => {
       })
       .in('statut_commande', ['nouvelle', 'a_rappeler', 'en_attente_appel', 'validee', 'en_cours_livraison'])
       .lt('date_creation', fourDaysAgoISO)
-      .select('id');
+      .select('id').limit(100000);
 
     if (error) {
       console.error("Erreur auto-cancel:", error);

@@ -13,7 +13,7 @@ export const normalizePhone = (phone: string): string => {
 export const getAllClients = async (): Promise<Client[]> => {
   const { data, error } = await insforge.database
     .from('clients')
-    .select('*')
+    .select('*').limit(100000)
     .order('nom_complet', { ascending: true });
   
   if (error) throw error;
@@ -23,7 +23,7 @@ export const getAllClients = async (): Promise<Client[]> => {
 export const getClientCommandes = async (clientId: string): Promise<Commande[]> => {
   const { data, error } = await insforge.database
     .from('commandes')
-    .select('*')
+    .select('*').limit(100000)
     .eq('client_id', clientId)
     .order('date_creation', { ascending: false });
 
@@ -55,7 +55,7 @@ export const searchClientByPhone = async (phone: string): Promise<Client | null>
   for (const variant of variantList) {
     const { data, error } = await insforge.database
       .from('clients')
-      .select('*')
+      .select('*').limit(100000)
       .or(`telephone.eq.${variant},telephone_secondaire.eq.${variant}`)
       .maybeSingle();
 
@@ -75,7 +75,7 @@ export const createClient = async (client: Omit<Client, 'id'>): Promise<string> 
   const { data, error } = await insforge.database
     .from('clients')
     .insert([normalized])
-    .select();
+    .select().limit(100000);
 
   if (error) {
     // Handle unique constraint violation on telephone (code 23505)
@@ -168,8 +168,8 @@ export const getClientsWithIntelligence = async (useCache = true): Promise<(Clie
 
   // 1. Fetch only essential columns for performance
   const [clientsResult, ordersResult] = await Promise.all([
-    insforge.database.from('clients').select('id, nom_complet, telephone, telephone_secondaire, commune, quartier, adresse'),
-    insforge.database.from('commandes').select('client_id, montant_total, statut_commande, date_creation')
+    insforge.database.from('clients').select('id, nom_complet, telephone, telephone_secondaire, commune, quartier, adresse').limit(100000),
+    insforge.database.from('commandes').select('client_id, montant_total, statut_commande, date_creation').limit(100000)
   ]);
 
   const clients = clientsResult.data || [];
