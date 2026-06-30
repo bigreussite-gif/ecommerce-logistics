@@ -162,14 +162,18 @@ export const AnalyseProduits = () => {
 
     // Build list of recent sales
     const recent = deliveredSales
-      .map(sale => ({
-        commandeId: sale.commande_id,
-        date: getEffectiveCommandDate(sale.commandes || {}).toLocaleDateString('fr-FR'),
-        quantite: Number(sale.quantite || 0),
-        total: Number(sale.montant_ligne || 0),
-        commune: sale.commandes?.commune_livraison || 'Non spécifiée'
-      }))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .map(sale => {
+        const cmdDate = getEffectiveCommandDate(sale.commandes || {});
+        return {
+          commandeId: sale.commande_id,
+          rawDate: cmdDate.getTime(),
+          date: cmdDate.toLocaleDateString('fr-FR'),
+          quantite: Number(sale.quantite || 0),
+          total: Number(sale.montant_ligne || 0),
+          commune: sale.commandes?.commune_livraison || 'Non spécifiée'
+        };
+      })
+      .sort((a, b) => b.rawDate - a.rawDate)
       .slice(0, 10);
 
     return {
