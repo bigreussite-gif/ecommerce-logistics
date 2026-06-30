@@ -152,11 +152,13 @@ export const deleteClient = async (id: string): Promise<void> => {
 
 export interface ClientFidelityStats {
   total_commandes: number;
+  total_commandes_livrees: number;
   total_brut: number;      // All orders
   total_encaisse: number;  // Only livree/terminee
   panier_moyen: number;
   derniere_commande: Date | null;
-  segment: 'Diamant 💎' | 'Fidèle ✅' | 'À relancer ⚠️' | 'Nouveau 🆕';
+  derniere_commande_brute: Date | null;
+  segment: 'Diamant 💎' | 'Fidèle ✅' | 'À relancer ⚠️' | 'Nouveau 🆕' | 'Prospect 🎯';
 }
 
 export const getClientsWithIntelligence = async (useCache = true): Promise<(Client & ClientFidelityStats & { identities: string[], locations: string[] })[]> => {
@@ -218,28 +220,35 @@ export const getClientsWithIntelligence = async (useCache = true): Promise<(Clie
     let total_encaisse = 0;
     let settledCount = 0;
     let lastOrderDate: Date | null = null;
+    let lastOrderDateBrute: Date | null = null;
 
     clientOrders.forEach(o => {
       const montant = Number(o.montant_total) || 0;
       total_brut += montant;
       
+      const d = new Date(o.date_creation);
+      if (!lastOrderDateBrute || d > lastOrderDateBrute) lastOrderDateBrute = d;
+
       const s = o.statut_commande?.toLowerCase();
       if (['livree', 'terminee'].includes(s)) {
         total_encaisse += montant;
         settledCount++;
         
-        const d = new Date(o.date_creation);
         if (!lastOrderDate || d > lastOrderDate) lastOrderDate = d;
       }
     });
 
     // CRM Segmentation
     let segment: ClientFidelityStats['segment'] = 'Nouveau 🆕';
-    if (settledCount >= 5 || total_encaisse > 150000) segment = 'Diamant 💎';
-    else if (settledCount >= 2) segment = 'Fidèle ✅';
-    
-    if (lastOrderDate && (lastOrderDate as Date).getTime() < sixtyDaysAgo) {
-      segment = 'À relancer ⚠️';
+    if (settledCount === 0) {
+      segment = 'Prospect 🎯';
+    } else {
+      if (settledCount >= 5 || total_encaisse > 150000) segment = 'Diamant 💎';
+      else if (settledCount >= 2) segment = 'Fidèle ✅';
+      
+      if (lastOrderDate && (lastOrderDate as Date).getTime() < sixtyDaysAgo) {
+        segment = 'À relancer ⚠️';
+      }
     }
 
     return {
@@ -247,10 +256,12 @@ export const getClientsWithIntelligence = async (useCache = true): Promise<(Clie
       identities: Array.from(identitiesSet),
       locations: Array.from(locationsSet),
       total_commandes: clientOrders.length,
+      total_commandes_livrees: settledCount,
       total_brut,
       total_encaisse,
       panier_moyen: settledCount > 0 ? Math.round(total_encaisse / settledCount) : 0,
       derniere_commande: lastOrderDate,
+      derniere_commande_brute: lastOrderDateBrute,
       segment
     };
   });

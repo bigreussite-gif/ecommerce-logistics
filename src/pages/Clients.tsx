@@ -121,8 +121,8 @@ export const Clients = () => {
         let bVal: any = b[sortConfig.key as keyof typeof b];
         
         if (sortConfig.key === 'dernier_achat') {
-          aVal = a.derniere_commande ? new Date(a.derniere_commande).getTime() : 0;
-          bVal = b.derniere_commande ? new Date(b.derniere_commande).getTime() : 0;
+          aVal = a.derniere_commande_brute ? new Date(a.derniere_commande_brute).getTime() : 0;
+          bVal = b.derniere_commande_brute ? new Date(b.derniere_commande_brute).getTime() : 0;
         }
 
         if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -146,7 +146,8 @@ export const Clients = () => {
     const totalRevenue = clients.reduce((acc, c) => acc + c.total_encaisse, 0);
     const vips = clients.filter(c => c.segment === 'Diamant 💎').length;
     const loyal = clients.filter(c => c.segment === 'Fidèle ✅').length;
-    return { totalRevenue, vips, loyal };
+    const prospects = clients.filter(c => c.segment === 'Prospect 🎯').length;
+    return { totalRevenue, vips, loyal, prospects };
   }, [clients]);
 
 
@@ -243,10 +244,10 @@ export const Clients = () => {
         <section style={{ marginBottom: '3rem' }}>
           <div className="res-grid" style={{ gap: '1.5rem' }}>
             {[
-              { label: 'Valeur Portefeuille', value: `${stats.totalRevenue.toLocaleString()} CFA`, color: 'var(--primary)', icon: <TrendingUp size={22} />, desc: `${clients.length} clients uniques` },
-              { label: 'Clients VIP', value: stats.vips, color: '#3b82f6', icon: <Users size={22} />, desc: `${clients.length ? Math.round((stats.vips / clients.length) * 100) : 0}% de l'audience` },
-              { label: 'Taux de Rétention', value: `${clients.length ? Math.round(((stats.vips + stats.loyal) / clients.length) * 100) : 0}%`, color: '#f59e0b', icon: <TrendingUp size={22} />, desc: 'Acheteurs récurrents' },
-              { label: 'Total Clients', value: clients.length, color: '#10b981', icon: <Users size={22} />, desc: 'Base active' },
+              { label: 'Total Encaissé', value: `${stats.totalRevenue.toLocaleString()} CFA`, color: 'var(--primary)', icon: <TrendingUp size={22} />, desc: `${clients.length - stats.prospects} acheteurs actifs` },
+              { label: 'Prospects', value: stats.prospects, color: '#8b5cf6', icon: <Users size={22} />, desc: '0 commande livrée' },
+              { label: 'Clients VIP & Fidèles', value: stats.vips + stats.loyal, color: '#f59e0b', icon: <Star size={22} />, desc: 'Acheteurs récurrents' },
+              { label: 'Total Contacts', value: clients.length, color: '#10b981', icon: <Users size={22} />, desc: 'Base active' },
             ].map((item, idx) => (
               <div key={idx} className="card" style={{ padding: '1.5rem', borderRadius: '24px', border: '1px solid #e2e8f0', background: 'white', display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
                 <div style={{ width: '54px', height: '54px', borderRadius: '16px', background: `${item.color}10`, color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -331,7 +332,7 @@ export const Clients = () => {
           <div className="card" style={{ padding: '1.25rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
               <div className="tabs-container" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', padding: '2px', scrollbarWidth: 'none' }}>
-                {['All', 'Diamant', 'Fidèle', 'relancer', 'Nouveau'].map(s => (
+                {['All', 'Diamant', 'Fidèle', 'relancer', 'Nouveau', 'Prospect'].map(s => (
                   <button
                     key={s}
                     onClick={() => setSegmentFilter(s)}
@@ -367,20 +368,20 @@ export const Clients = () => {
             <div className="table-container">
 <table style={{ tableLayout: 'fixed', width: '100%', borderCollapse: 'separate', borderSpacing: '0' }}>
               <colgroup>
-                <col style={{ width: '30%' }} />
+                <col style={{ width: '28%' }} />
                 <col style={{ width: '15%' }} />
-                <col style={{ width: '10%' }} />
-                <col style={{ width: '18%' }} />
-                <col style={{ width: '17%' }} />
-                <col style={{ width: '10%' }} />
+                <col style={{ width: '13%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '8%' }} />
               </colgroup>
               <thead className="mobile-hide" style={{ position: 'sticky', top: 0, zIndex: 2 }}>
                 <tr style={{ background: '#f8fafc' }}>
                   <th onClick={() => requestSort('nom_complet')} style={{ cursor: 'pointer', textAlign: 'left', padding: '1.25rem 1.5rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Client {sortConfig?.key === 'nom_complet' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                   <th style={{ textAlign: 'left', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Segment</th>
-                  <th onClick={() => requestSort('total_commandes')} style={{ cursor: 'pointer', textAlign: 'center', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Achats {sortConfig?.key === 'total_commandes' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
-                  <th onClick={() => requestSort('dernier_achat')} style={{ cursor: 'pointer', textAlign: 'left', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Dernière Visite {sortConfig?.key === 'dernier_achat' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
-                  <th onClick={() => requestSort('total_encaisse')} style={{ cursor: 'pointer', textAlign: 'right', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Total Encaissé {sortConfig?.key === 'total_encaisse' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                  <th onClick={() => requestSort('total_commandes')} style={{ cursor: 'pointer', textAlign: 'center', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Commandes {sortConfig?.key === 'total_commandes' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                  <th onClick={() => requestSort('dernier_achat')} style={{ cursor: 'pointer', textAlign: 'left', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Dernier Contact {sortConfig?.key === 'dernier_achat' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                  <th onClick={() => requestSort('total_encaisse')} style={{ cursor: 'pointer', textAlign: 'right', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>CA (Encaissé / Brut) {sortConfig?.key === 'total_encaisse' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                   <th style={{ textAlign: 'right', padding: '1.25rem 1.5rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.07em', color: 'var(--text-muted)' }}>Action</th>
                 </tr>
               </thead>
@@ -415,27 +416,27 @@ export const Clients = () => {
                         borderRadius: '12px', 
                         fontSize: '0.8rem', 
                         fontWeight: 800,
-                        backgroundColor: client.segment.includes('Diamant') ? 'rgba(16, 185, 129, 0.1)' : client.segment.includes('relancer') ? 'rgba(239, 68, 68, 0.1)' : '#f1f5f9',
-                        color: client.segment.includes('Diamant') ? '#059669' : client.segment.includes('relancer') ? '#dc2626' : '#64748b',
-                        border: `1px solid ${client.segment.includes('Diamant') ? 'rgba(16, 185, 129, 0.2)' : 'transparent'}`
+                        backgroundColor: client.segment.includes('Diamant') ? 'rgba(16, 185, 129, 0.1)' : client.segment.includes('Prospect') ? 'rgba(139, 92, 246, 0.1)' : client.segment.includes('relancer') ? 'rgba(239, 68, 68, 0.1)' : '#f1f5f9',
+                        color: client.segment.includes('Diamant') ? '#059669' : client.segment.includes('Prospect') ? '#7c3aed' : client.segment.includes('relancer') ? '#dc2626' : '#64748b',
+                        border: `1px solid ${client.segment.includes('Diamant') ? 'rgba(16, 185, 129, 0.2)' : client.segment.includes('Prospect') ? 'rgba(139, 92, 246, 0.2)' : 'transparent'}`
                       }}>
                         {client.segment}
                       </span>
                     </td>
-                    <td data-label="Achats" style={{ padding: '1.25rem', textAlign: 'center' }}>
-                      <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{client.total_commandes}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>Bordereaux</div>
+                    <td data-label="Commandes" style={{ padding: '1.25rem', textAlign: 'center' }}>
+                      <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{client.total_commandes} <span style={{fontSize:'0.8rem', color:'var(--text-muted)'}}>total</span></div>
+                      <div style={{ fontSize: '0.8rem', color: client.total_commandes_livrees > 0 ? '#10b981' : 'var(--text-muted)', fontWeight: 700 }}>{client.total_commandes_livrees} livrées</div>
                     </td>
-                    <td data-label="Dernier" style={{ padding: '1.25rem' }}>
+                    <td data-label="Dernier Contact" style={{ padding: '1.25rem' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, color: 'var(--text-main)' }}>
                         <Calendar size={14} color="var(--primary)" />
-                        {client.derniere_commande ? format(new Date(client.derniere_commande), 'dd MMM yyyy', { locale: fr }) : 'Jamais'}
+                        {client.derniere_commande_brute ? format(new Date(client.derniere_commande_brute), 'dd MMM yyyy', { locale: fr }) : 'Jamais'}
                       </div>
                       <div className="mobile-hide" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginLeft: '1.4rem' }}>{client.locations[0] || 'Zone inconnue'}</div>
                     </td>
-                    <td data-label="Total" style={{ padding: '1.25rem', textAlign: 'right' }}>
-                      <div style={{ fontWeight: 900, color: 'var(--primary)', fontSize: '1.1rem' }}>{client.total_encaisse.toLocaleString()}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 700 }}>Panier: {client.panier_moyen.toLocaleString()} F</div>
+                    <td data-label="CA (Encaissé / Brut)" style={{ padding: '1.25rem', textAlign: 'right' }}>
+                      <div style={{ fontWeight: 900, color: '#10b981', fontSize: '1.1rem' }}>{client.total_encaisse.toLocaleString()} F</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700 }}>Brut: {client.total_brut.toLocaleString()} F</div>
                     </td>
                     <td data-label="Action" style={{ padding: '1.25rem', textAlign: 'right' }}>
                       <button className="btn btn-outline btn-sm" style={{ borderRadius: '10px', width: 'auto' }} onClick={(e) => { e.stopPropagation(); openClientDetails(client); }}>
@@ -527,7 +528,8 @@ export const Clients = () => {
                     <CreditCard size={18} color="var(--primary)" />
                     <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Volume d'achat</span>
                   </div>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{selectedClient.client.total_encaisse.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#10b981' }}>{selectedClient.client.total_encaisse.toLocaleString()} <span style={{ fontSize: '0.8rem' }}>CFA</span></div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: '0.2rem' }}>Brut: {selectedClient.client.total_brut.toLocaleString()} CFA</div>
                 </div>
                 <div style={{ padding: '1.5rem', borderRadius: '24px', background: '#f8fafc', border: '1px solid #f1f5f9' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
