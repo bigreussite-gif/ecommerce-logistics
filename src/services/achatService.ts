@@ -20,7 +20,7 @@ export interface AchatStock {
 export const getAchatsStock = async (): Promise<AchatStock[]> => {
   const { data, error } = await insforge.database
     .from('achats_stock')
-    .select('*, produits(nom), fournisseurs(nom)').limit(100000)
+    .select('*, produits(nom).limit(100000), fournisseurs(nom)').limit(100000)
     .order('date_achat', { ascending: false });
   
   if (error) throw error;

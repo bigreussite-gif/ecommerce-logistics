@@ -22,7 +22,7 @@ export const StockCorrectionModal = ({ onClose, produits }: Props) => {
   const calculateTheoreticalStock = async () => {
     setLoading(true);
     try {
-      const { data: mvts } = await insforge.database.from('mouvements_stock').select('produit_id, type_mouvement, quantite');
+      const { data: mvts } = await insforge.database.from('mouvements_stock').select('produit_id, type_mouvement, quantite').limit(100000);
       if (!mvts) { setLoading(false); return; }
 
       const calcMap = new Map<string, number>();

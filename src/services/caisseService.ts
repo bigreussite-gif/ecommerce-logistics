@@ -100,7 +100,7 @@ export const getCloturedFeuilles = async (): Promise<FeuilleRoute[]> => {
 export const getCommandesConcernees = async (feuilleRouteId: string): Promise<Commande[]> => {
   const { data, error } = await insforge.database
     .from('commandes')
-    .select('*, clients(nom_complet, telephone, telephone_secondaire), lignes:lignes_commandes(*)').limit(100000)
+    .select('*, clients(nom_complet, telephone, telephone_secondaire).limit(100000), lignes:lignes_commandes(*)').limit(100000)
     .eq('feuille_route_id', feuilleRouteId);
 
   if (error) throw error;
