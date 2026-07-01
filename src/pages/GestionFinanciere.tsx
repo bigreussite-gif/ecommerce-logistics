@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Wallet, Download, Sparkles, Loader2, BrainCircuit, Calendar, PieChart } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Download, Activity, Sparkles, Loader2, BrainCircuit, Calendar, PieChart } from 'lucide-react';
 import { getFinancialData } from '../services/commandeService';
 import { getDepenses, calculateProfitMetrics, calculateStockValue } from '../services/financialService';
 import { getFournisseurs } from '../services/fournisseurService';
@@ -215,6 +215,17 @@ export const GestionFinanciere = () => {
       </div>
 
       <div className="stats-grid" style={{ marginBottom: '2rem', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+        
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #f59e0b' }}>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ padding: '0.8rem', background: '#fef3c7', borderRadius: '12px', color: '#f59e0b' }}><Activity size={24} /></div>
+            <div>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Chiffre d'Affaires (CA)</p>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900, color: '#f59e0b' }}>{Number(finances.encaisses).toLocaleString()} CFA</h2>
+            </div>
+          </div>
+        </div>
+
         <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <div style={{ padding: '0.8rem', background: '#ecfdf5', borderRadius: '12px', color: '#10b981' }}><Wallet size={24} /></div>
