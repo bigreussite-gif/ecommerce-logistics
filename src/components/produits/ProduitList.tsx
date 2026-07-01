@@ -145,16 +145,22 @@ export const ProduitList = ({ produits, onEdit, onStock, onView, onViewReserved 
                     justifyContent: 'space-between',
                     alignItems: 'center', 
                     padding: '4px 8px', 
-                    background: (produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) ? '#fff1f2' : '#f0fdf4', 
+                    background: (produit.stock_disponible ?? produit.stock_actuel) < 0 ? '#fee2e2' : (produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) ? '#fff1f2' : '#f0fdf4', 
                     borderRadius: '8px', 
-                    border: `1px solid ${(produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) ? '#fecaca' : '#bbf7d0'}`,
+                    border: `1px solid ${(produit.stock_disponible ?? produit.stock_actuel) < 0 ? '#ef4444' : (produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) ? '#fecaca' : '#bbf7d0'}`,
                   }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: (produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) ? '#991b1b' : '#15803d' }}>Dispo:</span>
-                    <span style={{ fontWeight: 950, fontSize: '0.85rem', color: (produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) ? '#ef4444' : '#10b981' }}>
-                      {produit.stock_disponible ?? produit.stock_actuel} u.
+                    <span style={{ fontSize: '0.75rem', fontWeight: 800, color: (produit.stock_disponible ?? produit.stock_actuel) < 0 ? '#b91c1c' : (produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) ? '#991b1b' : '#15803d' }}>
+                      {(produit.stock_disponible ?? produit.stock_actuel) < 0 ? 'À Sourcer:' : 'Dispo:'}
+                    </span>
+                    <span style={{ fontWeight: 950, fontSize: '0.85rem', color: (produit.stock_disponible ?? produit.stock_actuel) < 0 ? '#ef4444' : (produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) ? '#ef4444' : '#10b981' }}>
+                      {Math.abs(produit.stock_disponible ?? produit.stock_actuel)} u.
                     </span>
                   </div>
-                  {(produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) && (
+                  {(produit.stock_disponible ?? produit.stock_actuel) < 0 ? (
+                     <div style={{ fontSize: '0.6rem', color: '#b91c1c', fontWeight: 900, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                       🚨 DÉFICIT DE STOCK
+                     </div>
+                  ) : (produit.stock_disponible ?? produit.stock_actuel) <= (produit.stock_minimum || 5) && (
                      <div style={{ fontSize: '0.6rem', color: '#dc2626', fontWeight: 900, textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                        ⚠️ STOCK BAS
                      </div>

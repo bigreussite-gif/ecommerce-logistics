@@ -35,11 +35,7 @@ export const StockForm = ({ produit, onClose, onSave }: StockFormProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validation: Prevent exit greater than current stock
-    if (formData.type_mouvement === 'sortie' && (formData.quantite || 0) > produit.stock_actuel) {
-      showToast(`Impossible de sortir ${formData.quantite} unités. Stock insuffisant (${produit.stock_actuel} dispo).`, "error");
-      return;
-    }
+    // Nous n'empêchons plus les sorties > stock actuel, pour permettre un découvert (déficit de stock / à sourcer)
 
     setLoading(true);
     try {

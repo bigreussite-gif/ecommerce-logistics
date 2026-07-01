@@ -81,7 +81,7 @@ export const getProduits = async (): Promise<Produit[]> => {
         stock_reserve,
         stock_en_livraison,
         stock_retour_attendu,
-        stock_disponible: Math.max(0, p.stock_actuel - stock_reserve), // Le dispo est Actuel - Réservé (En livraison est DÉJÀ déduit de l'actuel)
+        stock_disponible: p.stock_actuel - stock_reserve, // Autorise le négatif pour indiquer un déficit/besoin d'approvisionnement
         composants: bundlesMap.get(p.id) || []
       };
     });
