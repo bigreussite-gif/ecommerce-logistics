@@ -5,7 +5,7 @@ import { getProduits } from '../services/produitService';
 import { getEffectiveCommandDate } from '../utils/date-utils';
 import type { Commande } from '../types';
 import { globalEventBus, EVENTS } from '../utils/events';
-import { Activity, DollarSign, TrendingUp, AlertCircle, ShoppingBag, BarChart2, Calendar, MapPin, Tag, Clock, ArrowUp, ArrowDown, Wallet, TrendingDown } from 'lucide-react';
+import { Activity, DollarSign, TrendingUp, AlertCircle, ShoppingBag, BarChart2, Calendar, MapPin, Tag, Clock, ArrowUp, ArrowDown, Wallet, TrendingDown, Package } from 'lucide-react';
 import { 
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   Tooltip, PieChart, Pie, Cell
@@ -25,6 +25,7 @@ export const Dashboard = () => {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [filteredCmds, setFilteredCmds] = useState<Commande[]>([]);
   const [filteredCmdsPrev, setFilteredCmdsPrev] = useState<Commande[]>([]);
+  const [produitsData, setProduitsData] = useState<any[]>([]);
 
   const fetchTop = useCallback(async (p: Period, start?: string, end?: string) => {
     try {
@@ -44,6 +45,7 @@ export const Dashboard = () => {
         getProduits()
       ]);
       setExpenses(allExpenses);
+      setProduitsData(allProds);
       const sVal = calculateStockValue(allProds);
       setStockVal(sVal);
     } catch (err) { console.error(err); }
@@ -296,6 +298,11 @@ export const Dashboard = () => {
 
   const { metrics, previousMetrics, logStats, croissanceCA, statusData, heatmapData, bestZonesData, historyData, pendingCount } = filteredData;
 
+  const lowStockProducts = useMemo(() => {
+    return produitsData
+      .filter(p => (p.stock_disponible ?? p.stock_actuel ?? 0) <= (p.stock_minimum ?? 0) && p.actif !== false)
+      .sort((a, b) => (a.stock_disponible ?? a.stock_actuel) - (b.stock_disponible ?? b.stock_actuel));
+  }, [produitsData]);
 
   if (loading) return <div className="p-8 text-center">Chargement...</div>;
 
@@ -755,6 +762,57 @@ export const Dashboard = () => {
               Aucune activité récente.
             </div>
           )}
+        </div>
+      </div>
+
+        {/* Widget Alertes Stock */}
+        <div className="card glass-effect" style={{ padding: '2.5rem', border: '1px solid rgba(255,255,255,0.6)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2.5rem' }}>
+            <div style={{ padding: '0.6rem', background: 'rgba(239, 68, 68, 0.1)', borderRadius: '12px', display: 'flex' }}>
+              <AlertCircle size={22} color="#ef4444" />
+            </div>
+            <h3 style={{ margin: 0, fontWeight: 900, fontSize: '1.25rem' }}>Alertes de Stock</h3>
+            {lowStockProducts.length > 0 && (
+              <span style={{ background: '#ef4444', color: 'white', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 800 }}>
+                {lowStockProducts.length} alerte(s)
+              </span>
+            )}
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+            {lowStockProducts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', background: '#f8fafc', borderRadius: '16px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#dcfce7', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem' }}>
+                  <ShoppingBag size={24} />
+                </div>
+                <p style={{ fontWeight: 600 }}>Tous vos produits sont suffisamment approvisionnés.</p>
+              </div>
+            ) : (
+              lowStockProducts.map(p => {
+                const stock = p.stock_disponible ?? p.stock_actuel ?? 0;
+                const isRupture = stock <= 0;
+                return (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.25rem', background: isRupture ? '#fef2f2' : 'white', borderRadius: '16px', border: `1px solid ${isRupture ? '#fecaca' : '#f1f5f9'}`, transition: 'transform 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }} className="hover-lift-shadow">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: isRupture ? '#ef4444' : '#f59e0b', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Package size={20} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-main)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nom}</div>
+                        <div style={{ fontSize: '0.8rem', color: isRupture ? '#ef4444' : '#d97706', fontWeight: 700, marginTop: '0.2rem' }}>
+                          {isRupture ? 'RUPTURE DE STOCK' : 'STOCK BAS'}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontWeight: 900, fontSize: '1.2rem', color: isRupture ? '#ef4444' : '#d97706' }}>{stock} u.</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Min: {p.stock_minimum || 0}</div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
     </div>

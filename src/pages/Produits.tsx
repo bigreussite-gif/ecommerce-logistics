@@ -19,6 +19,7 @@ export const Produits = () => {
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [showAlertsOnly, setShowAlertsOnly] = useState(false);
 
   const [isProduitFormOpen, setIsProduitFormOpen] = useState(false);
   const [selectedProduit, setSelectedProduit] = useState<Produit | null>(null);
@@ -78,7 +79,13 @@ export const Produits = () => {
       p.nom.toLowerCase().includes(deferredSearchTerm.toLowerCase()) ||
       p.id.toLowerCase().includes(deferredSearchTerm.toLowerCase());
     const matchesCategory = selectedCategory ? p.categorie_id === selectedCategory : true;
-    return matchesSearch && matchesCategory;
+    
+    const stock = p.stock_disponible ?? p.stock_actuel ?? 0;
+    const min = p.stock_minimum ?? 0;
+    const isAlert = stock <= min && p.actif !== false;
+    const matchesAlert = showAlertsOnly ? isAlert : true;
+
+    return matchesSearch && matchesCategory && matchesAlert;
   });
 
   return (
@@ -209,6 +216,29 @@ export const Produits = () => {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+
+              {/* Toggle Alertes */}
+              <button
+                onClick={() => setShowAlertsOnly(!showAlertsOnly)}
+                style={{ 
+                  height: '48px', 
+                  borderRadius: '16px', 
+                  fontWeight: 700, 
+                  fontSize: '0.95rem',
+                  background: showAlertsOnly ? '#fee2e2' : 'transparent',
+                  color: showAlertsOnly ? '#ef4444' : '#64748b',
+                  border: `1px solid ${showAlertsOnly ? '#fca5a5' : '#e2e8f0'}`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  padding: '0 1.5rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <AlertTriangle size={18} />
+                En Alerte {showAlertsOnly ? `(${stats.stockBas + stats.rupture})` : ''}
+              </button>
             </div>
           </div>
         </section>

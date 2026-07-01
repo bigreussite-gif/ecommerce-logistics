@@ -85,9 +85,13 @@ export const StockCorrectionModal = ({ onClose, produits }: Props) => {
         produit_id: p.id,
         type_mouvement: type,
         quantite: Math.abs(diff),
+        ancien_stock: currentStock,
+        nouveau_stock: newStock,
         reference: 'Inventaire Manuel - ' + new Date().toLocaleDateString()
       });
       
+      // Mettre à jour l'état local pour refléter le changement
+      setManualStocks({ ...manualStocks, [p.id]: '' });
       alert(`Stock de ${p.nom} mis à jour à ${newStock}`);
     } catch (err) {
       console.error(err);

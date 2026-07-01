@@ -27,6 +27,7 @@ const lazyWithRetry = (componentImport: () => Promise<any>) =>
 
 const Dashboard = lazyWithRetry(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const Produits = lazyWithRetry(() => import('./pages/Produits').then(m => ({ default: m.Produits })));
+const MouvementsStock = lazyWithRetry(() => import('./pages/MouvementsStock').then(m => ({ default: m.MouvementsStock })));
 const ProduitHistorique = lazyWithRetry(() => import('./pages/ProduitHistorique').then(m => ({ default: m.ProduitHistorique })));
 const Commandes = lazyWithRetry(() => import('./pages/Commandes').then(m => ({ default: m.Commandes })));
 const AnalyseProduits = lazyWithRetry(() => import('./pages/AnalyseProduits').then(m => ({ default: m.AnalyseProduits })));
@@ -119,6 +120,10 @@ const AppRoutes = () => {
         {/* Module 1: Produits */}
         <Route path="produits" element={
           <ProtectedRoute requiredPermission="PRODUITS"><Produits /></ProtectedRoute>
+        } />
+        
+        <Route path="mouvements-stock" element={
+          <ProtectedRoute requiredPermission="PRODUITS"><MouvementsStock /></ProtectedRoute>
         } />
         
         <Route path="produits/:id/historique" element={

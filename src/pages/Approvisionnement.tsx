@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAchatsStock, registerBulkAchatsStock, updateAchatStock, deleteAchatStock } from '../services/achatService';
-import { getFournisseurs, Fournisseur } from '../services/fournisseurService';
+import { getFournisseurs, Fournisseur, createFournisseur } from '../services/fournisseurService';
 import { getProduits } from '../services/produitService';
 import { Produit } from '../types';
 import { Plus, Search, Calendar, Package, CreditCard, DollarSign, X, Filter, ShoppingBag, CheckCircle2, Trash2, Edit3 } from 'lucide-react';
@@ -32,6 +32,10 @@ export const Approvisionnement = () => {
   const [items, setItems] = useState<AchatLine[]>([
     { id: Math.random().toString(), produit_id: '', fournisseur_id: '', quantite: 1, prix_achat_unitaire: 0, mode_paiement: 'Cash', statut_paiement: 'Payé' }
   ]);
+
+  const [isNewFournisseurModalOpen, setIsNewFournisseurModalOpen] = useState(false);
+  const [newFournisseurForLine, setNewFournisseurForLine] = useState<string | null>(null);
+  const [newFournisseurData, setNewFournisseurData] = useState({ nom: '', contact: '', telephone: '', adresse: '' });
 
   const { showToast } = useToast();
 
@@ -95,6 +99,30 @@ export const Approvisionnement = () => {
       }
       return item;
     }));
+  };
+
+  const handleCreateFournisseur = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      const newId = await createFournisseur(newFournisseurData);
+      
+      const updatedFournisseurs = await getFournisseurs();
+      setFournisseurs(updatedFournisseurs);
+
+      if (newFournisseurForLine && newId) {
+        updateLine(newFournisseurForLine, { fournisseur_id: newId });
+      }
+
+      showToast('Fournisseur créé avec succès', 'success');
+      setIsNewFournisseurModalOpen(false);
+      setNewFournisseurData({ nom: '', contact: '', telephone: '', adresse: '' });
+      setNewFournisseurForLine(null);
+    } catch (error) {
+      showToast('Erreur lors de la création du fournisseur', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -377,16 +405,30 @@ export const Approvisionnement = () => {
                           </select>
                         </td>
                         <td data-label="Fournisseur" style={{ padding: '1rem' }}>
-                          <select 
-                            className="form-select" 
-                            required 
-                            value={item.fournisseur_id} 
-                            onChange={e => updateLine(item.id, { fournisseur_id: e.target.value })}
-                            style={{ borderRadius: '12px', height: '3.5rem', fontWeight: 600, border: '1px solid #e2e8f0' }}
-                          >
-                            <option value="">Fournisseur...</option>
-                            {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
-                          </select>
+                          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                            <select 
+                              className="form-select" 
+                              required 
+                              value={item.fournisseur_id} 
+                              onChange={e => updateLine(item.id, { fournisseur_id: e.target.value })}
+                              style={{ borderRadius: '12px', height: '3.5rem', fontWeight: 600, border: '1px solid #e2e8f0', flex: 1 }}
+                            >
+                              <option value="">Fournisseur...</option>
+                              {fournisseurs.map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
+                            </select>
+                            <button 
+                              type="button"
+                              className="btn btn-outline" 
+                              style={{ width: '3.5rem', height: '3.5rem', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', flexShrink: 0 }}
+                              onClick={() => {
+                                setNewFournisseurForLine(item.id);
+                                setIsNewFournisseurModalOpen(true);
+                              }}
+                              title="Nouveau Fournisseur"
+                            >
+                              <Plus size={20} />
+                            </button>
+                          </div>
                         </td>
                         <td data-label="Quantité" style={{ padding: '1rem' }}>
                           <input 
@@ -557,6 +599,32 @@ export const Approvisionnement = () => {
                 Supprimer
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Nouveau Fournisseur Rapide */}
+      {isNewFournisseurModalOpen && (
+        <div className="modal-backdrop" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-content card" style={{ padding: 0, overflow: 'hidden', maxWidth: '500px', width: '90%' }}>
+            <div style={{ background: 'linear-gradient(135deg, var(--primary), #4f46e5)', padding: '1.5rem 2rem', color: 'white', position: 'relative' }}>
+              <button type="button" onClick={() => setIsNewFournisseurModalOpen(false)} style={{ position: 'absolute', right: '1.5rem', top: '1.5rem', background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '0.4rem', borderRadius: '8px', cursor: 'pointer' }}><X size={20} /></button>
+              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 900 }}>Nouveau Fournisseur</h2>
+            </div>
+            <form onSubmit={handleCreateFournisseur} style={{ padding: '2rem' }}>
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">Nom de l'entreprise *</label>
+                <input type="text" className="form-input" required value={newFournisseurData.nom} onChange={e => setNewFournisseurData({...newFournisseurData, nom: e.target.value})} style={{ borderRadius: '12px' }} placeholder="Nom du fournisseur" />
+              </div>
+              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                <label className="form-label">Téléphone</label>
+                <input type="text" className="form-input" value={newFournisseurData.telephone} onChange={e => setNewFournisseurData({...newFournisseurData, telephone: e.target.value})} style={{ borderRadius: '12px' }} placeholder="Contact téléphonique" />
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                <button type="button" className="btn btn-outline" onClick={() => setIsNewFournisseurModalOpen(false)} style={{ flex: 1, borderRadius: '12px' }}>Annuler</button>
+                <button type="submit" className="btn btn-primary" disabled={loading} style={{ flex: 1, borderRadius: '12px' }}>Enregistrer</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

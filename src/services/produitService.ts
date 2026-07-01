@@ -264,3 +264,14 @@ export const getHistoriqueStock = async (produit_id: string): Promise<MouvementS
   return data || [];
 };
 
+export const getAllMouvementsStock = async (): Promise<(MouvementStock & { produits: { nom: string } })[]> => {
+  const { data, error } = await insforge.database
+    .from('mouvements_stock')
+    .select('*, produits(nom)')
+    .order('date', { ascending: false })
+    .limit(5000);
+
+  if (error) throw error;
+  return (data || []) as (MouvementStock & { produits: { nom: string } })[];
+};
+
