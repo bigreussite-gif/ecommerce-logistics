@@ -3,7 +3,11 @@ import { Package, Search, Download, ArrowRight, ArrowLeft, Filter, Calendar } fr
 import { getAllMouvementsStock } from '../services/produitService';
 import { MouvementStock } from '../types';
 
-type ExtendedMouvement = MouvementStock & { produits?: { nom: string } };
+type ExtendedMouvement = MouvementStock & { 
+  produits?: { nom: string };
+  ancien_stock?: number;
+  nouveau_stock?: number;
+};
 
 export const MouvementsStock = () => {
   const [mouvements, setMouvements] = useState<ExtendedMouvement[]>([]);
@@ -31,7 +35,8 @@ export const MouvementsStock = () => {
       const matchSearch = (m.produits?.nom || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
                           (m.reference || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchType = typeFilter ? m.type_mouvement === typeFilter : true;
-      const matchDate = dateFilter ? m.date.startsWith(dateFilter) : true;
+      const dateStr = typeof m.date === 'string' ? m.date : new Date(m.date).toISOString();
+      const matchDate = dateFilter ? dateStr.startsWith(dateFilter) : true;
       return matchSearch && matchType && matchDate;
     });
   }, [mouvements, searchTerm, typeFilter, dateFilter]);

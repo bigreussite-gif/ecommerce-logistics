@@ -304,6 +304,7 @@ export const Dashboard = () => {
       .sort((a, b) => (a.stock_disponible ?? a.stock_actuel) - (b.stock_disponible ?? b.stock_actuel));
   }, [produitsData]);
 
+
   if (loading) return <div className="p-8 text-center">Chargement...</div>;
 
   return (
@@ -763,7 +764,6 @@ export const Dashboard = () => {
             </div>
           )}
         </div>
-      </div>
 
         {/* Widget Alertes Stock */}
         <div className="card glass-effect" style={{ padding: '2.5rem', border: '1px solid rgba(255,255,255,0.6)' }}>
