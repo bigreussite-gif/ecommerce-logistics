@@ -80,12 +80,12 @@ export const deleteDepense = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
-export const DEFAULT_SHIPPING_FEE = 0;
-export const EXTRACTION_LOGISTIQUE = 0;
-export const EXTRACTION_ENTRETIEN = 0;
+export const DEFAULT_SHIPPING_FEE = 1000;
+export const EXTRACTION_LOGISTIQUE = 500;
+export const EXTRACTION_ENTRETIEN = 250;
 export const EXTRACTION_INTERNET = 0;
-export const TOTAL_EXTRACTION_PER_UNIT = 0;
-export const RETENUE_PERCENT = 0;
+export const TOTAL_EXTRACTION_PER_UNIT = EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN + EXTRACTION_INTERNET; // 750 CFA
+export const RETENUE_PERCENT = 0.05; // 5% des bénéfices après extractions
 
 export interface ProfitStats {
   ca_brut: number;
