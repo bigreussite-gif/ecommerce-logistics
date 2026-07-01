@@ -81,7 +81,7 @@ export const getProduits = async (): Promise<Produit[]> => {
         stock_reserve,
         stock_en_livraison,
         stock_retour_attendu,
-        stock_disponible: p.stock_actuel - stock_reserve, // Autorise le négatif pour indiquer un déficit/besoin d'approvisionnement
+        stock_disponible: p.stock_actuel - stock_reserve - stock_en_livraison - stock_retour_attendu, // Autorise le négatif pour indiquer un déficit/besoin d'approvisionnement
         composants: bundlesMap.get(p.id) || []
       };
     });
