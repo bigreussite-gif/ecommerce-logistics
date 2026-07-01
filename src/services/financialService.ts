@@ -80,12 +80,12 @@ export const deleteDepense = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
-export const DEFAULT_SHIPPING_FEE = 1000;
-export const EXTRACTION_LOGISTIQUE = 500;
-export const EXTRACTION_ENTRETIEN = 250;
-export const EXTRACTION_INTERNET = 300;
-export const TOTAL_EXTRACTION_PER_UNIT = EXTRACTION_LOGISTIQUE + EXTRACTION_ENTRETIEN + EXTRACTION_INTERNET; // 1050
-export const RETENUE_PERCENT = 0.05;
+export const DEFAULT_SHIPPING_FEE = 0;
+export const EXTRACTION_LOGISTIQUE = 0;
+export const EXTRACTION_ENTRETIEN = 0;
+export const EXTRACTION_INTERNET = 0;
+export const TOTAL_EXTRACTION_PER_UNIT = 0;
+export const RETENUE_PERCENT = 0;
 
 export interface ProfitStats {
   ca_brut: number;
@@ -208,11 +208,11 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
   const ca_net_produits = ca_brut - frais_livraison_reussis;
   const installation_primes_total = terminalCmds.reduce((acc, c) => acc + (Number(c.total_primes_installation) || 0), 0);
   
-  // Extractions based on number of successful deliveries
-  const total_extractions = terminalCmds.length * TOTAL_EXTRACTION_PER_UNIT;
+  // Aucune extraction simulée ni retenue forfaitaire (tout doit être entré comme dépenses réelles)
+  const total_extractions = 0;
   
   // Retenue based on percentage of net revenue
-  const retenue_charges = ca_net_produits > 0 ? Math.round(ca_net_produits * RETENUE_PERCENT) : 0;
+  const retenue_charges = 0;
 
   const frais_vtc_total = terminalCmds.reduce((acc, c) => acc + (Number(c.cout_vtc) || 0), 0);
 
