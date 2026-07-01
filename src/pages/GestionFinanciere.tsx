@@ -163,19 +163,52 @@ export const GestionFinanciere = () => {
           </p>
         </div>
         
-        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-          <div className="filter-group">
-            <button className={period === 'today' ? 'active' : ''} onClick={() => setRange('today')}>Aujourd'hui</button>
-            <button className={period === '7d' ? 'active' : ''} onClick={() => setRange('7d')}>7 Jours</button>
-            <button className={period === 'month' ? 'active' : ''} onClick={() => setRange('month')}>Ce Mois</button>
+        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          
+          {/* Preset Period Buttons */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', background: 'rgba(99, 102, 255, 0.05)', padding: '0.4rem', borderRadius: '16px', border: '1px solid #e2e8f0', gap: '0.5rem' }}>
+            <button 
+              className={`btn btn-sm ${period === 'today' ? 'btn-primary' : ''}`} 
+              onClick={() => setRange('today')}
+              style={{ borderRadius: '12px', border: 'none', background: period === 'today' ? 'var(--primary)' : 'transparent', color: period === 'today' ? 'white' : 'var(--text-muted)', padding: '0.5rem 1rem', fontWeight: 600, transition: 'all 0.3s ease' }}
+            >
+              Aujourd'hui
+            </button>
+            <button 
+              className={`btn btn-sm ${period === '7d' ? 'btn-primary' : ''}`} 
+              onClick={() => setRange('7d')}
+              style={{ borderRadius: '12px', border: 'none', background: period === '7d' ? 'var(--primary)' : 'transparent', color: period === '7d' ? 'white' : 'var(--text-muted)', padding: '0.5rem 1rem', fontWeight: 600, transition: 'all 0.3s ease' }}
+            >
+              7 Jours
+            </button>
+            <button 
+              className={`btn btn-sm ${period === 'month' ? 'btn-primary' : ''}`} 
+              onClick={() => setRange('month')}
+              style={{ borderRadius: '12px', border: 'none', background: period === 'month' ? 'var(--primary)' : 'transparent', color: period === 'month' ? 'white' : 'var(--text-muted)', padding: '0.5rem 1rem', fontWeight: 600, transition: 'all 0.3s ease' }}
+            >
+              Ce Mois
+            </button>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+
+          {/* Custom Date Inputs */}
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'white', padding: '0.4rem 0.8rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
             <Calendar size={18} color="var(--text-muted)" />
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="input-field" style={{ padding: '0.5rem' }} />
-            <span style={{ color: 'var(--text-muted)' }}>-</span>
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="input-field" style={{ padding: '0.5rem' }} />
+            <input 
+              type="date" 
+              value={startDate} 
+              onChange={(e) => { setStartDate(e.target.value); setPeriod('custom' as any); }} 
+              style={{ border: 'none', outline: 'none', background: 'transparent', padding: '0.2rem', color: 'var(--text-main)', fontWeight: 500, fontSize: '0.9rem' }} 
+            />
+            <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>à</span>
+            <input 
+              type="date" 
+              value={endDate} 
+              onChange={(e) => { setEndDate(e.target.value); setPeriod('custom' as any); }} 
+              style={{ border: 'none', outline: 'none', background: 'transparent', padding: '0.2rem', color: 'var(--text-main)', fontWeight: 500, fontSize: '0.9rem' }} 
+            />
           </div>
-          <button className="btn btn-outline" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+
+          <button className="btn btn-outline" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', borderRadius: '12px', padding: '0.6rem 1.2rem', fontWeight: 600 }}>
             <Download size={18} /> Exporter
           </button>
         </div>
