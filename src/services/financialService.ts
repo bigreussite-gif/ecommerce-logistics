@@ -167,7 +167,10 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
   
   
   const ca_brut = terminalCmds.reduce((acc, c) => acc + (Number(c.montant_total) || 0), 0);
-  const frais_livraison_reussis = terminalCmds.reduce((acc, c) => acc + (c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE), 0);
+  const frais_livraison_reussis = terminalCmds.reduce((acc, c) => {
+    const val = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
+    return acc + (isNaN(val) ? 0 : val);
+  }, 0);
   
   // Les livreurs ne sont payés que si la livraison est réussie, donc 0 perte logistique
   const pertes_livraison = 0;
@@ -180,8 +183,9 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
         // Robust purchase price retrieval
         const prodData = Array.isArray(l.produits) ? l.produits[0] : l.produits;
         const purchasePrice = l.prix_achat_unitaire || prodData?.prix_achat || 0;
+        const priceNum = Number(purchasePrice);
         
-        cogs_total += (l.quantite * Number(purchasePrice));
+        cogs_total += (l.quantite * (isNaN(priceNum) ? 0 : priceNum));
       });
     }
   });
@@ -312,12 +316,14 @@ export const analyzeGeographicalProfit = (commandes: (Commande & { lignes?: Lign
     
     if (isSuccess) {
       g.livrees++;
-      const shipping = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
+      const shippingRaw = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
+      const shipping = isNaN(shippingRaw) ? 0 : shippingRaw;
       const rev = (Number(c.montant_total) || 0) - shipping;
       const cost = (c as any).lignes?.reduce((sum: number, l: any) => {
         const prodData = Array.isArray(l.produits) ? l.produits[0] : l.produits;
         const purchasePrice = l.prix_achat_unitaire || prodData?.prix_achat || 0;
-        return sum + (l.quantite * Number(purchasePrice));
+        const priceNum = Number(purchasePrice);
+        return sum + (l.quantite * (isNaN(priceNum) ? 0 : priceNum));
       }, 0) || 0;
       
       const extractions = TOTAL_EXTRACTION_PER_UNIT;
@@ -328,7 +334,8 @@ export const analyzeGeographicalProfit = (commandes: (Commande & { lignes?: Lign
       g.profit_net += (rev - cost - extractions - retenue - primes);
     } else {
       // Failed delivery still costs us something
-      const loss = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
+      const lossRaw = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
+      const loss = isNaN(lossRaw) ? 0 : lossRaw;
       g.profit_net -= loss;
     }
   });
@@ -365,12 +372,14 @@ export const generateTimeSeriesData = (commandes: (Commande & { lignes?: LigneCo
       groups[key] = { name: key, revenue: 0, profit: 0, expenses: 0 };
     }
 
-    const shipping = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
+    const shippingRaw = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
+    const shipping = isNaN(shippingRaw) ? 0 : shippingRaw;
     const rev = (Number(c.montant_total) || 0) - shipping;
     const cost = (c as any).lignes?.reduce((sum: number, l: any) => {
       const prodData = Array.isArray(l.produits) ? l.produits[0] : l.produits;
       const purchasePrice = l.prix_achat_unitaire || prodData?.prix_achat || 0;
-      return sum + (l.quantite * Number(purchasePrice));
+      const priceNum = Number(purchasePrice);
+      return sum + (l.quantite * (isNaN(priceNum) ? 0 : priceNum));
     }, 0) || 0;
 
     const extractions = TOTAL_EXTRACTION_PER_UNIT;
@@ -453,8 +462,9 @@ export const calculateProductROI = (commandes: (Commande & { lignes?: LigneComma
           
           const prodData = Array.isArray(l.produits) ? l.produits[0] : l.produits;
           const purchasePrice = l.prix_achat_unitaire || prodData?.prix_achat || 0;
+          const priceNum = Number(purchasePrice);
           
-          p.cogs += (l.quantite * Number(purchasePrice));
+          p.cogs += (l.quantite * (isNaN(priceNum) ? 0 : priceNum));
           // Subtract primes if they were recorded on the line
           const primeVal = (l as any).frais_installation || 0;
           if (l.choix_installation && primeVal) {
@@ -463,7 +473,8 @@ export const calculateProductROI = (commandes: (Commande & { lignes?: LigneComma
         } else if (isFailure) {
           p.echecs += l.quantite;
           // Loss estimate: if it failed, we likely paid delivery estimated at DEFAULT_SHIPPING_FEE CFA or the order's delivery fee
-          const shipping = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
+          const shippingRaw = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
+          const shipping = isNaN(shippingRaw) ? 0 : shippingRaw;
           const shareOfFrais = shipping / (c.lignes?.length || 1);
           p.frais_perte_livraison += Math.round(shareOfFrais);
         }
