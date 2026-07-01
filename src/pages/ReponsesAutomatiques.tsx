@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { MessageSquare, Settings, Save, Play, CheckCircle2, AlertCircle } from 'lucide-react';
+import { MessageSquare, Settings, Save, Play, CheckCircle2, AlertCircle, Sparkles, Loader2 } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
+import { insforge } from '../lib/insforge';
 
 interface AutoReplyRule {
   id: string;
@@ -36,13 +37,30 @@ const DEFAULT_RULES: AutoReplyRule[] = [
 
 export const ReponsesAutomatiques = () => {
   const { showToast } = useToast();
-  const [rules, setRules] = useState<AutoReplyRule[]>(DEFAULT_RULES);
+  
+  const [rules, setRules] = useState<AutoReplyRule[]>(() => {
+    const saved = localStorage.getItem('auto_reply_rules');
+    return saved ? JSON.parse(saved) : DEFAULT_RULES;
+  });
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editMessage, setEditMessage] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const saveRules = (newRules: AutoReplyRule[]) => {
+    setRules(newRules);
+    localStorage.setItem('auto_reply_rules', JSON.stringify(newRules));
+  };
 
   const handleToggle = (id: string) => {
-    setRules(rules.map(r => r.id === id ? { ...r, active: !r.active } : r));
+    saveRules(rules.map(r => r.id === id ? { ...r, active: !r.active } : r));
     showToast('Statut de la règle mis à jour', 'success');
+  };
+
+  const handleSave = (id: string) => {
+    saveRules(rules.map(r => r.id === id ? { ...r, message: editMessage } : r));
+    setEditingId(null);
+    showToast('Message automatisé sauvegardé avec succès', 'success');
   };
 
   const handleEdit = (rule: AutoReplyRule) => {
@@ -50,14 +68,29 @@ export const ReponsesAutomatiques = () => {
     setEditMessage(rule.message);
   };
 
-  const handleSave = (id: string) => {
-    setRules(rules.map(r => r.id === id ? { ...r, message: editMessage } : r));
-    setEditingId(null);
-    showToast('Message automatisé sauvegardé avec succès', 'success');
-  };
-
   const insertVariable = (variable: string) => {
     setEditMessage(prev => prev + ` [${variable}] `);
+  };
+
+  const generateAITemplate = async (ruleDescription: string) => {
+    try {
+      setIsGenerating(true);
+      const prompt = `Rédige un message SMS/WhatsApp court, chaleureux et professionnel pour un client e-commerce en Côte d'Ivoire. Le contexte de ce message est: "${ruleDescription}". Utilise le vouvoiement. Inclus absolument les balises [Nom Client] et [Montant] si c'est pertinent. Ne mets pas d'objets, juste le texte du message.`;
+      
+      const completion = await insforge.ai.chat.completions.create({
+        model: 'anthropic/claude-sonnet-4.5',
+        messages: [{ role: 'user', content: prompt }]
+      });
+      
+      const generatedText = completion.choices[0].message.content.trim();
+      setEditMessage(generatedText);
+      showToast('Nouveau message généré par l\'IA !', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Erreur lors de la génération IA', 'error');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -159,9 +192,18 @@ export const ReponsesAutomatiques = () => {
                   onChange={(e) => setEditMessage(e.target.value)}
                   style={{ width: '100%', minHeight: '100px', padding: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1', marginBottom: '1rem', fontFamily: 'inherit' }}
                 />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                  <button className="btn btn-secondary" onClick={() => setEditingId(null)}>Annuler</button>
-                  <button className="btn btn-primary" onClick={() => handleSave(rule.id)}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
+                  <button className="btn btn-secondary" onClick={() => setEditingId(null)} disabled={isGenerating}>Annuler</button>
+                  <button 
+                    className="btn" 
+                    onClick={() => generateAITemplate(rule.description)}
+                    disabled={isGenerating}
+                    style={{ background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', color: 'white', border: 'none' }}
+                  >
+                    {isGenerating ? <Loader2 size={18} className="spin" /> : <Sparkles size={18} />} 
+                    Générer avec l'IA
+                  </button>
+                  <button className="btn btn-primary" onClick={() => handleSave(rule.id)} disabled={isGenerating}>
                     <Save size={18} /> Enregistrer
                   </button>
                 </div>

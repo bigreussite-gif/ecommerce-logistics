@@ -60,13 +60,34 @@ export const Commandes = () => {
   const [whatsAppTemplate, setWhatsAppTemplate] = useState('');
 
   const updateTemplateForIndex = (index: number, queue: any[]) => {
-    if (index < 0 || index >= queue.length) return;
     const cmd = queue[index];
-    const clientFirstName = (cmd.nom_client || 'Cher client').split(' ')[0];
-    const amount = Number(cmd.montant_total || 0).toLocaleString();
-    const commune = cmd.commune_livraison || '';
+    if (!cmd) return;
+    const clientFirstName = cmd.clients?.nom_complet ? cmd.clients.nom_complet.split(' ')[0] : 'Client';
+    const amount = new Intl.NumberFormat('fr-FR').format(cmd.montant_total);
+    const commune = cmd.commune_livraison;
     
-    const text = `Bonjour ${clientFirstName} ! 🙌\nC'est votre conseiller de *Jachete Côte d'Ivoire*. Nous vous informons que votre commande de ${amount} F est prête à être expédiée vers ${commune}. 🚀\n\nVeuillez effectuer le dépôt du montant de la commande via *Wave* ou *Orange Money* au :\n💸 *+225 07 57 22 87 31*\n\nEnvoyez-nous la capture de votre reçu par WhatsApp. Dès réception, nous expédions immédiatement ! 🤝`;
+    // Load rules from localStorage
+    const savedRulesStr = localStorage.getItem('auto_reply_rules');
+    let rules = [];
+    if (savedRulesStr) {
+      try { rules = JSON.parse(savedRulesStr); } catch (e) {}
+    }
+    
+    // Default fallback if no rules
+    const fallback = `Bonjour ${clientFirstName} ! 🙌\nC'est votre conseiller. Nous vous informons que votre commande de ${amount} FCFA est prête à être expédiée vers ${commune}.`;
+    
+    // Try to find the active 'relance_paiement' rule, or any active rule
+    const activeRule = rules.find((r: any) => r.trigger === 'relance_paiement' && r.active) 
+                       || rules.find((r: any) => r.active)
+                       || { message: fallback };
+                       
+    // Replace variables
+    let text = activeRule.message;
+    text = text.replace(/\[Nom Client\]/g, clientFirstName);
+    text = text.replace(/\[Montant\]/g, amount);
+    text = text.replace(/\[Produit\]/g, cmd.lignes?.[0]?.nom_produit || 'votre article');
+    text = text.replace(/\[Date\]/g, new Date().toLocaleDateString('fr-FR'));
+
     setWhatsAppTemplate(text);
   };
 

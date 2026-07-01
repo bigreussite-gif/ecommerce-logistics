@@ -6,22 +6,58 @@ import { getAdminUsers } from '../services/adminService';
 import { analyzeBusinessHealth, BusinessHealth } from '../services/businessIntelligenceService';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { Activity, AlertTriangle, CheckCircle, Info, Lightbulb, Target, Calendar as CalendarIcon, ArrowRight, X, TrendingDown, TrendingUp } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, Info, Lightbulb, Target, Calendar as CalendarIcon, ArrowRight, X, TrendingDown, TrendingUp, Sparkles, Loader2, BrainCircuit } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subDays } from 'date-fns';
 import { Link } from 'react-router-dom';
+import { useToast } from '../contexts/ToastContext';
+import { insforge } from '../lib/insforge';
 
 export const BusinessIntelligence = () => {
   const { hasPermission } = useAuth();
+  const { showToast } = useToast();
   
   const [loading, setLoading] = useState(true);
   const [healthData, setHealthData] = useState<BusinessHealth | null>(null);
   const [selectedAlert, setSelectedAlert] = useState<any>(null);
+
+  const [aiInsights, setAiInsights] = useState<string | null>(null);
+  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
 
   const [period, setPeriod] = useState<'month' | '30days' | 'custom'>('month');
   const [customRange, setCustomRange] = useState({
     start: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
     end: format(new Date(), 'yyyy-MM-dd')
   });
+
+  const generateAIInsights = async () => {
+    if (!healthData) return;
+    setIsGeneratingInsights(true);
+    try {
+      const summary = {
+        score: healthData.score,
+        margin: healthData.financials.marge_nette_percent,
+        logistics: healthData.logistics.taux_succes,
+        alerts: healthData.alerts.map(a => a.title),
+        advice: healthData.advice
+      };
+      
+      const prompt = `En tant qu'expert financier et e-commerce, analyse ces données de santé d'entreprise: ${JSON.stringify(summary)}. 
+Fournis 3 insights clés très concis (sous forme de puces) et une prévision de vente basique pour le mois prochain (en te basant sur la marge et le taux de succès). Garde un ton professionnel, utilise du markdown. Ne mets pas de blabla au début.`;
+      
+      const completion = await insforge.ai.chat.completions.create({
+        model: 'anthropic/claude-sonnet-4.5',
+        messages: [{ role: 'user', content: prompt }]
+      });
+
+      setAiInsights(completion.choices[0].message.content.trim());
+      showToast('Insights générés !', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Erreur IA', 'error');
+    } finally {
+      setIsGeneratingInsights(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -179,6 +215,51 @@ export const BusinessIntelligence = () => {
             </Link>
           </div>
         </div>
+      </div>
+
+      {/* Section Insights IA */}
+      <div className="card glass-effect" style={{ padding: '2rem', marginBottom: '2.5rem', background: 'linear-gradient(to right, #f8fafc, #f1f5f9)', borderLeft: '4px solid #8b5cf6' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: aiInsights ? '1.5rem' : '0' }}>
+          <div>
+            <h3 style={{ margin: '0 0 0.5rem 0', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0f172a' }}>
+              <BrainCircuit size={24} color="#8b5cf6" /> Insights & Prévisions IA
+            </h3>
+            <p style={{ margin: 0, color: 'var(--text-muted)' }}>Analysez vos données avec notre intelligence artificielle pour anticiper vos ventes.</p>
+          </div>
+          <button 
+            className="btn" 
+            onClick={generateAIInsights}
+            disabled={isGeneratingInsights}
+            style={{ 
+              background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', 
+              color: 'white', 
+              border: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.8rem 1.5rem',
+              borderRadius: '12px',
+              fontWeight: 700
+            }}
+          >
+            {isGeneratingInsights ? <Loader2 size={18} className="spin" /> : <Sparkles size={18} />}
+            {aiInsights ? 'Régénérer les Insights' : 'Générer les Insights IA'}
+          </button>
+        </div>
+
+        {aiInsights && (
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#334155', lineHeight: 1.6 }}>
+            {aiInsights.split('\n').map((line, i) => {
+              if (line.startsWith('### ')) return <h4 key={i} style={{ margin: '1rem 0 0.5rem 0', color: '#1e293b' }}>{line.replace('### ', '')}</h4>;
+              if (line.startsWith('## ')) return <h3 key={i} style={{ margin: '1rem 0 0.5rem 0', color: '#1e293b' }}>{line.replace('## ', '')}</h3>;
+              if (line.startsWith('# ')) return <h2 key={i} style={{ margin: '1.5rem 0 0.5rem 0', color: '#0f172a' }}>{line.replace('# ', '')}</h2>;
+              if (line.startsWith('- ')) return <li key={i} style={{ marginLeft: '1.5rem', marginBottom: '0.5rem' }}>{line.replace('- ', '')}</li>;
+              if (line.startsWith('* ')) return <li key={i} style={{ marginLeft: '1.5rem', marginBottom: '0.5rem' }}>{line.replace('* ', '')}</li>;
+              if (line.trim() === '') return <br key={i} />;
+              return <p key={i} style={{ margin: '0 0 0.5rem 0' }}>{line}</p>;
+            })}
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '2.5rem' }} className="responsive-grid">

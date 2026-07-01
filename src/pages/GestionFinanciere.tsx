@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, Wallet, Download, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Download, Activity, Sparkles, Loader2, BrainCircuit } from 'lucide-react';
 import { getFinancialData } from '../services/commandeService';
 import { getDepenses } from '../services/financialService';
+import { insforge } from '../lib/insforge';
+import { useToast } from '../contexts/ToastContext';
 
 export const GestionFinanciere = () => {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
+  const [aiForecast, setAiForecast] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [finances, setFinances] = useState<any>({
     soldeActuel: 0,
     creances: 0,
@@ -12,6 +17,35 @@ export const GestionFinanciere = () => {
     tresorerieNette: 0,
     cashflowMensuel: []
   });
+
+  const generateAIForecast = async () => {
+    setIsGenerating(true);
+    try {
+      const summary = {
+        solde: finances.soldeActuel,
+        creances: finances.creances,
+        dettes: finances.dettes,
+        tresorerieNette: finances.tresorerieNette,
+        encaisses: finances.encaisses,
+        sorties: finances.sorties
+      };
+      
+      const prompt = `Agis comme un directeur financier pour une PME ivoirienne. Voici mes finances actuelles : ${JSON.stringify(summary)}. Fais une prévision de trésorerie très courte et concrète pour la fin du mois. Dis-moi si je risque un découvert ou si je peux investir. Sois très bref, utilise des bullet points et du texte riche.`;
+      
+      const completion = await insforge.ai.chat.completions.create({
+        model: 'anthropic/claude-sonnet-4.5',
+        messages: [{ role: 'user', content: prompt }]
+      });
+
+      setAiForecast(completion.choices[0].message.content.trim());
+      showToast('Prévisionnel généré !', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Erreur IA', 'error');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   useEffect(() => {
     const fetchFinance = async () => {
@@ -125,36 +159,74 @@ export const GestionFinanciere = () => {
 
       <div className="res-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
         <div className="card glass-effect" style={{ padding: '2rem' }}>
-          <h3 style={{ margin: '0 0 1.5rem 0' }}>Plan de Trésorerie (Flux prévisionnels)</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>+ Ventes en cours de livraison</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Encaissement prévu sous 24-48h</div>
-              </div>
-              <div style={{ fontWeight: 900, color: '#10b981' }}>+ {Number(finances.creances).toLocaleString()}</div>
-            </div>
-            <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>- Achats fournisseurs (Estimation)</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Règlement attendu cette semaine</div>
-              </div>
-              <div style={{ fontWeight: 900, color: '#ef4444' }}>- {Number(finances.dettes).toLocaleString()}</div>
-            </div>
-            <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>- Charges fixes mensuelles (Salaires, Loyers)</div>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Prochaine échéance le 30</div>
-              </div>
-              <div style={{ fontWeight: 900, color: '#ef4444' }}>- 250,000</div>
-            </div>
-            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '2px dashed #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ fontWeight: 900, fontSize: '1.2rem', color: '#0f172a' }}>Solde Projeté Fin de Semaine</div>
-              <div style={{ fontWeight: 900, fontSize: '1.4rem', color: (finances.soldeActuel + finances.creances - finances.dettes - 250000) > 0 ? '#10b981' : '#ef4444' }}>
-                {Number(finances.soldeActuel + finances.creances - finances.dettes - 250000).toLocaleString()} CFA
-              </div>
-            </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <BrainCircuit size={20} color="#8b5cf6" /> 
+              Prévisionnel de Trésorerie IA
+            </h3>
+            <button 
+              className="btn" 
+              onClick={generateAIForecast}
+              disabled={isGenerating}
+              style={{ 
+                background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)', 
+                color: 'white', 
+                border: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                borderRadius: '8px',
+                fontWeight: 700
+              }}
+            >
+              {isGenerating ? <Loader2 size={16} className="spin" /> : <Sparkles size={16} />}
+              {aiForecast ? 'Actualiser' : 'Générer prévisionnel'}
+            </button>
           </div>
+          
+          {aiForecast ? (
+            <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#334155', lineHeight: 1.6 }}>
+              {aiForecast.split('\n').map((line, i) => {
+                if (line.startsWith('### ')) return <h4 key={i} style={{ margin: '1rem 0 0.5rem 0', color: '#1e293b' }}>{line.replace('### ', '')}</h4>;
+                if (line.startsWith('## ')) return <h3 key={i} style={{ margin: '1rem 0 0.5rem 0', color: '#1e293b' }}>{line.replace('## ', '')}</h3>;
+                if (line.startsWith('# ')) return <h2 key={i} style={{ margin: '1.5rem 0 0.5rem 0', color: '#0f172a' }}>{line.replace('# ', '')}</h2>;
+                if (line.startsWith('- ')) return <li key={i} style={{ marginLeft: '1.5rem', marginBottom: '0.5rem' }}>{line.replace('- ', '')}</li>;
+                if (line.startsWith('* ')) return <li key={i} style={{ marginLeft: '1.5rem', marginBottom: '0.5rem' }}>{line.replace('* ', '')}</li>;
+                if (line.trim() === '') return <br key={i} />;
+                return <p key={i} style={{ margin: '0 0 0.5rem 0' }}>{line}</p>;
+              })}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>+ Ventes en cours de livraison</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Encaissement prévu sous 24-48h</div>
+                </div>
+                <div style={{ fontWeight: 900, color: '#10b981' }}>+ {Number(finances.creances).toLocaleString()}</div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>- Achats fournisseurs (Estimation)</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Règlement attendu cette semaine</div>
+                </div>
+                <div style={{ fontWeight: 900, color: '#ef4444' }}>- {Number(finances.dettes).toLocaleString()}</div>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>- Charges fixes mensuelles (Salaires, Loyers)</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Prochaine échéance le 30</div>
+                </div>
+                <div style={{ fontWeight: 900, color: '#ef4444' }}>- 250,000</div>
+              </div>
+              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '2px dashed #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontWeight: 900, fontSize: '1.2rem', color: '#0f172a' }}>Solde Projeté Fin de Semaine</div>
+                <div style={{ fontWeight: 900, fontSize: '1.4rem', color: (finances.soldeActuel + finances.creances - finances.dettes - 250000) > 0 ? '#10b981' : '#ef4444' }}>
+                  {Number(finances.soldeActuel + finances.creances - finances.dettes - 250000).toLocaleString()} CFA
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="card glass-effect" style={{ padding: '2rem' }}>

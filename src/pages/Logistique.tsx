@@ -60,21 +60,54 @@ export const Logistique = () => {
     fetchData();
   }, []);
 
-  const handleOptimizeRoute = () => {
-    const sorted = [...commandes].sort((a, b) => {
-      const cA = (a.commune_livraison || '').toLowerCase();
-      const cB = (b.commune_livraison || '').toLowerCase();
-      if (cA < cB) return -1;
-      if (cA > cB) return 1;
+  const [isOptimizing, setIsOptimizing] = useState(false);
+
+  const handleOptimizeRoute = async () => {
+    if (commandes.length === 0) return;
+    setIsOptimizing(true);
+    
+    try {
+      // Extraire les lieux uniques
+      const lieux = Array.from(new Set(commandes.map(c => `${c.commune_livraison} - ${c.quartier_livraison || ''}`.trim())));
       
-      const qA = (a.quartier_livraison || '').toLowerCase();
-      const qB = (b.quartier_livraison || '').toLowerCase();
-      if (qA < qB) return -1;
-      if (qA > qB) return 1;
-      return 0;
-    });
-    setCommandes(sorted);
-    showToast("Commandes triées par zone géographique pour optimiser la tournée.", "success");
+      const prompt = `Tu es un expert en logistique à Abidjan (Côte d'Ivoire). J'ai une liste de lieux à livrer : ${JSON.stringify(lieux)}. 
+Organise ces lieux dans l'ordre le plus logique pour un livreur (optimisation de tournée, en minimisant les distances et les embouteillages).
+Renvoie STRICTEMENT un tableau JSON contenant exactement les mêmes chaînes de caractères que je t'ai fournies, mais triées dans l'ordre optimal de passage. N'ajoute AUCUN texte, juste le JSON.`;
+      
+      const { insforge } = await import('../lib/insforge');
+      const completion = await insforge.ai.chat.completions.create({
+        model: 'anthropic/claude-sonnet-4.5',
+        messages: [{ role: 'user', content: prompt }]
+      });
+
+      const text = completion.choices[0].message.content.trim();
+      let sortedLieux = lieux;
+      try {
+         const jsonStr = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+         sortedLieux = JSON.parse(jsonStr);
+      } catch (e) {
+         console.error("Failed to parse AI route", e);
+         // Fallback basique
+         sortedLieux.sort();
+      }
+      
+      // Réorganiser les commandes selon l'ordre renvoyé
+      const sortedCommandes = [...commandes].sort((a, b) => {
+        const lieuA = `${a.commune_livraison} - ${a.quartier_livraison || ''}`.trim();
+        const lieuB = `${b.commune_livraison} - ${b.quartier_livraison || ''}`.trim();
+        const indexA = sortedLieux.indexOf(lieuA);
+        const indexB = sortedLieux.indexOf(lieuB);
+        return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+      });
+      
+      setCommandes(sortedCommandes);
+      showToast("Tournée optimisée par l'IA (Proximité géographique) !", "success");
+    } catch (error) {
+      console.error(error);
+      showToast("Erreur lors de l'optimisation", "error");
+    } finally {
+      setIsOptimizing(false);
+    }
   };
 
   const toggleCommand = (id: string) => {
@@ -231,12 +264,21 @@ export const Logistique = () => {
               </select>
 
               <button 
-                className="btn btn-secondary" 
-                style={{ padding: '0 1rem', height: '36px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: '10px' }}
+                className="btn btn-outline" 
                 onClick={handleOptimizeRoute}
+                disabled={isOptimizing || filteredCommandes.length === 0}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.5rem',
+                  background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)',
+                  color: 'white',
+                  border: 'none',
+                  fontWeight: 700
+                }}
               >
-                <Truck size={16} />
-                Optimiser l'itinéraire
+                {isOptimizing ? <Clock size={18} className="spin" /> : <Truck size={18} />}
+                {isOptimizing ? 'Optimisation IA...' : "Optimiser par l'IA"}
               </button>
 
               <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)' }}>

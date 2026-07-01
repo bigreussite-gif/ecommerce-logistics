@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Megaphone, Copy, Wand2, CheckCircle2, TrendingUp } from 'lucide-react';
+import { Megaphone, Copy, CheckCircle2, TrendingUp, Sparkles, Loader2 } from 'lucide-react';
 import { getProduits } from '../services/produitService';
 import { useToast } from '../contexts/ToastContext';
+import { insforge } from '../lib/insforge';
 import type { Produit } from '../types';
 
 export const MarketingAds = () => {
@@ -16,9 +17,35 @@ export const MarketingAds = () => {
     const fetchProduits = async () => {
       try {
         const data = await getProduits();
-        // Filtre les produits actifs
         const actifs = data.filter((p: Produit) => p.actif !== false);
         setProduits(actifs);
+
+        // --- Algorithme "Meilleur Produit" ---
+        // On récupère les 1000 dernières lignes de commandes pour voir le plus vendu
+        const { data: lignes } = await insforge.database
+          .from('lignes_commandes')
+          .select('produit_id')
+          .limit(1000);
+          
+        if (lignes && lignes.length > 0) {
+           const counts: Record<string, number> = {};
+           lignes.forEach(l => {
+             counts[l.produit_id] = (counts[l.produit_id] || 0) + 1;
+           });
+           
+           let topId = Object.keys(counts)[0];
+           for (const id in counts) {
+             if (counts[id] > counts[topId]) topId = id;
+           }
+           
+           const bestP = actifs.find(p => p.id === topId);
+           if (bestP) {
+             setSelectedProduct(bestP);
+             return;
+           }
+        }
+        
+        // Fallback s'il n'y a pas de commandes
         if (actifs.length > 0) {
           setSelectedProduct(actifs[0]);
         }
@@ -31,40 +58,41 @@ export const MarketingAds = () => {
     fetchProduits();
   }, []);
 
-  const generateAd = () => {
+  const generateAd = async () => {
     if (!selectedProduct) return;
     setIsGenerating(true);
 
-    // Simulation de génération d'IA (Règles logiques simples)
-    setTimeout(() => {
-      const hooks = [
-        `🔥 Vous cherchez le meilleur ${selectedProduct.nom} du marché ?`,
-        `🚨 STOP ! Ne ratez pas cette opportunité sur notre ${selectedProduct.nom}.`,
-        `✨ Transformez votre quotidien avec ${selectedProduct.nom} !`
-      ];
-      const bodies = [
-        `Découvrez la qualité exceptionnelle de notre produit. Disponible à seulement ${Number(selectedProduct.prix_vente).toLocaleString()} FCFA, c'est l'investissement parfait que vous attendiez.`,
-        `Nos clients l'adorent ! Avec un stock ultra limité, c'est le moment idéal pour vous procurer votre ${selectedProduct.nom} à ${Number(selectedProduct.prix_vente).toLocaleString()} FCFA.`,
-        `Alliez performance et élégance. Ce produit a été spécialement conçu pour répondre à toutes vos exigences, et tout ça pour ${Number(selectedProduct.prix_vente).toLocaleString()} FCFA.`
-      ];
-      const ctas = [
-        `👉 Cliquez ici pour commander maintenant avant la rupture de stock !`,
-        `🛒 Envoyez-nous un message pour réserver le vôtre dès aujourd'hui.`,
-        `🚀 Stock limité ! Commandez vite via le lien ci-dessous.`
-      ];
+    try {
+      const prompt = `Tu es un expert en marketing digital en Côte d'Ivoire. Génère un texte publicitaire (copywriting) très percutant pour Facebook/Instagram pour ce produit : "${selectedProduct.nom}". Le prix est de ${selectedProduct.prix_vente} FCFA. Utilise des emojis.
+Renvoie la réponse STRICTEMENT sous forme de JSON valide avec trois clés : "hook" (accroche forte), "body" (corps du texte avec arguments) et "cta" (appel à l'action avec urgence). Ne rajoute aucun texte avant ou après le JSON.`;
+      
+      const completion = await insforge.ai.chat.completions.create({
+        model: 'anthropic/claude-sonnet-4.5',
+        messages: [{ role: 'user', content: prompt }]
+      });
 
-      const randomHook = hooks[Math.floor(Math.random() * hooks.length)];
-      const randomBody = bodies[Math.floor(Math.random() * bodies.length)];
-      const randomCta = ctas[Math.floor(Math.random() * ctas.length)];
+      const text = completion.choices[0].message.content.trim();
+      let jsonResponse;
+      try {
+         const jsonStr = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+         jsonResponse = JSON.parse(jsonStr);
+      } catch (e) {
+         console.error("Failed to parse JSON", e, text);
+         jsonResponse = { hook: `🚀 Découvrez ${selectedProduct.nom} !`, body: text, cta: "👉 Commandez maintenant" };
+      }
 
       setGeneratedAd({
-        hook: randomHook,
-        body: randomBody,
-        cta: randomCta
+        hook: jsonResponse.hook || "Offre Spéciale !",
+        body: jsonResponse.body || "Découvrez notre produit.",
+        cta: jsonResponse.cta || "Achetez maintenant !"
       });
+      showToast('Publicité IA générée avec succès !', 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('Erreur lors de la génération IA', 'error');
+    } finally {
       setIsGenerating(false);
-      showToast('Publicité générée avec succès !', 'success');
-    }, 800);
+    }
   };
 
   const copyToClipboard = () => {
@@ -128,15 +156,32 @@ export const MarketingAds = () => {
           </div>
 
           <button 
-            className="btn btn-primary" 
-            style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}
+            className="btn" 
+            style={{ 
+              width: '100%', 
+              padding: '1rem', 
+              fontSize: '1.1rem', 
+              display: 'flex', 
+              justifyContent: 'center', 
+              gap: '0.5rem',
+              background: 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '16px',
+              fontWeight: 800
+            }}
             onClick={generateAd}
             disabled={isGenerating || !selectedProduct}
           >
-            {isGenerating ? 'Génération en cours...' : (
+            {isGenerating ? (
               <>
-                <Wand2 size={20} />
-                Générer le Copywriting
+                <Loader2 size={22} className="spin" />
+                Création par l'IA...
+              </>
+            ) : (
+              <>
+                <Sparkles size={22} />
+                Générer le Copywriting IA
               </>
             )}
           </button>
