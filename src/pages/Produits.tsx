@@ -70,8 +70,9 @@ export const Produits = () => {
     const enStock = produits.filter(p => (p.stock_disponible ?? p.stock_actuel ?? 0) > (p.stock_minimum ?? 0)).length;
     const stockBas = produits.filter(p => (p.stock_disponible ?? p.stock_actuel ?? 0) <= (p.stock_minimum ?? 0) && (p.stock_disponible ?? p.stock_actuel ?? 0) > 0).length;
     const rupture = produits.filter(p => (p.stock_disponible ?? p.stock_actuel ?? 0) === 0).length;
+    const aSourcer = produits.filter(p => (p.stock_disponible ?? p.stock_actuel ?? 0) < 0).length;
     const nbCategories = new Set(produits.map(p => p.categorie_id).filter(Boolean)).size;
-    return { total, enStock, stockBas, rupture, nbCategories };
+    return { total, enStock, stockBas, rupture, aSourcer, nbCategories };
   }, [produits]);
 
   const filteredProduits = produits.filter(p => {
@@ -144,7 +145,8 @@ export const Produits = () => {
               { label: 'Total Produits', value: stats.total, color: 'var(--primary)', icon: <Package size={22} />, desc: 'Dans le catalogue' },
               { label: 'En Stock', value: stats.enStock, color: '#10b981', icon: <TrendingUp size={22} />, desc: 'Niveau suffisant' },
               { label: 'Stock Bas', value: stats.stockBas, color: '#f59e0b', icon: <AlertTriangle size={22} />, desc: 'Sous le minimum' },
-              { label: 'Rupture', value: stats.rupture, color: '#ef4444', icon: <AlertTriangle size={22} />, desc: 'Stock épuisé' },
+              { label: 'Rupture', value: stats.rupture, color: '#ef4444', icon: <AlertTriangle size={22} />, desc: 'Stock à zéro' },
+              { label: 'Déficit (À Sourcer)', value: stats.aSourcer, color: '#b91c1c', icon: <Activity size={22} />, desc: 'Commandes en attente' },
               { label: 'Catégories', value: stats.nbCategories, color: '#6366f1', icon: <Tag size={22} />, desc: 'Familles actives' },
             ].map((item, idx) => (
               <div key={idx} className="card" style={{ padding: '1.5rem', borderRadius: '24px', border: '1px solid #e2e8f0', background: 'white', display: 'flex', gap: '1.25rem', alignItems: 'center', transition: 'transform 0.2s' }}>

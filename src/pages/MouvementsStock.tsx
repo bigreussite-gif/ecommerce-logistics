@@ -97,6 +97,45 @@ export const MouvementsStock = () => {
           </div>
         </section>
 
+        {/* STATS CARDS */}
+        <section style={{ marginBottom: '2rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
+          <div className="card" style={{ padding: '1.5rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ArrowRight size={24} style={{ transform: 'rotate(90deg)' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#1e293b' }}>
+                {filteredMouvements.filter(m => m.type_mouvement === 'entree' || m.type_mouvement === 'retour').reduce((sum, m) => sum + Number(m.quantite), 0)} u.
+              </div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Entrées</div>
+            </div>
+          </div>
+          
+          <div className="card" style={{ padding: '1.5rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#fee2e2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <ArrowLeft size={24} style={{ transform: 'rotate(90deg)' }} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#1e293b' }}>
+                {filteredMouvements.filter(m => m.type_mouvement === 'sortie').reduce((sum, m) => sum + Number(m.quantite), 0)} u.
+              </div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Sorties</div>
+            </div>
+          </div>
+          
+          <div className="card" style={{ padding: '1.5rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: '#f1f5f9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Package size={24} />
+            </div>
+            <div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#1e293b' }}>
+                {filteredMouvements.length}
+              </div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Opérations (Filtre)</div>
+            </div>
+          </div>
+        </section>
+
         <section style={{ marginBottom: '1.5rem' }}>
           <div className="card" style={{ padding: '1.25rem', borderRadius: '24px', background: 'white', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem' }}>
