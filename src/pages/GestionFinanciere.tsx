@@ -335,7 +335,7 @@ export const GestionFinanciere = () => {
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                     <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Capitaux Propres</span>
-                    <span style={{ fontWeight: 700 }}>{Number(finances.tresorerieNette).toLocaleString()}</span>
+                    <span style={{ fontWeight: 700 }}>{Number(finances.tresorerieNette + finances.stockVal).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
