@@ -163,7 +163,7 @@ export const FinancialReport = () => {
   const totalFraisLivraisonSuccess = (data.commandes || [])
     .filter(c => ['livree', 'terminee'].includes(c.statut_commande?.toLowerCase()))
     .reduce((acc, c) => {
-      const val = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : 1000;
+      const val = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : 0;
       return acc + (isNaN(val) ? 0 : val);
     }, 0);
 

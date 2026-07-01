@@ -80,7 +80,7 @@ export const deleteDepense = async (id: string): Promise<void> => {
   if (error) throw error;
 };
 
-export const DEFAULT_SHIPPING_FEE = 1000;
+export const DEFAULT_SHIPPING_FEE = 0;
 export const EXTRACTION_LOGISTIQUE = 500;
 export const EXTRACTION_ENTRETIEN = 250;
 export const EXTRACTION_INTERNET = 0;
