@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, Wallet, Download, Activity, Sparkles, Loader2, BrainCircuit } from 'lucide-react';
 import { getFinancialData } from '../services/commandeService';
 import { getDepenses } from '../services/financialService';
+import { getFournisseurs } from '../services/fournisseurService';
 import { insforge } from '../lib/insforge';
 import { useToast } from '../contexts/ToastContext';
 
@@ -53,9 +54,10 @@ export const GestionFinanciere = () => {
         const start = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
         const end = new Date().toISOString().split('T')[0];
 
-        const [commandes, depenses] = await Promise.all([
+        const [commandes, depenses, fournisseurs] = await Promise.all([
           getFinancialData(start, end).catch(() => []),
-          getDepenses().catch(() => [])
+          getDepenses().catch(() => []),
+          getFournisseurs().catch(() => [])
         ]);
 
         // Calculs simplifiés (Bilan & Trésorerie PME)
@@ -69,11 +71,14 @@ export const GestionFinanciere = () => {
         });
 
         let sorties = 0;
-        let dettes = 0; // Ex: loyers impayés ou factures fournisseurs (ici simulées via les dépenses non payées si on avait le statut, mais on prend juste 20% des dépenses comme dettes pour la démo)
+        let dettes = 0; 
         depenses.forEach((d: any) => {
           sorties += Number(d.montant || 0);
         });
-        dettes = sorties * 0.15; // Simulation de dettes fournisseurs
+        
+        fournisseurs.forEach((f: any) => {
+          dettes += Number(f.solde_dette || 0);
+        });
 
         const soldeActuel = encaisses - sorties;
         const tresorerieNette = soldeActuel + creances - dettes;
