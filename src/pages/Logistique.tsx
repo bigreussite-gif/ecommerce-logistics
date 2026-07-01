@@ -60,6 +60,23 @@ export const Logistique = () => {
     fetchData();
   }, []);
 
+  const handleOptimizeRoute = () => {
+    const sorted = [...commandes].sort((a, b) => {
+      const cA = (a.commune_livraison || '').toLowerCase();
+      const cB = (b.commune_livraison || '').toLowerCase();
+      if (cA < cB) return -1;
+      if (cA > cB) return 1;
+      
+      const qA = (a.quartier_livraison || '').toLowerCase();
+      const qB = (b.quartier_livraison || '').toLowerCase();
+      if (qA < qB) return -1;
+      if (qA > qB) return 1;
+      return 0;
+    });
+    setCommandes(sorted);
+    showToast("Commandes triées par zone géographique pour optimiser la tournée.", "success");
+  };
+
   const toggleCommand = (id: string) => {
     const newSet = new Set(selectedCommands);
     if (newSet.has(id)) newSet.delete(id);
@@ -212,6 +229,15 @@ export const Logistique = () => {
                   <option key={zone as string} value={zone as string}>{zone as string}</option>
                 ))}
               </select>
+
+              <button 
+                className="btn btn-secondary" 
+                style={{ padding: '0 1rem', height: '36px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: '10px' }}
+                onClick={handleOptimizeRoute}
+              >
+                <Truck size={16} />
+                Optimiser l'itinéraire
+              </button>
 
               <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)' }}>
                 {selectedCommands.size} sélectionnée(s)

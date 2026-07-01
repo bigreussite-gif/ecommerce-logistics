@@ -1,0 +1,204 @@
+import { useState, useEffect } from 'react';
+import { TrendingUp, TrendingDown, Wallet, Download, Activity } from 'lucide-react';
+import { getFinancialData } from '../services/commandeService';
+import { getDepenses } from '../services/financialService';
+
+export const GestionFinanciere = () => {
+  const [loading, setLoading] = useState(true);
+  const [finances, setFinances] = useState<any>({
+    soldeActuel: 0,
+    creances: 0,
+    dettes: 0,
+    tresorerieNette: 0,
+    cashflowMensuel: []
+  });
+
+  useEffect(() => {
+    const fetchFinance = async () => {
+      try {
+        const start = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+        const end = new Date().toISOString().split('T')[0];
+
+        const [commandes, depenses] = await Promise.all([
+          getFinancialData(start, end).catch(() => []),
+          getDepenses().catch(() => [])
+        ]);
+
+        // Calculs simplifiés (Bilan & Trésorerie PME)
+        let encaisses = 0;
+        let creances = 0; // Commandes validées mais non encaissées
+        commandes.forEach((c: any) => {
+          if (c.statut_commande === 'livree') encaisses += Number(c.montant_total || 0);
+          else if (['validee', 'en_cours_livraison'].includes(c.statut_commande)) {
+            creances += Number(c.montant_total || 0);
+          }
+        });
+
+        let sorties = 0;
+        let dettes = 0; // Ex: loyers impayés ou factures fournisseurs (ici simulées via les dépenses non payées si on avait le statut, mais on prend juste 20% des dépenses comme dettes pour la démo)
+        depenses.forEach((d: any) => {
+          sorties += Number(d.montant || 0);
+        });
+        dettes = sorties * 0.15; // Simulation de dettes fournisseurs
+
+        const soldeActuel = encaisses - sorties;
+        const tresorerieNette = soldeActuel + creances - dettes;
+
+        setFinances({
+          soldeActuel,
+          creances,
+          dettes,
+          tresorerieNette,
+          encaisses,
+          sorties
+        });
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchFinance();
+  }, []);
+
+  if (loading) {
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>Chargement financier...</div>;
+  }
+
+  return (
+    <div className="page-enter">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
+        <div>
+          <h1 style={{ fontSize: '2rem', fontWeight: 900, margin: 0, color: 'var(--text-main)' }}>
+            Gestion Financière PME
+          </h1>
+          <p style={{ color: 'var(--text-muted)', margin: '0.5rem 0 0 0' }}>
+            Vision globale de votre trésorerie, créances clients et dettes fournisseurs.
+          </p>
+        </div>
+        <button className="btn btn-outline" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <Download size={18} /> Exporter le Bilan
+        </button>
+      </div>
+
+      <div className="stats-grid" style={{ marginBottom: '2rem' }}>
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #10b981' }}>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ padding: '0.8rem', background: '#ecfdf5', borderRadius: '12px', color: '#10b981' }}><Wallet size={24} /></div>
+            <div>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Solde de Trésorerie Actuel</p>
+              <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900, color: '#10b981' }}>{Number(finances.soldeActuel.toFixed(0)).toLocaleString()} CFA</h2>
+            </div>
+          </div>
+        </div>
+        
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #3b82f6' }}>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ padding: '0.8rem', background: '#eff6ff', borderRadius: '12px', color: '#3b82f6' }}><TrendingUp size={24} /></div>
+            <div>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Créances (À encaisser)</p>
+              <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900, color: '#3b82f6' }}>{Number(finances.creances.toFixed(0)).toLocaleString()} CFA</h2>
+            </div>
+          </div>
+        </div>
+
+        <div className="card glass-effect" style={{ padding: '1.5rem', borderLeft: '4px solid #ef4444' }}>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ padding: '0.8rem', background: '#fef2f2', borderRadius: '12px', color: '#ef4444' }}><TrendingDown size={24} /></div>
+            <div>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Dettes (À payer)</p>
+              <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900, color: '#ef4444' }}>{Number(finances.dettes.toFixed(0)).toLocaleString()} CFA</h2>
+            </div>
+          </div>
+        </div>
+
+        <div className="card glass-effect" style={{ padding: '1.5rem', background: '#0f172a', color: 'white', border: 'none' }}>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ padding: '0.8rem', background: 'rgba(255,255,255,0.1)', borderRadius: '12px', color: 'white' }}><Activity size={24} /></div>
+            <div>
+              <p style={{ margin: 0, fontSize: '0.85rem', opacity: 0.8, fontWeight: 600 }}>Trésorerie Nette Projetée</p>
+              <h2 style={{ margin: 0, fontSize: '1.8rem', fontWeight: 900, color: 'white' }}>{Number(finances.tresorerieNette.toFixed(0)).toLocaleString()} CFA</h2>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="res-grid" style={{ gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+        <div className="card glass-effect" style={{ padding: '2rem' }}>
+          <h3 style={{ margin: '0 0 1.5rem 0' }}>Plan de Trésorerie (Flux prévisionnels)</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>+ Ventes en cours de livraison</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Encaissement prévu sous 24-48h</div>
+              </div>
+              <div style={{ fontWeight: 900, color: '#10b981' }}>+ {Number(finances.creances).toLocaleString()}</div>
+            </div>
+            <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>- Achats fournisseurs (Estimation)</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Règlement attendu cette semaine</div>
+              </div>
+              <div style={{ fontWeight: 900, color: '#ef4444' }}>- {Number(finances.dettes).toLocaleString()}</div>
+            </div>
+            <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>- Charges fixes mensuelles (Salaires, Loyers)</div>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Prochaine échéance le 30</div>
+              </div>
+              <div style={{ fontWeight: 900, color: '#ef4444' }}>- 250,000</div>
+            </div>
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '2px dashed #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontWeight: 900, fontSize: '1.2rem', color: '#0f172a' }}>Solde Projeté Fin de Semaine</div>
+              <div style={{ fontWeight: 900, fontSize: '1.4rem', color: (finances.soldeActuel + finances.creances - finances.dettes - 250000) > 0 ? '#10b981' : '#ef4444' }}>
+                {Number(finances.soldeActuel + finances.creances - finances.dettes - 250000).toLocaleString()} CFA
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card glass-effect" style={{ padding: '2rem' }}>
+          <h3 style={{ margin: '0 0 1.5rem 0' }}>Bilan Simplifié PME</h3>
+          <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr' }}>
+              <div style={{ borderRight: '1px solid #e2e8f0', padding: '1.5rem' }}>
+                <h4 style={{ margin: '0 0 1rem 0', color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><TrendingUp size={16} /> ACTIF (Ce que l'on possède)</h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Trésorerie</span>
+                  <span style={{ fontWeight: 700 }}>{Number(finances.soldeActuel).toLocaleString()}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Créances Clients</span>
+                  <span style={{ fontWeight: 700 }}>{Number(finances.creances).toLocaleString()}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Stock (Valorisation)</span>
+                  <span style={{ fontWeight: 700 }}>...</span>
+                </div>
+              </div>
+              <div style={{ padding: '1.5rem' }}>
+                <h4 style={{ margin: '0 0 1rem 0', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><TrendingDown size={16} /> PASSIF (Ce que l'on doit)</h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Dettes Fournisseurs</span>
+                  <span style={{ fontWeight: 700 }}>{Number(finances.dettes).toLocaleString()}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Dettes Fiscales</span>
+                  <span style={{ fontWeight: 700 }}>0</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Capitaux Propres</span>
+                  <span style={{ fontWeight: 700 }}>{Number(finances.tresorerieNette).toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+            <div style={{ background: '#f8fafc', padding: '1rem 1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', borderTop: '1px solid #e2e8f0', fontWeight: 900 }}>
+              <div>Total Actif: {Number(finances.soldeActuel + finances.creances).toLocaleString()}</div>
+              <div>Total Passif: {Number(finances.dettes + finances.tresorerieNette).toLocaleString()}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

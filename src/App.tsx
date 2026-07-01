@@ -57,6 +57,9 @@ const Fournisseurs = lazyWithRetry(() => import('./pages/Fournisseurs').then(m =
 const FournisseurAchats = lazyWithRetry(() => import('./pages/FournisseurAchats').then(m => ({ default: m.FournisseurAchats })));
 const RelanceWhatsApp = lazyWithRetry(() => import('./pages/RelanceWhatsApp').then(m => ({ default: m.RelanceWhatsApp })));
 const BusinessIntelligence = lazyWithRetry(() => import('./pages/BusinessIntelligence').then(m => ({ default: m.BusinessIntelligence })));
+const ReponsesAutomatiques = lazyWithRetry(() => import('./pages/ReponsesAutomatiques').then(m => ({ default: m.ReponsesAutomatiques })));
+const MarketingAds = lazyWithRetry(() => import('./pages/MarketingAds').then(m => ({ default: m.MarketingAds })));
+const GestionFinanciere = lazyWithRetry(() => import('./pages/GestionFinanciere').then(m => ({ default: m.GestionFinanciere })));
 
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '5rem' }}>
@@ -193,6 +196,15 @@ const AppRoutes = () => {
         {/* Business Intelligence / Lecture Business */}
         <Route path="lecture-business" element={
           <ProtectedRoute requiredPermission="ADMIN"><BusinessIntelligence /></ProtectedRoute>
+        } />
+        <Route path="/reponses-automatiques" element={
+          <ProtectedRoute requiredPermission="ADMIN"><ReponsesAutomatiques /></ProtectedRoute>
+        } />
+        <Route path="/marketing-ads" element={
+          <ProtectedRoute requiredPermission="ADMIN"><MarketingAds /></ProtectedRoute>
+        } />
+        <Route path="/gestion-financiere" element={
+          <ProtectedRoute requiredPermission="FINANCE"><GestionFinanciere /></ProtectedRoute>
         } />
 
         {/* Historique et Impression */}

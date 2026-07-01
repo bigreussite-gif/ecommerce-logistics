@@ -24,7 +24,9 @@ import {
   ShoppingBag,
   Building2,
   MessageSquare,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Megaphone,
+  Bot
 } from 'lucide-react';
 
 export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
@@ -41,6 +43,8 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
     { path: '/fournisseurs', label: 'Fournisseurs', icon: Building2, permission: 'PRODUITS' },
     { path: '/commandes', label: 'Commandes', icon: ShoppingCart, permission: 'COMMANDES' },
     { path: '/whatsapp-relance', label: 'Relance WhatsApp', icon: MessageSquare, permission: 'COMMANDES' },
+    { path: '/reponses-automatiques', label: 'Rép. Automatiques', icon: Bot, permission: 'ADMIN' },
+    { path: '/marketing-ads', label: 'Marketing & Ads', icon: Megaphone, permission: 'ADMIN' },
     { path: '/centre-appel', label: 'Centre d\'Appel', icon: Headset, permission: 'CENTRE_APPEL' },
     { path: '/clients', label: 'CRM & Clients', icon: Users, permission: 'CLIENTS' },
     { path: '/logistique', label: 'Logistique', icon: Truck, permission: 'LOGISTIQUE' },
@@ -51,6 +55,7 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
     { path: '/caisse', icon: Calculator, label: 'Caisse / Retour', permission: 'CAISSE' },
     { path: '/rapport-financier', icon: TrendingUp, label: 'Rapport Journalier', permission: 'FINANCE' },
     { path: '/net-profit', icon: DollarSign, label: 'Profit & Finances', permission: 'ADMIN' },
+    { path: '/gestion-financiere', icon: Wallet, label: 'Gestion PME', permission: 'FINANCE' },
     { path: '/lecture-business', icon: Activity, label: 'Lecture Business', permission: 'ADMIN' },
     { path: '/admin/tresorerie', icon: Wallet, label: 'Trésorerie Admin', permission: 'TRESORERIE' },
     { path: '/audit-tresorerie', icon: ShieldCheck, label: 'Expertise Comptable', permission: 'ADMIN' },
