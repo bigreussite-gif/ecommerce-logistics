@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { startOfMonth, endOfMonth, subDays, format, startOfYear, endOfYear } from 'date-fns';
 import { getRangeFinancials } from '../services/caisseService';
 import { getProduits } from '../services/produitService';
+import { getFournisseurs } from '../services/fournisseurService';
 import { calculateProfitMetrics, calculateStockValue } from '../services/financialService';
 import { useToast } from '../contexts/ToastContext';
 import { FileText, Download, Calendar, Activity, Archive } from 'lucide-react';
@@ -10,6 +11,7 @@ export const EtatsFinanciers = () => {
   const { showToast } = useToast();
   const [data, setData] = useState<{ retours: any[], commandes: any[], depenses: any[] } | null>(null);
   const [produits, setProduits] = useState<any[]>([]);
+  const [fournisseurs, setFournisseurs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'resultat' | 'bilan' | 'tresorerie'>('resultat');
   
@@ -21,12 +23,14 @@ export const EtatsFinanciers = () => {
     if (!startDate || !endDate) return;
     setLoading(true);
     try {
-      const [finRes, prodRes] = await Promise.all([
+      const [finRes, prodRes, fourRes] = await Promise.all([
         getRangeFinancials(startDate, endDate),
-        getProduits()
+        getProduits(),
+        getFournisseurs()
       ]);
       setData(finRes);
       setProduits(prodRes);
+      setFournisseurs(fourRes);
     } catch (e) {
       console.error(e);
       showToast("Erreur de chargement des états financiers", "error");
@@ -102,6 +106,8 @@ export const EtatsFinanciers = () => {
   const cashPhysiqueRecus = data.retours.reduce((acc, r) => acc + (Number(r.montant_remis_par_livreur) || 0), 0);
   const total_sorties = stats.total_sorties;
   const tresorerie_periode = (totalMobileMoney + cashPhysiqueRecus) - total_sorties;
+
+  const totalDettesFournisseurs = fournisseurs.reduce((acc, f) => acc + (Number(f.solde_dette) || 0), 0);
 
   // --- FLUX DE TRÉSORERIE DATA ---
   const total_achats_stock = stats.total_achats_stock;
@@ -297,8 +303,8 @@ export const EtatsFinanciers = () => {
               {/* PASSIFS */}
               <div>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 800, borderBottom: '2px solid #e2e8f0', paddingBottom: '0.5rem', marginBottom: '1rem' }}>PASSIFS (Ce qu'on doit)</h3>
-                <FinancialRow label="Dettes Fournisseurs" value={0} />
-                <FinancialRow label="Capitaux Propres (Équilibre)" value={stockValue + tresorerie_periode} />
+                <FinancialRow label="Dettes Fournisseurs" value={totalDettesFournisseurs} />
+                <FinancialRow label="Capitaux Propres (Équilibre)" value={(stockValue + tresorerie_periode) - totalDettesFournisseurs} />
                 
                 <div style={{ marginTop: '2rem' }}>
                   <FinancialRow label="TOTAL DES PASSIFS" value={stockValue + tresorerie_periode} isTotal />
