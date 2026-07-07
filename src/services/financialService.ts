@@ -172,15 +172,8 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     return acc + (isNaN(val) ? 0 : val);
   }, 0);
   
-  // Pertes logistiques : frais de livraison payés sur les commandes échouées/retournées
-  const failedCmds = (commandes || []).filter(c => {
-    const s = c.statut_commande?.toLowerCase();
-    return ['echouee', 'retour_livreur', 'retour_stock'].includes(s);
-  });
-  const pertes_livraison = failedCmds.reduce((acc, c) => {
-    const val = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
-    return acc + (isNaN(val) ? 0 : val);
-  }, 0);
+  // Les échecs de livraison ne sont pas facturés par les livreurs
+  const pertes_livraison = 0;
   
   // Calculate COGS (Cost of Goods Sold)
   let cogs_total = 0;
@@ -346,10 +339,8 @@ export const analyzeGeographicalProfit = (commandes: (Commande & { lignes?: Lign
       g.ca_net += rev;
       g.profit_net += (rev - cost - extractions - retenue - primes);
     } else {
-      // Failed delivery still costs us something
-      const lossRaw = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
-      const loss = isNaN(lossRaw) ? 0 : lossRaw;
-      g.profit_net -= loss;
+      // Si la commande a échoué, on n'est pas facturé pour la livraison, donc perte = 0
+      g.profit_net -= 0;
     }
   });
 
@@ -485,11 +476,8 @@ export const calculateProductROI = (commandes: (Commande & { lignes?: LigneComma
           }
         } else if (isFailure) {
           p.echecs += l.quantite;
-          // Loss estimate: if it failed, we likely paid delivery estimated at DEFAULT_SHIPPING_FEE CFA or the order's delivery fee
-          const shippingRaw = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
-          const shipping = isNaN(shippingRaw) ? 0 : shippingRaw;
-          const shareOfFrais = shipping / (c.lignes?.length || 1);
-          p.frais_perte_livraison += Math.round(shareOfFrais);
+          // Si la commande échoue, il n'y a pas de facturation, donc 0 perte
+          p.frais_perte_livraison += 0;
         }
       });
     }
