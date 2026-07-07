@@ -172,8 +172,15 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
     return acc + (isNaN(val) ? 0 : val);
   }, 0);
   
-  // Les livreurs ne sont payés que si la livraison est réussie, donc 0 perte logistique
-  const pertes_livraison = 0;
+  // Pertes logistiques : frais de livraison payés sur les commandes échouées/retournées
+  const failedCmds = (commandes || []).filter(c => {
+    const s = c.statut_commande?.toLowerCase();
+    return ['echouee', 'retour_livreur', 'retour_stock'].includes(s);
+  });
+  const pertes_livraison = failedCmds.reduce((acc, c) => {
+    const val = c.frais_livraison !== undefined && c.frais_livraison !== null ? Number(c.frais_livraison) : DEFAULT_SHIPPING_FEE;
+    return acc + (isNaN(val) ? 0 : val);
+  }, 0);
   
   // Calculate COGS (Cost of Goods Sold)
   let cogs_total = 0;
@@ -212,11 +219,17 @@ export const calculateProfitMetrics = (commandes: (Commande & { lignes?: LigneCo
   const ca_net_produits = ca_brut - frais_livraison_reussis;
   const installation_primes_total = terminalCmds.reduce((acc, c) => acc + (Number(c.total_primes_installation) || 0), 0);
   
-  // Aucune extraction simulée ni retenue forfaitaire (tout doit être entré comme dépenses réelles)
-  const total_extractions = 0;
+  // Extractions (Commissions Logistique/Admin) calculées par unité vendue (succès)
+  let ventes_reussies_total = 0;
+  terminalCmds.forEach(c => {
+    (c as any).lignes?.forEach((l: any) => {
+      ventes_reussies_total += Number(l.quantite) || 0;
+    });
+  });
+  const total_extractions = ventes_reussies_total * TOTAL_EXTRACTION_PER_UNIT;
   
   // Retenue based on percentage of net revenue
-  const retenue_charges = 0;
+  const retenue_charges = Math.round(ca_net_produits * RETENUE_PERCENT);
 
   const frais_vtc_total = terminalCmds.reduce((acc, c) => acc + (Number(c.cout_vtc) || 0), 0);
 
