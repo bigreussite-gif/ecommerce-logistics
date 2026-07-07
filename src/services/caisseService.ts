@@ -367,6 +367,7 @@ export const reopenFeuilleRoute = async (id: string): Promise<void> => {
       }
     }
   }
+};
 
 export const getRangeFinancials = async (startDateStr: string, endDateStr?: string): Promise<any> => {
   const start = new Date(startDateStr);
