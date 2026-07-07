@@ -164,6 +164,13 @@ export const processCaisse = async (
   if (frError) throw frError;
   
   const orderIds = resolutions.map(r => r.id);
+  
+  // FETCH CURRENT COMMAND STATUSES TO KNOW IF WE NEED TO DEDUCT/ADD STOCK
+  const { data: currentCmds } = await insforge.database
+    .from('commandes')
+    .select('id, statut_commande').limit(100000)
+    .in('id', orderIds);
+    
   const { data: lignesCommandes, error: linesError } = await insforge.database
     .from('lignes_commandes')
     .select('*').limit(100000)
@@ -245,18 +252,24 @@ export const processCaisse = async (
       .eq('id', res.id);
     if (cmdErr) throw cmdErr;
 
-    // Handle stock returns
-    if (finalStatus === 'retour_stock' || finalStatus === 'annulee' || finalStatus === 'a_rappeler') {
-      const linesToReturn = lignesCommandes.filter((l: any) => l.commande_id === res.id);
-      for (const l of linesToReturn) {
-        // By default, we put back in stock as "retour_livreur" reference
-        // A warehouse audit will later determine if it's defective
+    // --- STOCK FIX: ONLY ADD/REMOVE STOCK IF 'WAS OUT' != 'IS NOW OUT' ---
+    const currentCmd = currentCmds?.find(c => c.id === res.id);
+    const prevStatus = currentCmd?.statut_commande || '';
+    
+    const outOfWarehouseStates = ['livree', 'terminee'];
+    const wasOut = outOfWarehouseStates.includes(prevStatus.toLowerCase());
+    const isNowOut = outOfWarehouseStates.includes(finalStatus.toLowerCase());
+
+    if (wasOut !== isNowOut) {
+      const linesForThisOrder = lignesCommandes.filter((l: any) => l.commande_id === res.id);
+      for (const l of linesForThisOrder) {
         await addMouvementStock({
           produit_id: l.produit_id,
-          type_mouvement: 'entree',
+          commande_id: res.id,
+          type_mouvement: isNowOut ? 'sortie' : 'entree',
           quantite: l.quantite,
-          reference: `Retour ${finalStatus === 'a_rappeler' ? 'Reporté' : 'Echec'} cmd #${res.id.slice(0,5)}`,
-          commentaire: `Retour via Caisse (${finalStatus === 'a_rappeler' ? 'Reporté' : 'Échoué/Annulé'}) - Feuille #${feuilleRouteId.slice(0,8)}`
+          reference: `Caisse: ${isNowOut ? 'Sortie' : 'Retour'} (${finalStatus}) Cmd #${res.id.slice(0,8)}`,
+          commentaire: `Traitement Caisse - Feuille #${feuilleRouteId.slice(0,8)}`
         } as any);
       }
     }
@@ -316,17 +329,44 @@ export const reopenFeuilleRoute = async (id: string): Promise<void> => {
   if (error) throw error;
 
   // 3. Remettre les commandes "terminee/livree" en "en_cours_livraison"
-  const { error: cmdErr } = await insforge.database
+  // FIRST: Get commands that will change
+  const { data: cmdsToRevert } = await insforge.database
     .from('commandes')
-    .update({
-      statut_commande: 'en_cours_livraison',
-      date_livraison_effective: null
-    })
+    .select('id').limit(100000)
     .in('statut_commande', ['terminee', 'livree'])
     .eq('feuille_route_id', id);
 
-  if (cmdErr) throw cmdErr;
-};
+  const cmdIds = (cmdsToRevert || []).map(c => c.id);
+
+  if (cmdIds.length > 0) {
+    const { error: cmdErr } = await insforge.database
+      .from('commandes')
+      .update({
+        statut_commande: 'en_cours_livraison',
+        date_livraison_effective: null
+      })
+      .in('id', cmdIds);
+
+    if (cmdErr) throw cmdErr;
+
+    // 4. Revert stock (Entree) because they are no longer "livree"
+    const { data: lines } = await insforge.database
+      .from('lignes_commandes')
+      .select('*').limit(100000)
+      .in('commande_id', cmdIds);
+      
+    if (lines) {
+      for (const l of lines) {
+        await addMouvementStock({
+          produit_id: l.produit_id,
+          commande_id: l.commande_id,
+          type_mouvement: 'entree',
+          quantite: l.quantite,
+          reference: `Annulation Caisse / Feuille Réouverte (Cmd #${l.commande_id.substring(0,8)})`
+        } as any);
+      }
+    }
+  }
 
 export const getRangeFinancials = async (startDateStr: string, endDateStr?: string): Promise<any> => {
   const start = new Date(startDateStr);
