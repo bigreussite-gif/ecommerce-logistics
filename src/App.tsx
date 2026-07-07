@@ -60,6 +60,7 @@ const BusinessIntelligence = lazyWithRetry(() => import('./pages/BusinessIntelli
 const ReponsesAutomatiques = lazyWithRetry(() => import('./pages/ReponsesAutomatiques').then(m => ({ default: m.ReponsesAutomatiques })));
 const MarketingAds = lazyWithRetry(() => import('./pages/MarketingAds').then(m => ({ default: m.MarketingAds })));
 const GestionFinanciere = lazyWithRetry(() => import('./pages/GestionFinanciere').then(m => ({ default: m.GestionFinanciere })));
+const EtatsFinanciers = lazyWithRetry(() => import('./pages/EtatsFinanciers').then(m => ({ default: m.EtatsFinanciers })));
 
 const PageLoader = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', padding: '5rem' }}>
@@ -205,6 +206,9 @@ const AppRoutes = () => {
         } />
         <Route path="/gestion-financiere" element={
           <ProtectedRoute requiredPermission="FINANCE"><GestionFinanciere /></ProtectedRoute>
+        } />
+        <Route path="/etats-financiers" element={
+          <ProtectedRoute requiredPermission="FINANCE"><EtatsFinanciers /></ProtectedRoute>
         } />
 
         {/* Historique et Impression */}

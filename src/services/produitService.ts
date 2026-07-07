@@ -199,19 +199,21 @@ export const addMouvementStock = async (mouvement: Omit<MouvementStock, 'id'> & 
   const modifier = (mouvement.type_mouvement === 'sortie') ? -qty : qty;
   const newStock = currentStock + modifier;
 
-  // Anti-double comptabilisation: Check if a similar movement already exists for this commande_id
+  // Anti-double comptabilisation: Check if the LAST movement for this commande_id is of the same type
   if (mouvement.commande_id) {
     const { data: existingMvt } = await insforge.database
       .from('mouvements_stock')
-      .select('id').limit(100000)
+      .select('type_mouvement').limit(100000)
       .eq('commande_id', mouvement.commande_id)
       .eq('produit_id', mouvement.produit_id)
-      .eq('type_mouvement', mouvement.type_mouvement)
+      .order('date', { ascending: false })
       .limit(1);
     
     if (existingMvt && existingMvt.length > 0) {
-      console.warn(`Mouvement de ${mouvement.type_mouvement} déjà existant pour la commande ${mouvement.commande_id}`);
-      return; // Skip adding duplicate movement
+      if (existingMvt[0].type_mouvement === mouvement.type_mouvement) {
+        console.warn(`Mouvement de ${mouvement.type_mouvement} consécutif ignoré (anti-doublon) pour la commande ${mouvement.commande_id}`);
+        return; // Skip adding duplicate consecutive movement
+      }
     }
   }
 

@@ -678,3 +678,52 @@ tr:hover td {
   100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
 }
 .spin { animation: spin 1s linear infinite; } @keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* --- PRINT MEDIA (PIECE COMPTABLE) --- */
+@media print {
+  body {
+    background: white;
+    color: black;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    overflow: visible;
+  }
+  
+  .no-print, .sidebar, .header {
+    display: none !important;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  .main-content, .page-content {
+    overflow: visible !important;
+    position: static !important;
+    height: auto !important;
+    padding: 0 !important;
+  }
+
+  .print-container {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .card {
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+  }
+
+  .print-section {
+    page-break-inside: avoid;
+    margin-bottom: 2rem;
+  }
+
+  /* Force background colors to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

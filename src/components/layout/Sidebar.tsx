@@ -26,7 +26,8 @@ import {
   MessageSquare,
   ArrowRightLeft,
   Megaphone,
-  Bot
+  Bot,
+  FileText
 } from 'lucide-react';
 
 export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => void }) => {
@@ -56,6 +57,7 @@ export const Sidebar = ({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
     { path: '/rapport-financier', icon: TrendingUp, label: 'Rapport Journalier', permission: 'FINANCE' },
     { path: '/net-profit', icon: DollarSign, label: 'Profit & Finances', permission: 'ADMIN' },
     { path: '/gestion-financiere', icon: Wallet, label: 'Gestion PME', permission: 'FINANCE' },
+    { path: '/etats-financiers', icon: FileText, label: 'États Financiers', permission: 'FINANCE' },
     { path: '/lecture-business', icon: Activity, label: 'Lecture Business', permission: 'ADMIN' },
     { path: '/admin/tresorerie', icon: Wallet, label: 'Trésorerie Admin', permission: 'TRESORERIE' },
     { path: '/audit-tresorerie', icon: ShieldCheck, label: 'Expertise Comptable', permission: 'ADMIN' },

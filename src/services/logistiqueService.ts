@@ -103,6 +103,7 @@ export const creerFeuilleRoute = async (livreurId: string, commandeIds: string[]
           for (const l of lines) {
             await addMouvementStock({
               produit_id: l.produit_id,
+              commande_id: c.id,
               type_mouvement: 'sortie',
               quantite: l.quantite,
               reference: `Sortie Stock (Feuille Route) Cmd #${c.id.substring(0, 8)}`,
@@ -270,6 +271,7 @@ export const reassignCommandeToFeuille = async (commandeId: string, targetFeuill
         for (const l of lines) {
           await addMouvementStock({
             produit_id: l.produit_id,
+            commande_id: commandeId,
             type_mouvement: 'sortie',
             quantite: l.quantite,
             reference: `Sortie Stock (Transfert) Cmd #${commandeId.substring(0, 8)}`,
