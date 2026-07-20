@@ -28,6 +28,7 @@ export const RelanceWhatsApp = () => {
   const [campaignType, setCampaignType] = useState<'info' | 'produit'>('info');
   const [produits, setProduits] = useState<any[]>([]);
   const [selectedProduitId, setSelectedProduitId] = useState<string>('');
+  const [customLink, setCustomLink] = useState<string>('');
   const [marketingMessage, setMarketingMessage] = useState<string>("Découvrez notre nouvelle collection avec des réductions exceptionnelles ! N'hésitez pas à profiter de nos offres de la semaine.");
 
   // New states for period and status filtering
@@ -212,7 +213,8 @@ export const RelanceWhatsApp = () => {
         if (prod) {
           const prix = prod.prix_promo ? prod.prix_promo : prod.prix_vente;
           const prixFmt = Number(prix).toLocaleString() + ' CFA';
-          return `Bonjour ${nom} 👋,\n\n${marketingMessage}\n\n✨ *${prod.nom}*\n💰 Prix : *${prixFmt}*\n\n🔥 Attention, les stocks sont limités ! Commandez directement en répondant OUI à ce message ou visitez notre site : https://jachete.ci\n\n*Jachete Côte d'Ivoire* 🛍️\n+225 01 72 57 13 52`;
+          const lien = customLink.trim() ? customLink.trim() : 'https://jachete.ci';
+          return `Bonjour ${nom} 👋,\n\n${marketingMessage}\n\n✨ *${prod.nom}*\n💰 Prix : *${prixFmt}*\n\n🔥 Attention, les stocks sont limités ! Commandez directement en répondant OUI à ce message ou visitez notre site :\n👉 ${lien}\n\n*Jachete Côte d'Ivoire* 🛍️\n+225 01 72 57 13 52`;
         }
         return `Bonjour ${nom} 👋,\n\n${marketingMessage}\n\n*Jachete Côte d'Ivoire* 🛍️\nwww.jachete.ci | +225 01 72 57 13 52`;
       }
@@ -432,20 +434,34 @@ export const RelanceWhatsApp = () => {
                   </div>
                   
                   {campaignType === 'produit' && (
-                    <div style={{ flex: '1 1 300px', animation: 'pageEnter 0.3s ease' }}>
-                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#3730a3', textTransform: 'uppercase', marginBottom: '8px' }}>Produit à promouvoir</label>
-                      <select
-                        className="form-input"
-                        value={selectedProduitId}
-                        onChange={e => setSelectedProduitId(e.target.value)}
-                        style={{ width: '100%', height: '48px', borderRadius: '12px', fontWeight: 700, border: '1px solid #a5b4fc', background: 'white' }}
-                      >
-                        <option value="">-- Sélectionnez un produit --</option>
-                        {produits.map(p => (
-                          <option key={p.id} value={p.id}>{p.nom} - {Number(p.prix_promo ? p.prix_promo : p.prix_vente).toLocaleString()} CFA</option>
-                        ))}
-                      </select>
-                    </div>
+                    <>
+                      <div style={{ flex: '1 1 300px', animation: 'pageEnter 0.3s ease' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#3730a3', textTransform: 'uppercase', marginBottom: '8px' }}>Produit à promouvoir</label>
+                        <select
+                          className="form-input"
+                          value={selectedProduitId}
+                          onChange={e => setSelectedProduitId(e.target.value)}
+                          style={{ width: '100%', height: '48px', borderRadius: '12px', fontWeight: 700, border: '1px solid #a5b4fc', background: 'white' }}
+                        >
+                          <option value="">-- Sélectionnez un produit --</option>
+                          {produits.map(p => (
+                            <option key={p.id} value={p.id}>{p.nom} - {Number(p.prix_promo ? p.prix_promo : p.prix_vente).toLocaleString()} CFA</option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      <div style={{ flex: '1 1 100%', animation: 'pageEnter 0.4s ease' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#3730a3', textTransform: 'uppercase', marginBottom: '8px' }}>Lien direct vers la commande du produit (Optionnel)</label>
+                        <input
+                          type="url"
+                          className="form-input"
+                          value={customLink}
+                          onChange={e => setCustomLink(e.target.value)}
+                          placeholder="ex: https://jachete.ci/shop/mon-super-produit"
+                          style={{ width: '100%', height: '48px', borderRadius: '12px', fontWeight: 600, border: '1px solid #a5b4fc', background: 'white', padding: '0 1rem' }}
+                        />
+                      </div>
+                    </>
                   )}
                 </div>
 
@@ -478,7 +494,8 @@ export const RelanceWhatsApp = () => {
                         <em>(Votre message personnalisé ci-dessus)</em><br/><br/>
                         ✨ <strong>[Nom du Produit Sélectionné]</strong><br/>
                         💰 Prix : <strong>[Prix] CFA</strong><br/><br/>
-                        🔥 Attention, les stocks sont limités ! Commandez directement en répondant OUI à ce message ou visitez notre site : https://jachete.ci<br/><br/>
+                        🔥 Attention, les stocks sont limités ! Commandez directement en répondant OUI à ce message ou visitez notre site :<br/>
+                        👉 {customLink.trim() ? customLink.trim() : 'https://jachete.ci'}<br/><br/>
                         <strong>Jachete Côte d'Ivoire</strong> 🛍️<br/>
                         +225 01 72 57 13 52
                       </>
