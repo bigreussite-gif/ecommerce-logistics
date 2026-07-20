@@ -44,11 +44,11 @@ export const RelanceWhatsApp = () => {
       // 2. Fetch Orders with date filter and status filter
       let query = insforge.database
         .from('commandes')
-        .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*), livreur:utilisateurs!livreur_id(id, nom_complet, telephone)');
+        .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*), livreur:users!livreur_id(id, nom_complet, telephone)');
 
       // Fetch Livreurs
       const { data: livreursData } = await insforge.database
-        .from('utilisateurs')
+        .from('users')
         .select('id, nom_complet')
         .eq('role', 'LIVREUR');
       setLivreurs(livreursData || []);
