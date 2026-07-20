@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
   MessageSquare, Search, RefreshCw, X, Check, MapPin, 
-  Send, CheckSquare
+  Send, CheckSquare, Megaphone
 } from 'lucide-react';
 import { insforge } from '../lib/insforge';
 import { getCommunes } from '../services/adminService';
@@ -22,6 +22,10 @@ export const RelanceWhatsApp = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [pendingRelance, setPendingRelance] = useState<any | null>(null);
   const [actionLoading, setActionLoading] = useState<boolean>(false);
+
+  // App Mode State
+  const [appMode, setAppMode] = useState<'relance' | 'marketing'>('relance');
+  const [marketingMessage, setMarketingMessage] = useState<string>("Découvrez notre nouvelle collection avec des réductions exceptionnelles ! N'hésitez pas à visiter www.jachete.ci pour en profiter. La livraison est toujours disponible partout en Côte d'Ivoire ! 🚀");
 
   // New states for period and status filtering
   const [period, setPeriod] = useState<string>('30d');
@@ -53,11 +57,16 @@ export const RelanceWhatsApp = () => {
         .eq('role', 'LIVREUR');
       setLivreurs(livreursData || []);
 
-      // Apply Status filter
-      if (selectedStatus === 'AllActive') {
-        query = query.not('statut_commande', 'in', '("livree","terminee","annulee")');
-      } else if (selectedStatus !== 'All') {
-        query = query.eq('statut_commande', selectedStatus);
+      // Apply Mode & Status filter
+      if (appMode === 'marketing') {
+        query = query.in('statut_commande', ['terminee', 'livree']);
+      } else {
+        // Apply Status filter
+        if (selectedStatus === 'AllActive') {
+          query = query.not('statut_commande', 'in', '("livree","terminee","annulee")');
+        } else if (selectedStatus !== 'All') {
+          query = query.eq('statut_commande', selectedStatus);
+        }
       }
 
       // Apply Livreur filter
@@ -136,7 +145,7 @@ export const RelanceWhatsApp = () => {
 
   useEffect(() => {
     fetchData();
-  }, [period, startDate, endDate, selectedStatus, selectedLivreur]);
+  }, [period, startDate, endDate, selectedStatus, selectedLivreur, appMode]);
 
   // Filter Commandes
   const filteredCommandes = useMemo(() => {
@@ -182,6 +191,12 @@ export const RelanceWhatsApp = () => {
   const generateMessage = (cmd: any) => {
     if (!cmd) return '';
     const nom = `*${cmd.nom_client || 'Client'}*`;
+    
+    // Mode Marketing
+    if (appMode === 'marketing') {
+      return `Bonjour ${nom} 👋,\n\n${marketingMessage}\n\n*Jachete Côte d'Ivoire* 🛍️\nwww.jachete.ci | +225 01 72 57 13 52`;
+    }
+
     const ref = `*#${cmd.id.slice(0, 8).toUpperCase()}*`;
     const articlesList = (cmd.lignes || []).map((l: any) => ` - *${l.quantite}x ${l.nom_produit}*`).join('\n');
     const subtotal = (cmd.lignes || []).reduce((acc: number, l: any) => acc + (l.montant_ligne || 0), 0);
@@ -327,7 +342,7 @@ export const RelanceWhatsApp = () => {
         <div style={{ maxWidth: '1600px', margin: '0 auto', animation: 'pageEnter 0.6s ease' }}>
           
           {/* HEADER */}
-          <section style={{ marginBottom: '3rem' }}>
+          <section style={{ marginBottom: '2rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '0.5rem' }}>
@@ -344,7 +359,58 @@ export const RelanceWhatsApp = () => {
                 </button>
               </div>
             </div>
+
+            {/* MODE SWITCHER */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '2.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', background: '#e2e8f0', padding: '6px', borderRadius: '16px' }}>
+                <button
+                  onClick={() => setAppMode('relance')}
+                  style={{
+                    padding: '0.8rem 1.5rem', borderRadius: '12px', fontSize: '1rem', fontWeight: 800,
+                    border: 'none', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px',
+                    background: appMode === 'relance' ? 'white' : 'transparent',
+                    color: appMode === 'relance' ? '#10b981' : '#64748b',
+                    boxShadow: appMode === 'relance' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
+                  }}
+                >
+                  <MessageSquare size={18} /> Suivi & Relance
+                </button>
+                <button
+                  onClick={() => setAppMode('marketing')}
+                  style={{
+                    padding: '0.8rem 1.5rem', borderRadius: '12px', fontSize: '1rem', fontWeight: 800,
+                    border: 'none', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '8px',
+                    background: appMode === 'marketing' ? 'white' : 'transparent',
+                    color: appMode === 'marketing' ? '#6366f1' : '#64748b',
+                    boxShadow: appMode === 'marketing' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
+                  }}
+                >
+                  <Megaphone size={18} /> Campagne Marketing
+                </button>
+              </div>
+            </div>
           </section>
+
+          {/* MARKETING COMPOSE SECTION */}
+          {appMode === 'marketing' && (
+            <section style={{ marginBottom: '2rem', animation: 'pageEnter 0.4s ease' }}>
+              <div className="card" style={{ padding: '1.5rem', borderRadius: '24px', background: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', border: 'none', boxShadow: '0 4px 20px rgba(99, 102, 241, 0.15)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
+                  <Megaphone size={20} color="#4f46e5" />
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: '#3730a3' }}>Message de la campagne</h3>
+                </div>
+                <textarea
+                  value={marketingMessage}
+                  onChange={e => setMarketingMessage(e.target.value)}
+                  style={{ width: '100%', height: '100px', borderRadius: '16px', padding: '1rem', border: '1px solid #a5b4fc', background: 'white', fontSize: '0.95rem', fontFamily: 'inherit', resize: 'vertical' }}
+                  placeholder="Tapez le message promotionnel qui sera envoyé aux clients sélectionnés..."
+                />
+                <p style={{ fontSize: '0.8rem', color: '#4338ca', marginTop: '0.75rem', fontWeight: 600 }}>
+                  Astuce : Le message généré commencera automatiquement par "Bonjour *Nom du Client* 👋," suivi de votre texte ci-dessus.
+                </p>
+              </div>
+            </section>
+          )}
 
           {/* FILTRES & TABS */}
           <section style={{ marginBottom: '2rem' }}>
@@ -414,29 +480,31 @@ export const RelanceWhatsApp = () => {
                   </div>
 
                   {/* Status dropdown */}
-                  <div style={{ flex: '1 1 200px' }}>
-                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Statut Commande</label>
-                    <select
-                      className="form-input"
-                      value={selectedStatus}
-                      onChange={e => setSelectedStatus(e.target.value)}
-                      style={{ width: '100%', height: '44px', borderRadius: '12px', fontWeight: 600, border: '1px solid #e2e8f0', background: '#f8fafc' }}
-                    >
-                      <option value="AllActive">Actifs (Non livrées/annulées)</option>
-                      <option value="All">Tous les statuts</option>
-                      <option value="nouvelle">Nouvelle</option>
-                      <option value="a_rappeler">À rappeler</option>
-                      <option value="en_attente_appel">En attente appel</option>
-                      <option value="validee">Validée</option>
-                      <option value="en_cours_livraison">En cours de livraison</option>
-                      <option value="livree">Livrée</option>
-                      <option value="terminee">Terminée</option>
-                      <option value="echouee">Échouée</option>
-                      <option value="retour_livreur">Retour livreur</option>
-                      <option value="annulee">Annulée</option>
-                      <option value="retour_client">Retour client</option>
-                    </select>
-                  </div>
+                  {appMode === 'relance' && (
+                    <div style={{ flex: '1 1 200px' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Statut Commande</label>
+                      <select
+                        className="form-input"
+                        value={selectedStatus}
+                        onChange={e => setSelectedStatus(e.target.value)}
+                        style={{ width: '100%', height: '44px', borderRadius: '12px', fontWeight: 600, border: '1px solid #e2e8f0', background: '#f8fafc' }}
+                      >
+                        <option value="AllActive">Actifs (Non livrées/annulées)</option>
+                        <option value="All">Tous les statuts</option>
+                        <option value="nouvelle">Nouvelle</option>
+                        <option value="a_rappeler">À rappeler</option>
+                        <option value="en_attente_appel">En attente appel</option>
+                        <option value="validee">Validée</option>
+                        <option value="en_cours_livraison">En cours de livraison</option>
+                        <option value="livree">Livrée</option>
+                        <option value="terminee">Terminée</option>
+                        <option value="echouee">Échouée</option>
+                        <option value="retour_livreur">Retour livreur</option>
+                        <option value="annulee">Annulée</option>
+                        <option value="retour_client">Retour client</option>
+                      </select>
+                    </div>
+                  )}
 
                   {/* Livreur dropdown */}
                   <div style={{ flex: '1 1 200px' }}>
@@ -584,7 +652,7 @@ export const RelanceWhatsApp = () => {
                             className="btn" 
                             onClick={() => setPendingRelance(cmd)}
                             style={{ 
-                              background: '#10b981', 
+                              background: appMode === 'marketing' ? '#6366f1' : '#10b981', 
                               color: 'white', 
                               border: 'none', 
                               borderRadius: '12px',
@@ -594,10 +662,10 @@ export const RelanceWhatsApp = () => {
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '6px',
-                              boxShadow: '0 4px 10px rgba(16, 185, 129, 0.2)'
+                              boxShadow: appMode === 'marketing' ? '0 4px 10px rgba(99, 102, 241, 0.2)' : '0 4px 10px rgba(16, 185, 129, 0.2)'
                             }}
                           >
-                            <Send size={14} /> Relancer
+                            <Send size={14} /> {appMode === 'marketing' ? 'Envoyer Promo' : 'Relancer'}
                           </button>
                         ) : (
                           <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
