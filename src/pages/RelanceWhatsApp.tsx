@@ -25,7 +25,10 @@ export const RelanceWhatsApp = () => {
 
   // App Mode State
   const [appMode, setAppMode] = useState<'relance' | 'marketing'>('relance');
-  const [marketingMessage, setMarketingMessage] = useState<string>("Découvrez notre nouvelle collection avec des réductions exceptionnelles ! N'hésitez pas à visiter www.jachete.ci pour en profiter. La livraison est toujours disponible partout en Côte d'Ivoire ! 🚀");
+  const [campaignType, setCampaignType] = useState<'info' | 'produit'>('info');
+  const [produits, setProduits] = useState<any[]>([]);
+  const [selectedProduitId, setSelectedProduitId] = useState<string>('');
+  const [marketingMessage, setMarketingMessage] = useState<string>("Découvrez notre nouvelle collection avec des réductions exceptionnelles ! N'hésitez pas à profiter de nos offres de la semaine.");
 
   // New states for period and status filtering
   const [period, setPeriod] = useState<string>('30d');
@@ -56,6 +59,14 @@ export const RelanceWhatsApp = () => {
         .select('id, nom_complet')
         .eq('role', 'LIVREUR');
       setLivreurs(livreursData || []);
+
+      // Fetch Produits pour Campagne Marketing
+      const { data: produitsData } = await insforge.database
+        .from('produits')
+        .select('id, nom, prix_vente, prix_promo, description')
+        .eq('actif', true)
+        .order('nom', { ascending: true });
+      setProduits(produitsData || []);
 
       // Apply Mode & Status filter
       if (appMode === 'marketing') {
@@ -194,7 +205,17 @@ export const RelanceWhatsApp = () => {
     
     // Mode Marketing
     if (appMode === 'marketing') {
-      return `Bonjour ${nom} 👋,\n\n${marketingMessage}\n\n*Jachete Côte d'Ivoire* 🛍️\nwww.jachete.ci | +225 01 72 57 13 52`;
+      if (campaignType === 'info') {
+        return `Bonjour ${nom} 👋,\n\n${marketingMessage}\n\nRetrouvez nos nouveautés et tous les articles que vous recherchez sur notre boutique en ligne :\n👉 https://jachete.ci/shop/\n\n*Jachete Côte d'Ivoire* 🛍️\nwww.jachete.ci | +225 01 72 57 13 52`;
+      } else {
+        const prod = produits.find(p => p.id === selectedProduitId);
+        if (prod) {
+          const prix = prod.prix_promo ? prod.prix_promo : prod.prix_vente;
+          const prixFmt = Number(prix).toLocaleString() + ' CFA';
+          return `Bonjour ${nom} 👋,\n\n${marketingMessage}\n\n✨ *${prod.nom}*\n💰 Prix : *${prixFmt}*\n\n🔥 Attention, les stocks sont limités ! Commandez directement en répondant OUI à ce message ou visitez notre site : https://jachete.ci\n\n*Jachete Côte d'Ivoire* 🛍️\n+225 01 72 57 13 52`;
+        }
+        return `Bonjour ${nom} 👋,\n\n${marketingMessage}\n\n*Jachete Côte d'Ivoire* 🛍️\nwww.jachete.ci | +225 01 72 57 13 52`;
+      }
     }
 
     const ref = `*#${cmd.id.slice(0, 8).toUpperCase()}*`;
@@ -395,9 +416,42 @@ export const RelanceWhatsApp = () => {
           {appMode === 'marketing' && (
             <section style={{ marginBottom: '2rem', animation: 'pageEnter 0.4s ease' }}>
               <div className="card" style={{ padding: '1.5rem', borderRadius: '24px', background: 'linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%)', border: 'none', boxShadow: '0 4px 20px rgba(99, 102, 241, 0.15)' }}>
+                
+                <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+                  <div style={{ flex: '1 1 300px' }}>
+                    <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#3730a3', textTransform: 'uppercase', marginBottom: '8px' }}>Type de Campagne</label>
+                    <select
+                      className="form-input"
+                      value={campaignType}
+                      onChange={e => setCampaignType(e.target.value as 'info' | 'produit')}
+                      style={{ width: '100%', height: '48px', borderRadius: '12px', fontWeight: 700, border: '1px solid #a5b4fc', background: 'white' }}
+                    >
+                      <option value="info">📢 Information & Visite du site</option>
+                      <option value="produit">🛍️ Vente Directe / Promo Produit</option>
+                    </select>
+                  </div>
+                  
+                  {campaignType === 'produit' && (
+                    <div style={{ flex: '1 1 300px', animation: 'pageEnter 0.3s ease' }}>
+                      <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#3730a3', textTransform: 'uppercase', marginBottom: '8px' }}>Produit à promouvoir</label>
+                      <select
+                        className="form-input"
+                        value={selectedProduitId}
+                        onChange={e => setSelectedProduitId(e.target.value)}
+                        style={{ width: '100%', height: '48px', borderRadius: '12px', fontWeight: 700, border: '1px solid #a5b4fc', background: 'white' }}
+                      >
+                        <option value="">-- Sélectionnez un produit --</option>
+                        {produits.map(p => (
+                          <option key={p.id} value={p.id}>{p.nom} - {Number(p.prix_promo ? p.prix_promo : p.prix_vente).toLocaleString()} CFA</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
                   <Megaphone size={20} color="#4f46e5" />
-                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: '#3730a3' }}>Message de la campagne</h3>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: '#3730a3' }}>Message personnalisé (Introduction)</h3>
                 </div>
                 <textarea
                   value={marketingMessage}
@@ -405,9 +459,33 @@ export const RelanceWhatsApp = () => {
                   style={{ width: '100%', height: '100px', borderRadius: '16px', padding: '1rem', border: '1px solid #a5b4fc', background: 'white', fontSize: '0.95rem', fontFamily: 'inherit', resize: 'vertical' }}
                   placeholder="Tapez le message promotionnel qui sera envoyé aux clients sélectionnés..."
                 />
-                <p style={{ fontSize: '0.8rem', color: '#4338ca', marginTop: '0.75rem', fontWeight: 600 }}>
-                  Astuce : Le message généré commencera automatiquement par "Bonjour *Nom du Client* 👋," suivi de votre texte ci-dessus.
-                </p>
+                
+                <div style={{ marginTop: '1rem', padding: '1rem', background: 'rgba(255,255,255,0.6)', borderRadius: '12px', border: '1px solid #c7d2fe' }}>
+                  <h4 style={{ margin: '0 0 8px 0', fontSize: '0.85rem', color: '#4338ca', fontWeight: 800 }}>Aperçu de la structure du message :</h4>
+                  <div style={{ fontSize: '0.85rem', color: '#3730a3', whiteSpace: 'pre-line', lineHeight: '1.4' }}>
+                    {campaignType === 'info' ? (
+                      <>
+                        Bonjour <strong>Nom du Client</strong> 👋,<br/><br/>
+                        <em>(Votre message personnalisé ci-dessus)</em><br/><br/>
+                        Retrouvez nos nouveautés et tous les articles que vous recherchez sur notre boutique en ligne :<br/>
+                        👉 https://jachete.ci/shop/<br/><br/>
+                        <strong>Jachete Côte d'Ivoire</strong> 🛍️<br/>
+                        www.jachete.ci | +225 01 72 57 13 52
+                      </>
+                    ) : (
+                      <>
+                        Bonjour <strong>Nom du Client</strong> 👋,<br/><br/>
+                        <em>(Votre message personnalisé ci-dessus)</em><br/><br/>
+                        ✨ <strong>[Nom du Produit Sélectionné]</strong><br/>
+                        💰 Prix : <strong>[Prix] CFA</strong><br/><br/>
+                        🔥 Attention, les stocks sont limités ! Commandez directement en répondant OUI à ce message ou visitez notre site : https://jachete.ci<br/><br/>
+                        <strong>Jachete Côte d'Ivoire</strong> 🛍️<br/>
+                        +225 01 72 57 13 52
+                      </>
+                    )}
+                  </div>
+                </div>
+
               </div>
             </section>
           )}
