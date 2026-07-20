@@ -16,6 +16,8 @@ export const RelanceWhatsApp = () => {
   const [commandes, setCommandes] = useState<any[]>([]);
   const [communes, setCommunes] = useState<Commune[]>([]);
   const [selectedCommune, setSelectedCommune] = useState<string>('All');
+  const [livreurs, setLivreurs] = useState<any[]>([]);
+  const [selectedLivreur, setSelectedLivreur] = useState<string>('All');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [pendingRelance, setPendingRelance] = useState<any | null>(null);
@@ -42,13 +44,25 @@ export const RelanceWhatsApp = () => {
       // 2. Fetch Orders with date filter and status filter
       let query = insforge.database
         .from('commandes')
-        .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*)');
+        .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*), livreur:utilisateurs!livreur_id(id, nom_complet, telephone)');
+
+      // Fetch Livreurs
+      const { data: livreursData } = await insforge.database
+        .from('utilisateurs')
+        .select('id, nom_complet')
+        .eq('role', 'LIVREUR');
+      setLivreurs(livreursData || []);
 
       // Apply Status filter
       if (selectedStatus === 'AllActive') {
         query = query.not('statut_commande', 'in', '("livree","terminee","annulee")');
       } else if (selectedStatus !== 'All') {
         query = query.eq('statut_commande', selectedStatus);
+      }
+
+      // Apply Livreur filter
+      if (selectedLivreur !== 'All') {
+        query = query.eq('livreur_id', selectedLivreur);
       }
 
       // Apply Period filter
@@ -122,7 +136,7 @@ export const RelanceWhatsApp = () => {
 
   useEffect(() => {
     fetchData();
-  }, [period, startDate, endDate, selectedStatus]);
+  }, [period, startDate, endDate, selectedStatus, selectedLivreur]);
 
   // Filter Commandes
   const filteredCommandes = useMemo(() => {
@@ -183,12 +197,18 @@ export const RelanceWhatsApp = () => {
     const communeEffective = cmd.commune_livraison || '';
     const isInterior = isInteriorCommune(communeEffective);
 
+    const nomLivreur = cmd.livreur?.nom_complet;
+    const telLivreur = cmd.livreur?.telephone || "";
+    const contactLivreur = telLivreur ? ` au *${telLivreur}*` : "";
+
     const summary = `\n\n📦 *Détails de votre commande ${ref} :*\n${articlesList}\n\n- Sous-total articles : ${bSubtotal}\n- Frais d'envoi : ${bDelivery}${bRemise}\n💰 *Total à régler : ${bTotal}*`;
 
     let text = "";
     const status = (cmd.statut_commande || '').toLowerCase();
 
-    if (['a_rappeler', 'absent', 'injoignable'].includes(status)) {
+    if (nomLivreur && ['en_cours_livraison', 'validee'].includes(status) && !isInterior) {
+       text = `Bonjour ${nom} ! 🙌\n\nC'est votre conseiller de *Jachete Côte d'Ivoire*. Bonne nouvelle, votre commande est prête et a été remise à notre livreur *${nomLivreur}* ! 🚀\n\nIl va vous contacter très bientôt${contactLivreur} pour la livraison à *${communeEffective || 'votre adresse'}*.\n${summary}\n\nPréparez le montant exact s'il vous plaît.\n\n📞 Pour toute question, appelez-nous au *+225 01 72 57 13 52*.`;
+    } else if (['a_rappeler', 'absent', 'injoignable'].includes(status)) {
       if (isInterior && communeEffective) {
         text = `Bonjour ${nom} 👋\n\nC'est votre conseiller chez *Jachete Côte d'Ivoire*.\n\nNous avons essayé de vous joindre plusieurs fois pour votre commande mais sans succès.\n\nVotre colis est prêt et attend d'être expédié vers *${communeEffective}* ! 🚀\n\nPour ne pas perdre votre commande, confirmez-nous votre disponibilité en répondant *OUI* et on relance tout de suite.${summary}\n\n📞 Appelez-nous au *+225 01 72 57 13 52* pour toute question.`;
       } else {
@@ -314,9 +334,9 @@ export const RelanceWhatsApp = () => {
                   <div style={{ padding: '0.8rem', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', borderRadius: '18px', color: 'white', boxShadow: '0 10px 20px rgba(16, 185, 129, 0.2)' }}>
                     <MessageSquare size={28} />
                   </div>
-                  <h1 style={{ fontSize: '2.2rem', fontWeight: 950, margin: 0, letterSpacing: '-0.02em', color: '#1e293b' }}>Relance WhatsApp</h1>
+                  <h1 style={{ fontSize: '2.2rem', fontWeight: 950, margin: 0, letterSpacing: '-0.02em', color: '#1e293b' }}>WhatsApp & Expéditions</h1>
                 </div>
-                <p style={{ color: '#64748b', fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>Gestion et suivi des expéditions et relances pour l'intérieur.</p>
+                <p style={{ color: '#64748b', fontSize: '1.05rem', fontWeight: 600, margin: 0 }}>Gestion et suivi des expéditions et relances clients.</p>
               </div>
               <div>
                 <button className="btn btn-outline" onClick={fetchData} style={{ height: '44px', borderRadius: '12px', background: 'white' }}>
@@ -418,6 +438,22 @@ export const RelanceWhatsApp = () => {
                     </select>
                   </div>
 
+                  {/* Livreur dropdown */}
+                  <div style={{ flex: '1 1 200px' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Livreur</label>
+                    <select
+                      className="form-input"
+                      value={selectedLivreur}
+                      onChange={e => setSelectedLivreur(e.target.value)}
+                      style={{ width: '100%', height: '44px', borderRadius: '12px', fontWeight: 600, border: '1px solid #e2e8f0', background: '#f8fafc' }}
+                    >
+                      <option value="All">Tous les Livreurs</option>
+                      {livreurs.map(l => (
+                        <option key={l.id} value={l.id}>{l.nom_complet}</option>
+                      ))}
+                    </select>
+                  </div>
+
                   {/* Period dropdown */}
                   <div style={{ flex: '1 1 180px' }}>
                     <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '6px' }}>Période</label>
@@ -483,7 +519,7 @@ export const RelanceWhatsApp = () => {
                   <tr style={{ background: '#f8fafc' }}>
                     <th style={{ textAlign: 'left', padding: '1.25rem 1.5rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Réf Commande</th>
                     <th style={{ textAlign: 'left', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Client</th>
-                    <th style={{ textAlign: 'left', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Commune / Quartier</th>
+                    <th style={{ textAlign: 'left', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Logistique</th>
                     <th style={{ textAlign: 'right', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Montant Total</th>
                     <th style={{ textAlign: 'left', padding: '1.25rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Produits commandés</th>
                     <th style={{ textAlign: 'center', padding: '1.25rem 1.5rem', borderBottom: '2px solid #e2e8f0', fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Actions</th>
@@ -519,11 +555,16 @@ export const RelanceWhatsApp = () => {
                         <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.95rem' }}>{cmd.nom_client}</div>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>{cmd.telephone_client}</div>
                       </td>
-                      <td data-label="Commune / Quartier" style={{ padding: '1.25rem' }}>
+                      <td data-label="Logistique" style={{ padding: '1.25rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 700, color: '#1e293b' }}>
                           <MapPin size={14} color="#059669" /> {cmd.commune_livraison}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '1.1rem' }}>{cmd.quartier_livraison || ''}</div>
+                        {cmd.livreur && (
+                          <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 800, background: 'rgba(99, 102, 255, 0.1)', padding: '0.2rem 0.5rem', borderRadius: '4px', display: 'inline-block' }}>
+                            🚚 {cmd.livreur.nom_complet}
+                          </div>
+                        )}
                       </td>
                       <td data-label="Montant Total" style={{ padding: '1.25rem', textAlign: 'right', fontWeight: 900, fontSize: '1.1rem', color: '#10b981' }}>
                         {Number(cmd.montant_total).toLocaleString()} F
