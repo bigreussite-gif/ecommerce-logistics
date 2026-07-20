@@ -25,9 +25,11 @@ export const RelanceWhatsApp = () => {
 
   // App Mode State
   const [appMode, setAppMode] = useState<'relance' | 'marketing'>('relance');
-  const [campaignType, setCampaignType] = useState<'info' | 'produit'>('info');
+  const [campaignType, setCampaignType] = useState<'info' | 'produit' | 'categorie'>('info');
   const [produits, setProduits] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [selectedProduitId, setSelectedProduitId] = useState<string>('');
+  const [selectedCategorieId, setSelectedCategorieId] = useState<string>('');
   const [customLink, setCustomLink] = useState<string>('');
   const [marketingMessage, setMarketingMessage] = useState<string>("Découvrez notre nouvelle collection avec des réductions exceptionnelles ! N'hésitez pas à profiter de nos offres de la semaine.");
 
@@ -68,6 +70,13 @@ export const RelanceWhatsApp = () => {
         .eq('actif', true)
         .order('nom', { ascending: true });
       setProduits(produitsData || []);
+
+      // Fetch Categories pour Campagne Marketing
+      const { data: categoriesData } = await insforge.database
+        .from('categories')
+        .select('id, nom')
+        .order('nom', { ascending: true });
+      setCategories(categoriesData || []);
 
       // Apply Mode & Status filter
       if (appMode === 'marketing') {
@@ -208,13 +217,20 @@ export const RelanceWhatsApp = () => {
     if (appMode === 'marketing') {
       if (campaignType === 'info') {
         return `Bonjour ${nom} 👋,\n\n${marketingMessage}\n\nRetrouvez nos nouveautés et tous les articles que vous recherchez sur notre boutique en ligne :\n👉 https://jachete.ci/shop/\n\n*Jachete Côte d'Ivoire* 🛍️\nwww.jachete.ci | +225 01 72 57 13 52`;
-      } else {
+      } else if (campaignType === 'produit') {
         const prod = produits.find(p => p.id === selectedProduitId);
         if (prod) {
           const prix = prod.prix_promo ? prod.prix_promo : prod.prix_vente;
           const prixFmt = Number(prix).toLocaleString() + ' CFA';
           const lien = customLink.trim() ? customLink.trim() : 'https://jachete.ci';
           return `Bonjour ${nom} 👋,\n\n${marketingMessage}\n\n✨ *${prod.nom}*\n💰 Prix : *${prixFmt}*\n\n🔥 Attention, les stocks sont limités ! Commandez directement en répondant OUI à ce message ou visitez notre site :\n👉 ${lien}\n\n*Jachete Côte d'Ivoire* 🛍️\n+225 01 72 57 13 52`;
+        }
+        return `Bonjour ${nom} 👋,\n\n${marketingMessage}\n\n*Jachete Côte d'Ivoire* 🛍️\nwww.jachete.ci | +225 01 72 57 13 52`;
+      } else if (campaignType === 'categorie') {
+        const cat = categories.find(c => c.id === selectedCategorieId);
+        if (cat) {
+          const lien = customLink.trim() ? customLink.trim() : 'https://jachete.ci/shop';
+          return `Bonjour ${nom} 👋,\n\n${marketingMessage}\n\n✨ Découvrez tous nos articles de la catégorie *${cat.nom}* !\n\n🔥 Faites votre choix directement sur notre site ou répondez OUI à ce message pour être assisté :\n👉 ${lien}\n\n*Jachete Côte d'Ivoire* 🛍️\n+225 01 72 57 13 52`;
         }
         return `Bonjour ${nom} 👋,\n\n${marketingMessage}\n\n*Jachete Côte d'Ivoire* 🛍️\nwww.jachete.ci | +225 01 72 57 13 52`;
       }
@@ -425,11 +441,12 @@ export const RelanceWhatsApp = () => {
                     <select
                       className="form-input"
                       value={campaignType}
-                      onChange={e => setCampaignType(e.target.value as 'info' | 'produit')}
+                      onChange={e => setCampaignType(e.target.value as 'info' | 'produit' | 'categorie')}
                       style={{ width: '100%', height: '48px', borderRadius: '12px', fontWeight: 700, border: '1px solid #a5b4fc', background: 'white' }}
                     >
                       <option value="info">📢 Information & Visite du site</option>
                       <option value="produit">🛍️ Vente Directe / Promo Produit</option>
+                      <option value="categorie">📂 Mise en avant d'une Catégorie</option>
                     </select>
                   </div>
                   
@@ -463,6 +480,37 @@ export const RelanceWhatsApp = () => {
                       </div>
                     </>
                   )}
+                  
+                  {campaignType === 'categorie' && (
+                    <>
+                      <div style={{ flex: '1 1 300px', animation: 'pageEnter 0.3s ease' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#3730a3', textTransform: 'uppercase', marginBottom: '8px' }}>Catégorie à promouvoir</label>
+                        <select
+                          className="form-input"
+                          value={selectedCategorieId}
+                          onChange={e => setSelectedCategorieId(e.target.value)}
+                          style={{ width: '100%', height: '48px', borderRadius: '12px', fontWeight: 700, border: '1px solid #a5b4fc', background: 'white' }}
+                        >
+                          <option value="">-- Sélectionnez une catégorie --</option>
+                          {categories.map(c => (
+                            <option key={c.id} value={c.id}>{c.nom}</option>
+                          ))}
+                        </select>
+                      </div>
+                      
+                      <div style={{ flex: '1 1 100%', animation: 'pageEnter 0.4s ease' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 800, color: '#3730a3', textTransform: 'uppercase', marginBottom: '8px' }}>Lien direct vers la catégorie (Optionnel)</label>
+                        <input
+                          type="url"
+                          className="form-input"
+                          value={customLink}
+                          onChange={e => setCustomLink(e.target.value)}
+                          placeholder="ex: https://jachete.ci/shop/categorie-x"
+                          style={{ width: '100%', height: '48px', borderRadius: '12px', fontWeight: 600, border: '1px solid #a5b4fc', background: 'white', padding: '0 1rem' }}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '1rem' }}>
@@ -488,7 +536,7 @@ export const RelanceWhatsApp = () => {
                         <strong>Jachete Côte d'Ivoire</strong> 🛍️<br/>
                         www.jachete.ci | +225 01 72 57 13 52
                       </>
-                    ) : (
+                    ) : campaignType === 'produit' ? (
                       <>
                         Bonjour <strong>Nom du Client</strong> 👋,<br/><br/>
                         <em>(Votre message personnalisé ci-dessus)</em><br/><br/>
@@ -496,6 +544,16 @@ export const RelanceWhatsApp = () => {
                         💰 Prix : <strong>[Prix] CFA</strong><br/><br/>
                         🔥 Attention, les stocks sont limités ! Commandez directement en répondant OUI à ce message ou visitez notre site :<br/>
                         👉 {customLink.trim() ? customLink.trim() : 'https://jachete.ci'}<br/><br/>
+                        <strong>Jachete Côte d'Ivoire</strong> 🛍️<br/>
+                        +225 01 72 57 13 52
+                      </>
+                    ) : (
+                      <>
+                        Bonjour <strong>Nom du Client</strong> 👋,<br/><br/>
+                        <em>(Votre message personnalisé ci-dessus)</em><br/><br/>
+                        ✨ Découvrez tous nos articles de la catégorie <strong>[Nom de la Catégorie Sélectionnée]</strong> !<br/><br/>
+                        🔥 Faites votre choix directement sur notre site ou répondez OUI à ce message pour être assisté :<br/>
+                        👉 {customLink.trim() ? customLink.trim() : 'https://jachete.ci/shop'}<br/><br/>
                         <strong>Jachete Côte d'Ivoire</strong> 🛍️<br/>
                         +225 01 72 57 13 52
                       </>
