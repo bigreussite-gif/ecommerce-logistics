@@ -173,8 +173,8 @@ export const RelanceWhatsApp = () => {
     return commandes.filter(c => {
       // Tab filter
       const matchesTab = activeTab === 'attente' 
-        ? !c.whatsapp_sent 
-        : !!c.whatsapp_sent;
+        ? (appMode === 'marketing' ? !c.marketing_sent : !c.whatsapp_sent)
+        : (appMode === 'marketing' ? !!c.marketing_sent : !!c.whatsapp_sent);
 
       // Commune filter
       const matchesCommune = selectedCommune === 'All' 
@@ -306,12 +306,13 @@ export const RelanceWhatsApp = () => {
       const { logWhatsAppMessage } = await import('../services/commandeService');
       await logWhatsAppMessage(cmdId, getWAType(pendingRelance));
 
+      const updateData: any = appMode === 'marketing' 
+        ? { marketing_sent: true, marketing_sent_at: new Date().toISOString() } 
+        : { whatsapp_sent: true, whatsapp_sent_at: new Date().toISOString() };
+
       const { error } = await insforge.database
         .from('commandes')
-        .update({ 
-          whatsapp_sent: true,
-          whatsapp_sent_at: new Date().toISOString()
-        } as any)
+        .update(updateData)
         .eq('id', cmdId);
 
       if (error) throw error;
@@ -319,7 +320,7 @@ export const RelanceWhatsApp = () => {
       // Update local state
       setCommandes(prev => prev.map(c => {
         if (c.id === cmdId) {
-          return { ...c, whatsapp_sent: true, whatsapp_sent_at: new Date().toISOString() };
+          return { ...c, ...updateData };
         }
         return c;
       }));
@@ -349,19 +350,20 @@ export const RelanceWhatsApp = () => {
   const handleResetStatus = async (cmdId: string) => {
     setLoading(true);
     try {
+      const updateData: any = appMode === 'marketing' 
+        ? { marketing_sent: false, marketing_sent_at: null } 
+        : { whatsapp_sent: false, whatsapp_sent_at: null };
+
       const { error } = await insforge.database
         .from('commandes')
-        .update({ 
-          whatsapp_sent: false,
-          whatsapp_sent_at: null
-        } as any)
+        .update(updateData)
         .eq('id', cmdId);
 
       if (error) throw error;
 
       setCommandes(prev => prev.map(c => {
         if (c.id === cmdId) {
-          return { ...c, whatsapp_sent: false, whatsapp_sent_at: null };
+          return { ...c, ...updateData };
         }
         return c;
       }));
@@ -584,7 +586,7 @@ export const RelanceWhatsApp = () => {
                         boxShadow: activeTab === 'attente' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
                       }}
                     >
-                      En attente ({commandes.filter(c => !c.whatsapp_sent).length})
+                      En attente ({commandes.filter(c => appMode === 'marketing' ? !c.marketing_sent : !c.whatsapp_sent).length})
                     </button>
                     <button
                       onClick={() => setActiveTab('envoyes')}
@@ -596,7 +598,7 @@ export const RelanceWhatsApp = () => {
                         boxShadow: activeTab === 'envoyes' ? '0 4px 12px rgba(0,0,0,0.05)' : 'none'
                       }}
                     >
-                      Déjà envoyés ({commandes.filter(c => c.whatsapp_sent).length})
+                      Déjà envoyés ({commandes.filter(c => appMode === 'marketing' ? !!c.marketing_sent : !!c.whatsapp_sent).length})
                     </button>
                   </div>
 
