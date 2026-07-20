@@ -183,7 +183,10 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
     const total = Math.max(0, subtotal + delivery - remise);
 
     const bSubtotal = `*${subtotal.toLocaleString()} CFA*`;
-    const bDelivery = `*${delivery > 0 ? delivery.toLocaleString() + " CFA" : "À définir"}*`;
+    const isLivraisonIncluse = commande.livraison_incluse === true;
+    const bDelivery = isLivraisonIncluse 
+      ? `*Incluse*` 
+      : `*${delivery > 0 ? delivery.toLocaleString() + " CFA" : "À définir"}*`;
     const bRemise = remise > 0 ? `\n- Remise : *-${remise.toLocaleString()} CFA*` : "";
     const bTotal = `*${total.toLocaleString()} CFA*`;
 
@@ -230,6 +233,45 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
     const signature = "\n\n*Jachete Côte d'Ivoire* 🛍️\nwww.jachete.ci | +225 01 72 57 13 52";
     text += signature;
     
+    let phone = (commande.telephone_client || '').replace(/\D/g, '');
+    if (phone.length === 10) phone = '225' + phone;
+    
+    return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+  };
+
+  const generateExpeditionWhatsAppLink = () => {
+    if (!commande) return "";
+    const fullName = commande.nom_client || 'Client';
+    const firstName = fullName.split(' ')[0];
+    const nom = `*${firstName}*`;
+    const ref = `*#${commande.id.slice(0, 8).toUpperCase()}*`;
+    
+    const articlesList = (commande.lignes || []).map((l: LigneCommande) => ` - *${l.quantite}x ${l.nom_produit}*`).join('\n');
+    const subtotal = (commande.lignes || []).reduce((acc: number, l: LigneCommande) => acc + (l.montant_ligne || 0), 0);
+    const delivery = Number(commande.frais_livraison) || 0;
+    const remise = Number(commande.remise_totale) || 0;
+    const total = Math.max(0, subtotal + delivery - remise);
+
+    const bSubtotal = `*${subtotal.toLocaleString()} CFA*`;
+    const isLivraisonIncluse = commande.livraison_incluse === true;
+    const bDelivery = isLivraisonIncluse 
+      ? `*Incluse*` 
+      : `*${delivery > 0 ? delivery.toLocaleString() + " CFA" : "À définir"}*`;
+    const bRemise = remise > 0 ? `\n- Remise : *-${remise.toLocaleString()} CFA*` : "";
+    const bTotal = `*${total.toLocaleString()} CFA*`;
+
+    const summary = `\n\n📦 *Détails de votre commande ${ref} :*\n${articlesList}\n\n- Sous-total articles : ${bSubtotal}\n- Frais d'envoi : ${bDelivery}${bRemise}\n💰 *Total à régler : ${bTotal}*`;
+
+    const communeEffective = commande.commune_livraison || '';
+    const nomLivreur = (commande as any).livreur?.nom_complet || "notre livreur";
+    const telLivreur = (commande as any).livreur?.telephone || "";
+    const contactLivreur = telLivreur ? ` au *${telLivreur}*` : "";
+
+    let text = `Bonjour ${nom} ! 🙌\n\nC'est votre conseiller de *Jachete Côte d'Ivoire*. Bonne nouvelle, votre commande est prête et a été remise à notre livreur *${nomLivreur}* ! 🚀\n\nIl va vous contacter très bientôt${contactLivreur} pour la livraison à *${communeEffective}*.\n${summary}\n\nPréparez le montant exact s'il vous plaît.\n\n📞 Pour toute question, appelez-nous au *+225 01 72 57 13 52*.`;
+    
+    const signature = "\n\n*Jachete Côte d'Ivoire* 🛍️\nwww.jachete.ci | +225 01 72 57 13 52";
+    text += signature;
+
     let phone = (commande.telephone_client || '').replace(/\D/g, '');
     if (phone.length === 10) phone = '225' + phone;
     
@@ -444,7 +486,34 @@ export const CommandeDetails = ({ commandeId, onClose }: CommandeDetailsProps) =
                    </div>
                    {(commande as any).livreur?.nom_complet && (
                      <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed #e2e8f0' }}>
-                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800, marginBottom: '0.25rem' }}>Affectation Logistique</div>
+                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                         <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 800 }}>Affectation Logistique</div>
+                         {!(isInteriorCommune(commande.commune_livraison || '') || !commande.commune_livraison || commande.commune_livraison.toLowerCase().trim() === 'inconnu') && (
+                           <a 
+                             href={generateExpeditionWhatsAppLink()} 
+                             target="_blank" 
+                             rel="noopener noreferrer" 
+                             onClick={() => logWhatsAppMessage(commande.id, 'expedition').catch(console.error)}
+                             style={{ 
+                               display: 'flex', 
+                               alignItems: 'center', 
+                               gap: '0.3rem', 
+                               padding: '0.2rem 0.5rem', 
+                               background: 'rgba(37, 211, 102, 0.15)', 
+                               color: '#075e54', 
+                               borderRadius: '6px', 
+                               fontSize: '0.65rem', 
+                               fontWeight: 800, 
+                               textDecoration: 'none',
+                               border: '1px solid rgba(37, 211, 102, 0.3)'
+                             }}
+                             title="Informer le client de la remise au livreur"
+                           >
+                             <MessageCircle size={12} fill="currentColor" /> 
+                             Informer Client
+                           </a>
+                         )}
+                       </div>
                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                          <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(99, 102, 255, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                            <User size={12} strokeWidth={3} />
