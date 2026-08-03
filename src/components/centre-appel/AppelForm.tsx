@@ -212,7 +212,7 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
     return n.includes('intérieur') || n.includes('interieur') || n.includes('hors') || n === 'autre';
   };
 
-  const generateWhatsAppLink = () => {
+  const generateWhatsAppLink = (type: 'classic' | 'closer' = 'classic') => {
     const nom = `*${commande.nom_client || 'Client'}*`;
     const ref = `*#${commande.id.slice(0, 8).toUpperCase()}*`;
     const articlesList = lignesLocal.map(l => ` - *${l.quantite}x ${l.nom_produit}*`).join('\n');
@@ -243,7 +243,11 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
         text = `Bonjour ${nom} 👋\n\nC'est votre conseiller de *Jachete Côte d'Ivoire*.\n\nNous avons tenté de vous joindre pour votre livraison mais sans succès. Votre colis est prêt ! 📦\n\nPouvons-nous reprogrammer votre livraison pour demain ? Répondez *OUI* et le livreur sera chez vous dans les plus brefs délais.${summary}\n\n📞 Besoin d'aide ? Appelez-nous au *+225 01 72 57 13 52*.`;
       }
     } else if (resultat === 'annulee') {
-      text = `Bonjour ${nom} 👋\n\nNous avons bien noté l'annulation de votre commande ${ref}. On ne va pas vous retenir si vous avez changé d'avis... *mais avant de partir*, on voulait juste vous dire quelque chose. 🙏\n\n🔥 *L'article que vous aviez choisi part très vite.* Les stocks sont limités et d'autres clients l'ont déjà commandé aujourd'hui. Si vous hésitez encore, il risque de ne plus être disponible dans quelques jours.\n\n💬 *Qu'est-ce qui vous a fait hésiter ?*\nSi c'est le prix, le délai ou une inquiétude sur la livraison — dites-le nous franchement. On trouvera une solution ensemble. Chez *Jachete Côte d'Ivoire*, chaque client compte et on est là pour vous.\n\n🎁 *Offre spéciale pour vous :* Si vous relancez votre commande maintenant, on vous réserve une *attention spéciale* en cadeau de notre part. Répondez juste *OUI* ici et on s'en occupe immédiatement !\n${summary}\n\n🛍️ *Et si vous cherchez autre chose ?*\nNotre boutique regorge d'articles de qualité livrés partout en Côte d'Ivoire :\n👉 *www.jachete.ci*\n\nParcourez nos nouveautés, nos promos du moment et commandez en quelques clics. La livraison est rapide et sécurisée — à Abidjan et dans tout le pays ! 🚀\n\n📞 Appelez notre service client au *+225 01 72 57 13 52* pour toute question. À très bientôt ! 🤝`;
+      if (type === 'closer') {
+        text = `Bonjour ${nom} 👋\n\nC'est votre conseiller privé de *Jachete Côte d'Ivoire*.\n\nJ'ai vu que vous aviez flashé sur nos articles ! ✨\n${articlesList}\n\nC'est vraiment un excellent choix. Actuellement, c'est l'un de nos articles les plus demandés et il ne nous reste que quelques pièces en stock.\n\nJe voulais m'assurer personnellement : êtes-vous toujours intéressé(e) ?\n\nSouvent, nos clients hésitent à cause d'un détail (prix, délai de livraison). Si c'est le cas, dites-le moi en toute transparence. Mon but aujourd'hui est de trouver *LA* solution qui vous convient, même si je dois vous faire une petite faveur exceptionnelle ! 🎁\n\nQu'est-ce qui vous ferait dire "OUI" aujourd'hui ?\n\nJ'attends votre retour, à tout de suite ! 🤝`;
+      } else {
+        text = `Bonjour ${nom} 👋\n\nNous avons bien noté l'annulation de votre commande ${ref}. On ne va pas vous retenir si vous avez changé d'avis... *mais avant de partir*, on voulait juste vous dire quelque chose. 🙏\n\n🔥 *L'article que vous aviez choisi part très vite.* Les stocks sont limités et d'autres clients l'ont déjà commandé aujourd'hui. Si vous hésitez encore, il risque de ne plus être disponible dans quelques jours.\n\n💬 *Qu'est-ce qui vous a fait hésiter ?*\nSi c'est le prix, le délai ou une inquiétude sur la livraison — dites-le nous franchement. On trouvera une solution ensemble. Chez *Jachete Côte d'Ivoire*, chaque client compte et on est là pour vous.\n\n🎁 *Offre spéciale pour vous :* Si vous relancez votre commande maintenant, on vous réserve une *attention spéciale* en cadeau de notre part. Répondez juste *OUI* ici et on s'en occupe immédiatement !\n${summary}\n\n🛍️ *Et si vous cherchez autre chose ?*\nNotre boutique regorge d'articles de qualité livrés partout en Côte d'Ivoire :\n👉 *www.jachete.ci*\n\nParcourez nos nouveautés, nos promos du moment et commandez en quelques clics. La livraison est rapide et sécurisée — à Abidjan et dans tout le pays ! 🚀\n\n📞 Appelez notre service client au *+225 01 72 57 13 52* pour toute question. À très bientôt ! 🤝`;
+      }
     } else if (resultat === 'echouee') {
       if (isInterior && communeEffective) {
         text = `Bonjour ${nom} 👋\n\nVotre conseiller chez *Jachete Côte d'Ivoire* à l'appareil.\n\nNous avons eu un empêchement lors de l'expédition de votre commande vers *${communeEffective}*. Nous nous en excusons sincèrement. 🙏\n\nBonne nouvelle : votre colis est toujours disponible et prêt à partir ! Confirmez-nous et on expédie dès demain.${summary}\n\n📞 Appelez-nous au *+225 01 72 57 13 52* ou répondez *OUI* ici pour relancer.`;
@@ -348,27 +352,53 @@ export const AppelForm = ({ commande, onClose, onSave }: AppelFormProps) => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontWeight: 600 }}>
                   <MessageCircle size={18} color="#25D366" /> {commande.telephone_client}
                 </div>
-                <a 
-                  href={generateWhatsAppLink()} 
-                  target="_blank" 
-                  rel="noopener noreferrer" 
-                  onClick={() => handleWhatsAppClick()}
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '0.4rem', 
-                    padding: '0.4rem 0.8rem', 
-                    background: '#25D366', 
-                    color: 'white', 
-                    borderRadius: '10px', 
-                    fontSize: '0.75rem', 
-                    fontWeight: 800, 
-                    textDecoration: 'none',
-                    boxShadow: '0 4px 10px rgba(37, 211, 102, 0.2)'
-                  }}
-                >
-                  WhatsApp
-                </a>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                  {resultat === 'annulee' && (
+                    <a 
+                      href={generateWhatsAppLink('closer')} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      onClick={() => handleWhatsAppClick()}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '0.4rem', 
+                        padding: '0.4rem 0.8rem', 
+                        background: '#8b5cf6', 
+                        color: 'white', 
+                        borderRadius: '10px', 
+                        fontSize: '0.75rem', 
+                        fontWeight: 800, 
+                        textDecoration: 'none',
+                        boxShadow: '0 4px 10px rgba(139, 92, 246, 0.2)'
+                      }}
+                      title="Relance de vente (ne mentionne pas l'annulation)"
+                    >
+                      Relance Pro
+                    </a>
+                  )}
+                  <a 
+                    href={generateWhatsAppLink('classic')} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    onClick={() => handleWhatsAppClick()}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.4rem', 
+                      padding: '0.4rem 0.8rem', 
+                      background: '#25D366', 
+                      color: 'white', 
+                      borderRadius: '10px', 
+                      fontSize: '0.75rem', 
+                      fontWeight: 800, 
+                      textDecoration: 'none',
+                      boxShadow: '0 4px 10px rgba(37, 211, 102, 0.2)'
+                    }}
+                  >
+                    WhatsApp
+                  </a>
+                </div>
               </div>
 
               {/* Adresse de livraison affichée dans le header */}
