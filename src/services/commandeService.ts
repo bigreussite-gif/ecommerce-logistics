@@ -259,7 +259,10 @@ export const getCommandesPaginated = async (
 export const subscribeToCommandes = (callback: (commandes: Commande[]) => void) => {
   const fetch = () => {
     if (document.visibilityState === 'visible') {
-      getCommandes(null).then(callback); 
+      getCommandes(null).then(callback).catch(err => {
+        console.error("Error in subscribeToCommandes:", err);
+        callback([]);
+      }); 
     }
   };
   fetch();

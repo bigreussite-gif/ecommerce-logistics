@@ -38,4 +38,24 @@ dist-ssr
 .roo
 .trae
 .windsurf
+# Environment files
+.env
+.env.*
 .env*.local
+
+# Backups and SQL dumps
+*.dump
+*.sql.gz
+*.backup
+
+# Bundle visualizer
+stats.html
+
+# Local scratch and test scripts
+test*.js
+test*.ts
+debug*.js
+debug*.ts
+scratch.js
+fix_*.js
+fix_*.cjs

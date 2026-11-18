@@ -31,7 +31,7 @@ export const Commandes = () => {
   const [communesDb, setCommunesDb] = useState<any[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   
-  const [period, setPeriod] = useState<Period>('7d'); // Default to 7 days for better focus
+  const [period, setPeriod] = useState<Period>('all');
   const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 

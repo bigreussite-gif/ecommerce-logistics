@@ -100,7 +100,12 @@ export const getProduits = async (): Promise<Produit[]> => {
 
 export const subscribeToProduits = (callback: (produits: Produit[]) => void) => {
   const fetch = () => {
-    getProduits().then(callback).catch(console.error);
+    getProduits()
+      .then(callback)
+      .catch((err) => {
+        console.error("Failed to load products:", err);
+        callback([]);
+      });
   };
 
   fetch();

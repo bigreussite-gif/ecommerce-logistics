@@ -16,7 +16,7 @@ type Period = 'today' | '7d' | '30d' | 'all' | 'custom';
 export const Dashboard = () => {
   const [commandes, setCommandes] = useState<Commande[]>([]);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState<Period>('7d');
+  const [period, setPeriod] = useState<Period>('all');
   const [startDate, setStartDate] = useState(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [topProducts, setTopProducts] = useState<any[]>([]);
