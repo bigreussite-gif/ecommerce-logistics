@@ -717,30 +717,41 @@ export const registerReturn = async (id: string, motif: string, solution: string
 };
 
 export const getTopSellingProducts = async (limit: number | null = null, days?: number, start?: string, end?: string): Promise<{ nom: string, nb_ventes: number, total_ca: number, total_sorties: number, taux_succes: number }[]> => {
-  let query = insforge.database
-    .from('lignes_commandes')
-    .select('*, commandes!inner(statut_commande, date_creation, date_livraison_effective)').limit(100000);
+  const allLines: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
 
-  if (days && days > 0) {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    const iso = startDate.toISOString();
-    const successStats = '(livree,terminee)';
-    const filterString = `and(statut_commande.in.${successStats},date_livraison_effective.gte."${iso}"),and(statut_commande.not.in.${successStats},date_creation.gte."${iso}")`;
-    query = query.or(filterString, { foreignTable: 'commandes' });
-  } else if (start && end) {
-    const successStats = '(livree,terminee)';
-    const filterString = `and(statut_commande.in.${successStats},date_livraison_effective.gte."${start}",date_livraison_effective.lte."${end}"),and(statut_commande.not.in.${successStats},date_creation.gte."${start}",date_creation.lte."${end}")`;
-    query = query.or(filterString, { foreignTable: 'commandes' });
+  while (true) {
+    let query = insforge.database
+      .from('lignes_commandes')
+      .select('*, commandes!inner(statut_commande, date_creation, date_livraison_effective)');
+
+    if (days && days > 0) {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      const iso = startDate.toISOString();
+      const successStats = '(livree,terminee)';
+      const filterString = `and(statut_commande.in.${successStats},date_livraison_effective.gte."${iso}"),and(statut_commande.not.in.${successStats},date_creation.gte."${iso}")`;
+      query = query.or(filterString, { foreignTable: 'commandes' });
+    } else if (start && end) {
+      const successStats = '(livree,terminee)';
+      const filterString = `and(statut_commande.in.${successStats},date_livraison_effective.gte."${start}",date_livraison_effective.lte."${end}"),and(statut_commande.not.in.${successStats},date_creation.gte."${start}",date_creation.lte."${end}")`;
+      query = query.or(filterString, { foreignTable: 'commandes' });
+    }
+
+    const { data: lines, error: linesError } = await query
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (linesError) throw linesError;
+    if (!lines || lines.length === 0) break;
+    allLines.push(...lines);
+    if (lines.length < pageSize) break;
+    page++;
   }
-
-  const { data: lines, error: linesError } = await query;
-  
-  if (linesError) throw linesError;
   
   const aggregates: Record<string, { nb: number, ca: number, sorties: number, livrees: number, echecs: number, name: string }> = {};
   
-  (lines || []).forEach((l: any) => {
+  allLines.forEach((l: any) => {
     const key = l.nom_produit.trim().toUpperCase();
     
     if (!aggregates[key]) {
@@ -791,29 +802,41 @@ export const getTopSellingProducts = async (limit: number | null = null, days?: 
 };
 
 export const getCategoryPerformance = async (days?: number, start?: string, end?: string): Promise<{ nom: string, nb_articles: number, ca: number }[]> => {
-  let query = insforge.database
-    .from('lignes_commandes')
-    .select('*, commandes!inner(statut_commande, date_creation, date_livraison_effective), produits(categorie_id, categories(nom))').limit(100000);
+  const allLines: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
 
-  if (days && days > 0) {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
-    const iso = startDate.toISOString();
-    const successStats = '(livree,terminee)';
-    const filterString = `and(statut_commande.in.${successStats},date_livraison_effective.gte."${iso}"),and(statut_commande.not.in.${successStats},date_creation.gte."${iso}")`;
-    query = query.or(filterString, { foreignTable: 'commandes' });
-  } else if (start && end) {
-    const successStats = '(livree,terminee)';
-    const filterString = `and(statut_commande.in.${successStats},date_livraison_effective.gte."${start}",date_livraison_effective.lte."${end}"),and(statut_commande.not.in.${successStats},date_creation.gte."${start}",date_creation.lte."${end}")`;
-    query = query.or(filterString, { foreignTable: 'commandes' });
+  while (true) {
+    let query = insforge.database
+      .from('lignes_commandes')
+      .select('*, commandes!inner(statut_commande, date_creation, date_livraison_effective), produits(categorie_id, categories(nom))');
+
+    if (days && days > 0) {
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      const iso = startDate.toISOString();
+      const successStats = '(livree,terminee)';
+      const filterString = `and(statut_commande.in.${successStats},date_livraison_effective.gte."${iso}"),and(statut_commande.not.in.${successStats},date_creation.gte."${iso}")`;
+      query = query.or(filterString, { foreignTable: 'commandes' });
+    } else if (start && end) {
+      const successStats = '(livree,terminee)';
+      const filterString = `and(statut_commande.in.${successStats},date_livraison_effective.gte."${start}",date_livraison_effective.lte."${end}"),and(statut_commande.not.in.${successStats},date_creation.gte."${start}",date_creation.lte."${end}")`;
+      query = query.or(filterString, { foreignTable: 'commandes' });
+    }
+
+    const { data: lines, error: linesError } = await query
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (linesError) throw linesError;
+    if (!lines || lines.length === 0) break;
+    allLines.push(...lines);
+    if (lines.length < pageSize) break;
+    page++;
   }
-
-  const { data: lines, error: linesError } = await query;
-  if (linesError) throw linesError;
   
   const aggregates: Record<string, { nb: number, ca: number, name: string }> = {};
   
-  (lines || []).forEach((l: any) => {
+  allLines.forEach((l: any) => {
     const prod = Array.isArray(l.produits) ? l.produits[0] : l.produits;
     if (!prod) return;
     
@@ -860,19 +883,29 @@ export const getFinancialData = async (startDate?: string, endDate?: string): Pr
   
   const filterString = `and(statut_commande.in.${successStats},date_livraison_effective.gte.${start},date_livraison_effective.lte.${end}),and(statut_commande.not.in.${successStats},date_creation.gte.${start},date_creation.lte.${end})`;
   
-  const { data: orders, error: orderError } = await insforge.database
-    .from('commandes')
-    .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*, produits(prix_achat))').limit(100000)
-    .or(filterString)
-    .order('date_creation', { ascending: false });
+  const allOrders: any[] = [];
+  let page = 0;
+  const pageSize = 1000;
 
-  if (orderError) {
-    console.error("Financial fetch error details:", orderError);
-    throw orderError;
+  while (true) {
+    const { data: orders, error: orderError } = await insforge.database
+      .from('commandes')
+      .select('*, clients(nom_complet, telephone), lignes:lignes_commandes(*, produits(prix_achat))')
+      .or(filterString)
+      .order('date_creation', { ascending: false })
+      .range(page * pageSize, (page + 1) * pageSize - 1);
+
+    if (orderError) {
+      console.error("Financial fetch error details:", orderError);
+      throw orderError;
+    }
+    if (!orders || orders.length === 0) break;
+    allOrders.push(...orders);
+    if (orders.length < pageSize) break;
+    page++;
   }
-  if (!orders) return [];
 
-  return orders.map((o: any) => ({
+  return allOrders.map((o: any) => ({
     ...o,
     nom_client: o.clients?.nom_complet,
     telephone_client: o.clients?.telephone,
